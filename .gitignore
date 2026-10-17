@@ -1,0 +1,7 @@
+__pycache__/
+*.py[cod]
+cloned_sites/*/
+!cloned_sites/manifest.json
+*.zip
+.env
+.venv

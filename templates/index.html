@@ -1,0 +1,723 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SiteCloner SaaS - Clone & Re-host Any Website</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #090a0f;
+      --card-bg: #121420;
+      --card-border: #1e2238;
+      --accent: #6366f1;
+      --accent-glow: rgba(99, 102, 241, 0.4);
+      --gradient: linear-gradient(135deg, #6366f1 0%, #a855f7 50%, #ec4899 100%);
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --success: #10b981;
+      --danger: #ef4444;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Inter', sans-serif;
+    }
+
+    body {
+      background-color: var(--bg);
+      color: var(--text-main);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow-x: hidden;
+      background-image: 
+        radial-gradient(at 0% 0%, rgba(99, 102, 241, 0.12) 0px, transparent 50%),
+        radial-gradient(at 100% 100%, rgba(236, 72, 153, 0.08) 0px, transparent 50%);
+    }
+
+    /* Navbar */
+    .navbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 1.25rem 2.5rem;
+      border-bottom: 1px solid var(--card-border);
+      backdrop-filter: blur(12px);
+      background: rgba(9, 10, 15, 0.7);
+      position: sticky;
+      top: 0;
+      z-index: 50;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      font-weight: 800;
+      font-size: 1.35rem;
+      letter-spacing: -0.5px;
+    }
+
+    .brand-icon {
+      width: 36px;
+      height: 36px;
+      border-radius: 10px;
+      background: var(--gradient);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.2rem;
+      box-shadow: 0 0 15px var(--accent-glow);
+    }
+
+    .badge {
+      font-size: 0.75rem;
+      padding: 0.25rem 0.6rem;
+      border-radius: 20px;
+      background: rgba(99, 102, 241, 0.15);
+      color: #818cf8;
+      border: 1px solid rgba(99, 102, 241, 0.3);
+      font-weight: 600;
+    }
+
+    /* Container */
+    .container {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 3rem 1.5rem;
+      width: 100%;
+      flex: 1;
+    }
+
+    /* Hero Section */
+    .hero {
+      text-align: center;
+      margin-bottom: 3rem;
+    }
+
+    .hero h1 {
+      font-size: 2.75rem;
+      font-weight: 800;
+      letter-spacing: -1px;
+      margin-bottom: 1rem;
+      background: linear-gradient(180deg, #ffffff 0%, #cbd5e1 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .hero p {
+      color: var(--text-muted);
+      font-size: 1.1rem;
+      max-width: 600px;
+      margin: 0 auto;
+    }
+
+    /* Input Box */
+    .clone-box {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 16px;
+      padding: 0.5rem 0.5rem 0.5rem 1.25rem;
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.5);
+      transition: all 0.3s ease;
+      margin-bottom: 2rem;
+    }
+
+    .clone-box:focus-within {
+      border-color: var(--accent);
+      box-shadow: 0 0 25px var(--accent-glow);
+    }
+
+    .clone-input {
+      background: transparent;
+      border: none;
+      color: var(--text-main);
+      font-size: 1.05rem;
+      flex: 1;
+      outline: none;
+    }
+
+    .clone-input::placeholder {
+      color: #64748b;
+    }
+
+    .btn-clone {
+      background: var(--gradient);
+      color: #fff;
+      border: none;
+      padding: 0.85rem 1.75rem;
+      font-size: 1rem;
+      font-weight: 600;
+      border-radius: 12px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      transition: all 0.2s ease;
+      box-shadow: 0 4px 15px var(--accent-glow);
+    }
+
+    .btn-clone:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(99, 102, 241, 0.6);
+    }
+
+    .btn-clone:active {
+      transform: translateY(0);
+    }
+
+    /* Progress Card */
+    .progress-card {
+      display: none;
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 16px;
+      padding: 1.5rem;
+      margin-bottom: 2.5rem;
+      animation: fadeIn 0.3s ease;
+    }
+
+    .progress-header {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 0.75rem;
+      font-size: 0.95rem;
+    }
+
+    .progress-bar-bg {
+      height: 8px;
+      background: rgba(255, 255, 255, 0.08);
+      border-radius: 999px;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .progress-bar-fill {
+      height: 100%;
+      width: 0%;
+      background: var(--gradient);
+      border-radius: 999px;
+      transition: width 0.3s ease;
+    }
+
+    .progress-detail {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      margin-top: 0.75rem;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    /* Sites Section */
+    .section-title {
+      font-size: 1.35rem;
+      font-weight: 700;
+      margin-bottom: 1.25rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .sites-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+      gap: 1.5rem;
+    }
+
+    .site-card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 16px;
+      padding: 1.5rem;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      transition: all 0.25s ease;
+      position: relative;
+    }
+
+    .site-card:hover {
+      border-color: rgba(99, 102, 241, 0.4);
+      transform: translateY(-3px);
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.4);
+    }
+
+    .site-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 1rem;
+    }
+
+    .site-title {
+      font-size: 1.15rem;
+      font-weight: 700;
+      color: var(--text-main);
+      margin-bottom: 0.25rem;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      max-width: 200px;
+    }
+
+    .site-url {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      max-width: 250px;
+    }
+
+    .live-status {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      font-size: 0.75rem;
+      font-weight: 600;
+      padding: 0.2rem 0.5rem;
+      border-radius: 999px;
+      background: rgba(16, 185, 129, 0.15);
+      color: var(--success);
+      border: 1px solid rgba(16, 185, 129, 0.3);
+    }
+
+    .live-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--success);
+      box-shadow: 0 0 8px var(--success);
+    }
+
+    .site-stats {
+      display: flex;
+      gap: 1rem;
+      padding: 0.85rem 0;
+      border-top: 1px solid rgba(255, 255, 255, 0.05);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+      margin-bottom: 1.25rem;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.8rem;
+      color: var(--text-muted);
+    }
+
+    .site-actions {
+      display: flex;
+      gap: 0.5rem;
+    }
+
+    .btn-action {
+      flex: 1;
+      padding: 0.6rem 0.75rem;
+      border-radius: 10px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.4rem;
+      transition: all 0.15s ease;
+      text-decoration: none;
+    }
+
+    .btn-preview {
+      background: rgba(99, 102, 241, 0.15);
+      color: #818cf8;
+      border: 1px solid rgba(99, 102, 241, 0.3);
+    }
+
+    .btn-preview:hover {
+      background: var(--accent);
+      color: #fff;
+    }
+
+    .btn-download {
+      background: rgba(255, 255, 255, 0.05);
+      color: var(--text-main);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .btn-download:hover {
+      background: rgba(255, 255, 255, 0.1);
+    }
+
+    .btn-delete {
+      background: rgba(239, 68, 68, 0.1);
+      color: #f87171;
+      border: 1px solid rgba(239, 68, 68, 0.2);
+      flex: 0 0 auto;
+      padding: 0.6rem;
+    }
+
+    .btn-delete:hover {
+      background: var(--danger);
+      color: #fff;
+    }
+
+    /* Empty state */
+    .empty-state {
+      text-align: center;
+      padding: 4rem 1rem;
+      color: var(--text-muted);
+    }
+
+    .empty-icon {
+      font-size: 3rem;
+      margin-bottom: 1rem;
+      opacity: 0.6;
+    }
+
+    /* Toasts */
+    .toast-container {
+      position: fixed;
+      bottom: 2rem;
+      right: 2rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+      z-index: 999;
+    }
+
+    .toast {
+      padding: 0.9rem 1.4rem;
+      border-radius: 12px;
+      font-size: 0.9rem;
+      font-weight: 500;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.4);
+      animation: slideIn 0.3s ease;
+    }
+
+    .toast-success {
+      background: #065f46;
+      border: 1px solid #10b981;
+    }
+
+    .toast-error {
+      background: #7f1d1d;
+      border: 1px solid #ef4444;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(-10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes slideIn {
+      from { transform: translateX(100%); opacity: 0; }
+      to { transform: translateX(0); opacity: 1; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Navigation -->
+  <nav class="navbar">
+    <div class="brand">
+      <div class="brand-icon">⚡</div>
+      <span>SiteCloner</span>
+      <span class="badge">SaaS v1.0</span>
+    </div>
+    <div style="font-size: 0.85rem; color: var(--text-muted);">
+      Server: <span style="color: var(--success); font-weight: 600;">● Online</span>
+    </div>
+  </nav>
+
+  <!-- Main Container -->
+  <div class="container">
+    
+    <!-- Hero Header -->
+    <div class="hero">
+      <h1>Clonez N'importe Quel Site en 1-Clic</h1>
+      <p>Miroir complet hors-ligne, détection 3D (WebGL, GLB, KTX2), vidéos, suppression des trackers et prévisualisation instantanée.</p>
+    </div>
+
+    <!-- URL Input Bar -->
+    <div class="clone-box">
+      <input type="text" id="urlInput" class="clone-input" placeholder="https://exemple.com (ex: landonorris.com, igloo.inc...)" />
+      <button class="btn-clone" id="cloneBtn" onclick="startClone()">
+        <span>🚀 Cloner le Site</span>
+      </button>
+    </div>
+
+    <!-- Real-time Progress Bar -->
+    <div class="progress-card" id="progressCard">
+      <div class="progress-header">
+        <span id="progressStatus" style="font-weight: 600;">Téléchargement en cours...</span>
+        <span id="progressPct" style="font-family: 'JetBrains Mono'; color: var(--accent);">0%</span>
+      </div>
+      <div class="progress-bar-bg">
+        <div class="progress-bar-fill" id="progressBar"></div>
+      </div>
+      <div class="progress-detail" id="progressDetail">Connexion au serveur cible...</div>
+    </div>
+
+    <!-- Cloned Sites Grid -->
+    <div class="section-title">
+      <span>Mes Sites Clonés</span>
+      <span id="sitesCount" style="font-size: 0.85rem; color: var(--text-muted); font-weight: normal;">0 site(s)</span>
+    </div>
+
+    <div class="sites-grid" id="sitesGrid">
+      <!-- Injected via JavaScript -->
+    </div>
+
+    <div class="empty-state" id="emptyState" style="display: none;">
+      <div class="empty-icon">🌐</div>
+      <h3>Aucun site cloné pour l'instant</h3>
+      <p>Collez une URL ci-dessus pour générer votre premier miroir 3D interactif.</p>
+    </div>
+
+  </div>
+
+  <!-- Toast notifications -->
+  <div class="toast-container" id="toastContainer"></div>
+
+  <script>
+    let activeJobId = null;
+    let pollInterval = null;
+
+    function showToast(message, type = 'success') {
+      const container = document.getElementById('toastContainer');
+      const toast = document.createElement('div');
+      toast.className = `toast toast-${type}`;
+      toast.innerHTML = `${type === 'success' ? '✅' : '❌'} <span>${message}</span>`;
+      container.appendChild(toast);
+      setTimeout(() => {
+        toast.style.opacity = '0';
+        setTimeout(() => toast.remove(), 300);
+      }, 3500);
+    }
+
+    function formatBytes(bytes) {
+      if (!bytes || bytes === 0) return '0 B';
+      const k = 1024;
+      const sizes = ['B', 'KB', 'MB', 'GB'];
+      const i = Math.floor(Math.log(bytes) / Math.log(k));
+      return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+    }
+
+    async function loadSites() {
+      try {
+        const res = await fetch('/api/sites');
+        const data = await res.json();
+        const grid = document.getElementById('sitesGrid');
+        const empty = document.getElementById('emptyState');
+        const count = document.getElementById('sitesCount');
+
+        grid.innerHTML = '';
+        const sites = data.sites || [];
+        count.textContent = `${sites.length} site(s)`;
+
+        if (sites.length === 0) {
+          empty.style.display = 'block';
+          return;
+        } else {
+          empty.style.display = 'none';
+        }
+
+        sites.reverse().forEach(site => {
+          const card = document.createElement('div');
+          card.className = 'site-card';
+          
+          const isLive = site.active_port ? true : false;
+          const liveBadge = isLive 
+            ? `<div class="live-status"><span class="live-dot"></span> Port ${site.active_port}</div>`
+            : '';
+
+          card.innerHTML = `
+            <div>
+              <div class="site-header">
+                <div>
+                  <div class="site-title" title="${site.title}">${site.title}</div>
+                  <div class="site-url" title="${site.url}">${site.url}</div>
+                </div>
+                ${liveBadge}
+              </div>
+              <div class="site-stats">
+                <span>📁 ${site.total_files || 0} assets</span>
+                <span>💾 ${formatBytes(site.total_size)}</span>
+                <span>📅 ${site.date || 'Récemment'}</span>
+              </div>
+            </div>
+            <div class="site-actions">
+              <button class="btn-action btn-preview" onclick="previewSite('${site.id}')">
+                <span>🌐 Aperçu</span>
+              </button>
+              <button class="btn-action btn-publish" onclick="publishSite('${site.id}')" style="background: rgba(16, 185, 129, 0.15); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.3);" title="Publier sur votre compte GitHub">
+                <span>🚀 GitHub</span>
+              </button>
+              <a href="/api/sites/${site.id}/download" class="btn-action btn-download" title="Télécharger l'archive ZIP">
+                <span>📦 ZIP</span>
+              </a>
+              <button class="btn-action btn-delete" onclick="deleteSite('${site.id}')" title="Supprimer">
+                <span>🗑️</span>
+              </button>
+            </div>
+          `;
+          grid.appendChild(card);
+        });
+      } catch (err) {
+        console.error("Error loading sites:", err);
+      }
+    }
+
+    async function startClone() {
+      const input = document.getElementById('urlInput');
+      const url = input.value.trim();
+      if (!url) {
+        showToast("Veuillez saisir une URL valide", "error");
+        return;
+      }
+
+      const btn = document.getElementById('cloneBtn');
+      const progressCard = document.getElementById('progressCard');
+      btn.disabled = true;
+      btn.style.opacity = '0.5';
+      progressCard.style.display = 'block';
+
+      try {
+        const res = await fetch('/api/clone', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({ url })
+        });
+        const data = await res.json();
+        
+        if (data.error) {
+          showToast(data.error, 'error');
+          btn.disabled = false;
+          btn.style.opacity = '1';
+          progressCard.style.display = 'none';
+          return;
+        }
+
+        activeJobId = data.job_id;
+        pollStatus();
+      } catch (err) {
+        showToast("Erreur lors du démarrage du clonage", "error");
+        btn.disabled = false;
+        btn.style.opacity = '1';
+        progressCard.style.display = 'none';
+      }
+    }
+
+    function pollStatus() {
+      if (pollInterval) clearInterval(pollInterval);
+
+      pollInterval = setInterval(async () => {
+        if (!activeJobId) return;
+
+        try {
+          const res = await fetch(`/api/status/${activeJobId}`);
+          const job = await res.json();
+
+          if (job.status === 'running') {
+            const p = job.progress || {};
+            const cur = p.current || 0;
+            const tot = p.total || 10;
+            const pct = Math.min(100, Math.round((cur / Math.max(1, tot)) * 100));
+
+            document.getElementById('progressBar').style.width = pct + '%';
+            document.getElementById('progressPct').textContent = pct + '%';
+            document.getElementById('progressStatus').textContent = `Clonage en cours (${cur}/${tot})...`;
+            document.getElementById('progressDetail').textContent = p.message || '';
+          } else if (job.status === 'completed') {
+            clearInterval(pollInterval);
+            document.getElementById('progressBar').style.width = '100%';
+            document.getElementById('progressPct').textContent = '100%';
+            document.getElementById('progressStatus').textContent = '🎉 Clonage terminé avec succès !';
+            showToast("Site cloné avec succès !");
+            
+            setTimeout(() => {
+              document.getElementById('progressCard').style.display = 'none';
+              document.getElementById('cloneBtn').disabled = false;
+              document.getElementById('cloneBtn').style.opacity = '1';
+              document.getElementById('urlInput').value = '';
+              loadSites();
+            }, 1500);
+          } else if (job.status === 'failed') {
+            clearInterval(pollInterval);
+            showToast(job.error || "Échec du clonage", "error");
+            document.getElementById('progressCard').style.display = 'none';
+            document.getElementById('cloneBtn').disabled = false;
+            document.getElementById('cloneBtn').style.opacity = '1';
+          }
+        } catch (e) {
+          console.error(e);
+        }
+      }, 600);
+    }
+
+    async function previewSite(siteId) {
+      try {
+        showToast("Démarrage du serveur local...");
+        const res = await fetch(`/api/sites/${siteId}/serve`, { method: 'POST' });
+        const data = await res.json();
+        if (data.url) {
+          window.open(data.url, '_blank');
+          loadSites();
+        } else {
+          showToast(data.error || "Impossible de lancer le serveur", "error");
+        }
+      } catch (err) {
+        showToast("Erreur lors de la prévisualisation", "error");
+      }
+    }
+
+    async function publishSite(siteId) {
+      const repoName = prompt("Nom du dépôt GitHub à créer :", siteId.replace(/_/g, '-'));
+      if (!repoName) return;
+
+      showToast("Publication sur GitHub en cours...", "info");
+      try {
+        const res = await fetch(`/api/sites/${siteId}/publish`, {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({ repo_name: repoName })
+        });
+        const data = await res.json();
+        if (data.success) {
+          showToast("Publié avec succès sur GitHub !");
+          window.open(data.repo_url, '_blank');
+        } else {
+          showToast(data.error || "Échec de publication GitHub", "error");
+        }
+      } catch (err) {
+        showToast("Erreur de communication avec le serveur", "error");
+      }
+    }
+
+    async function deleteSite(siteId) {
+      if (!confirm("Voulez-vous vraiment supprimer ce site cloné ?")) return;
+      try {
+        await fetch(`/api/sites/${siteId}`, { method: 'DELETE' });
+        showToast("Site supprimé");
+        loadSites();
+      } catch (err) {
+        showToast("Erreur de suppression", "error");
+      }
+    }
+
+    // Initialize
+    loadSites();
+    // Auto refresh every 15s
+    setInterval(loadSites, 15000);
+  </script>
+</body>
+</html>
