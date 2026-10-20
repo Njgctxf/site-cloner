@@ -64,6 +64,9 @@ def start_clone():
     if not url:
         return jsonify({"error": "URL is required"}), 400
 
+    crawl_all_pages = bool(data.get("crawl_all_pages", True))
+    max_pages = int(data.get("max_pages", 40))
+
     if not url.startswith("http://") and not url.startswith("https://"):
         url = "https://" + url
 
@@ -77,7 +80,7 @@ def start_clone():
         "site_id": site_id,
         "url": url,
         "status": "running",
-        "progress": {"current": 0, "total": 10, "message": "Initializing clone pipeline..."},
+        "progress": {"current": 0, "total": 10, "message": "Initialisation du pipeline de clonage..."},
         "result": None,
         "error": None
     }
@@ -92,7 +95,7 @@ def start_clone():
                 }
 
         try:
-            res = clone_site(url, dest_dir, progress_callback=update_progress)
+            res = clone_site(url, dest_dir, crawl_all_pages=crawl_all_pages, max_pages=max_pages, progress_callback=update_progress)
             if res.get("success"):
                 manifest = load_manifest()
                 manifest[site_id] = {
@@ -100,6 +103,7 @@ def start_clone():
                     "title": res.get("title") or domain,
                     "url": url,
                     "date": datetime.now().strftime("%Y-%m-%d %H:%M"),
+                    "total_pages": res.get("total_pages", 1),
                     "total_files": res.get("total_files", 0),
                     "total_size": res.get("total_size", 0),
                     "folder": str(dest_dir)

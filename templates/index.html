@@ -448,11 +448,28 @@
     </div>
 
     <!-- URL Input Bar -->
-    <div class="clone-box">
+    <div class="clone-box" style="margin-bottom: 1rem;">
       <input type="text" id="urlInput" class="clone-input" placeholder="https://exemple.com (ex: landonorris.com, igloo.inc...)" />
       <button class="btn-clone" id="cloneBtn" onclick="startClone()">
         <span>🚀 Cloner le Site</span>
       </button>
+    </div>
+
+    <!-- Multi-Page Crawl Options -->
+    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 2rem; padding: 0 0.5rem; font-size: 0.88rem; color: var(--text-muted); flex-wrap: wrap; gap: 0.75rem;">
+      <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+        <input type="checkbox" id="crawlAllPages" checked style="accent-color: var(--accent); width: 16px; height: 16px; cursor: pointer;">
+        <span style="color: var(--text-main); font-weight: 500;">📑 Cloner tout le site (Multi-pages & sous-dossiers complets)</span>
+      </label>
+      <div style="display: flex; align-items: center; gap: 0.5rem;">
+        <span>Profondeur maximale :</span>
+        <select id="maxPages" style="background: var(--card-bg); border: 1px solid var(--card-border); color: var(--text-main); border-radius: 8px; padding: 0.35rem 0.65rem; font-size: 0.85rem; outline: none; cursor: pointer;">
+          <option value="15">15 pages (Rapide)</option>
+          <option value="40" selected>40 pages (Standard)</option>
+          <option value="80">80 pages (Complet)</option>
+          <option value="150">150 pages (Intégral)</option>
+        </select>
+      </div>
     </div>
 
     <!-- Real-time Progress Bar -->
@@ -550,6 +567,7 @@
                 ${liveBadge}
               </div>
               <div class="site-stats">
+                <span>📄 ${site.total_pages || 1} page(s)</span>
                 <span>📁 ${site.total_files || 0} assets</span>
                 <span>💾 ${formatBytes(site.total_size)}</span>
                 <span>📅 ${site.date || 'Récemment'}</span>
@@ -585,6 +603,9 @@
         return;
       }
 
+      const crawlAll = document.getElementById('crawlAllPages').checked;
+      const maxPages = parseInt(document.getElementById('maxPages').value, 10);
+
       const btn = document.getElementById('cloneBtn');
       const progressCard = document.getElementById('progressCard');
       btn.disabled = true;
@@ -595,7 +616,11 @@
         const res = await fetch('/api/clone', {
           method: 'POST',
           headers: {'Content-Type': 'application/json'},
-          body: JSON.stringify({ url })
+          body: JSON.stringify({
+            url,
+            crawl_all_pages: crawlAll,
+            max_pages: maxPages
+          })
         });
         const data = await res.json();
         
