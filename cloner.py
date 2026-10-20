@@ -320,6 +320,27 @@ def clone_site(url, dest_dir, crawl_all_pages=True, max_pages=50, progress_callb
         with open(out_file, "w", encoding="utf-8") as f:
             f.write(str(pdata["soup"]))
 
+    # ----- Domain stripping -----
+    def _strip_domain_from_file(file_path: Path, domain: str):
+        try:
+            text = file_path.read_text(encoding="utf-8")
+        except Exception:
+            return
+        patterns = [
+            rf"https?://{re.escape(domain)}",
+            rf"//{re.escape(domain)}",
+            rf"{re.escape(domain)}"
+        ]
+        for pat in patterns:
+            text = re.sub(pat, "", text, flags=re.IGNORECASE)
+        file_path.write_text(text, encoding="utf-8")
+
+    # Apply stripping to relevant files in the cloned site
+    for root, _, files in os.walk(dest_dir):
+        for name in files:
+            if name.lower().endswith((".html", ".htm", ".js", ".css", ".txt", ".json")):
+                _strip_domain_from_file(Path(root) / name, base_netloc)
+
     duration = round(time.time() - start_time, 2)
     return {
         "success": True,

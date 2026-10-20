@@ -14,7 +14,8 @@ import urllib.parse
 from datetime import datetime
 from pathlib import Path
 from http.server import HTTPServer, SimpleHTTPRequestHandler
-from flask import Flask, request, jsonify, render_template, send_file, send_from_directory
+import hmac
+from flask import Flask, request, jsonify, render_template, send_file, send_from_directory, Response
 
 from cloner import clone_site
 
@@ -25,6 +26,25 @@ CLONED_DIR = BASE_DIR / "cloned_sites"
 MANIFEST_FILE = CLONED_DIR / "manifest.json"
 
 CLONED_DIR.mkdir(parents=True, exist_ok=True)
+
+# Online mode (Render): password protection + previews served by Flask itself
+ONLINE = bool(os.environ.get("RENDER") or os.environ.get("APP_PASSWORD"))
+APP_USER = os.environ.get("APP_USER", "admin")
+APP_PASSWORD = os.environ.get("APP_PASSWORD", "")
+
+@app.before_request
+def require_auth():
+    if not ONLINE:
+        return None
+    auth = request.authorization
+    ok = bool(
+        APP_PASSWORD and auth and auth.password
+        and hmac.compare_digest(auth.username or "", APP_USER)
+        and hmac.compare_digest(auth.password, APP_PASSWORD)
+    )
+    if not ok:
+        return Response("Authentification requise", 401, {"WWW-Authenticate": 'Basic realm="SiteCloner"'})
+    return None
 
 # In-memory tracking
 jobs = {}
@@ -133,7 +153,7 @@ def get_status(job_id):
 @app.route("/api/sites", methods=["GET"])
 def list_sites():
     manifest = load_manifest()
-    sites = list(manifest.values())
+    sites = [m for m in manifest.values() if (CLONED_DIR / m.get("id", "")).is_dir()]
     # Add active server port if running
     for s in sites:
         sid = s.get("id")
@@ -143,11 +163,24 @@ def list_sites():
             s["active_port"] = None
     return jsonify({"sites": sites})
 
+@app.route("/preview/<site_id>/", defaults={"filename": "index.html"})
+@app.route("/preview/<site_id>/<path:filename>")
+def preview_site(site_id, filename):
+    dest_dir = CLONED_DIR / site_id
+    if not dest_dir.is_dir():
+        return jsonify({"error": "Site not found"}), 404
+    if filename.endswith("/"):
+        filename += "index.html"
+    return send_from_directory(str(dest_dir), filename)
+
 @app.route("/api/sites/<site_id>/serve", methods=["POST"])
 def serve_site(site_id):
     dest_dir = CLONED_DIR / site_id
     if not dest_dir.exists():
         return jsonify({"error": "Site directory not found"}), 404
+
+    if ONLINE:
+        return jsonify({"url": f"/preview/{site_id}/"})
 
     # Already running?
     if site_id in active_servers:
@@ -240,7 +273,10 @@ def publish_github(site_id):
         subprocess.run(["git", "commit", "-m", f"Publish {repo_name}"], cwd=str(dest_dir), check=False)
 
         # Create repo and push via gh cli
-        cmd = ["C:\\Program Files\\GitHub CLI\\gh.exe", "repo", "create", f"Njgctxf/{repo_name}", "--public", "--source=.", "--remote=origin", "--push", "--confirm"]
+        gh = shutil.which("gh") or "C:\\Program Files\\GitHub CLI\\gh.exe"
+        if not shutil.which("gh") and not os.path.exists(gh):
+            return jsonify({"error": "GitHub CLI indisponible sur ce serveur : utilise le bouton ZIP."}), 501
+        cmd = [gh, "repo", "create", f"Njgctxf/{repo_name}", "--public", "--source=.", "--remote=origin", "--push", "--confirm"]
         res = subprocess.run(cmd, cwd=str(dest_dir), capture_output=True, text=True)
 
         repo_url = f"https://github.com/Njgctxf/{repo_name}"
@@ -249,5 +285,6 @@ def publish_github(site_id):
         return jsonify({"error": str(e)}), 500
 
 if __name__ == "__main__":
-    print("🚀 SiteCloner SaaS starting on http://localhost:5000 ...")
-    app.run(host="0.0.0.0", port=5000, debug=False)
+    port = int(os.environ.get("PORT", 5000))
+    print(f"🚀 SiteCloner SaaS starting on http://localhost:{port} ...")
+    app.run(host="0.0.0.0", port=port, debug=False)
