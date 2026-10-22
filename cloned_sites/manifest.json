@@ -1,56 +1,82 @@
 {
-  "landonorris_com": {
-    "id": "landonorris_com",
-    "title": "Lando Norris \u2014 Official Site (F1 / WebGL 3D)",
+  "landonorris_com_388757e3": {
+    "id": "landonorris_com_388757e3",
+    "title": "McLaren Formula 1 Driver \u2014 Lando Norris",
     "url": "https://landonorris.com/",
-    "date": "2026-10-16 17:00",
-    "total_files": 295,
-    "total_size": 21585485,
-    "folder": "C:\\Users\\PC ASUS GAMER\\Downloads\\Nouveau dossier\\site-cloner\\cloned_sites\\landonorris_com"
+    "date": "2026-10-21 23:02",
+    "total_pages": 6,
+    "total_files": 274,
+    "total_size": 23013182,
+    "folder": "C:\\Users\\RCK COMPUTERS\\Documents\\boostlocal\\SiteCloner-SaaS\\cloned_sites\\landonorris_com_388757e3"
   },
-  "igloo_inc": {
-    "id": "igloo_inc",
-    "title": "Igloo Inc \u2014 Interactive 3D Experience",
-    "url": "https://www.igloo.inc/",
-    "date": "2026-10-16 17:40",
-    "total_files": 116,
-    "total_size": 23462601,
-    "folder": "C:\\Users\\PC ASUS GAMER\\Downloads\\Nouveau dossier\\site-cloner\\cloned_sites\\igloo_inc"
-  },
-  "why_zero_university": {
-    "id": "why_zero_university",
-    "title": "Zero \u2014 Human Infrastructure (WebGL & Draco 3D)",
-    "url": "https://why.zero.university/",
-    "date": "2026-10-17 12:54",
-    "total_files": 86,
-    "total_size": 14181195,
-    "folder": "C:\\Users\\PC ASUS GAMER\\Downloads\\Nouveau dossier\\site-cloner\\cloned_sites\\why_zero_university"
-  },
-  "pear_no_83f5832a": {
-    "id": "pear_no_83f5832a",
-    "title": "Pear \u00e2\u0080\u0094 not an agency on the clock, a partner in the upside",
+  "pear_no_69cc0e9a": {
+    "id": "pear_no_69cc0e9a",
+    "title": "Pear \u2014 not an agency on the clock, a partner in the upside",
     "url": "https://pear.no/",
-    "date": "2026-10-17 14:33",
-    "total_files": 19,
-    "total_size": 39609471,
-    "folder": "C:\\Users\\PC ASUS GAMER\\Downloads\\Nouveau dossier\\site-cloner\\cloned_sites\\pear_no_83f5832a"
+    "date": "2026-10-21 23:17",
+    "total_pages": 1,
+    "total_files": 740,
+    "total_size": 102748191,
+    "folder": "C:\\Users\\RCK COMPUTERS\\Documents\\boostlocal\\SiteCloner-SaaS\\cloned_sites\\pear_no_69cc0e9a"
   },
-  "pear_no_d435f682": {
-    "id": "pear_no_d435f682",
-    "title": "Pear \u00e2\u0080\u0094 not an agency on the clock, a partner in the upside",
-    "url": "https://pear.no/#top",
-    "date": "2026-10-17 14:36",
-    "total_files": 19,
-    "total_size": 39609471,
-    "folder": "C:\\Users\\PC ASUS GAMER\\Downloads\\Nouveau dossier\\site-cloner\\cloned_sites\\pear_no_d435f682"
-  },
-  "goutu_framer_website_4d832dff": {
-    "id": "goutu_framer_website_4d832dff",
+  "goutu_framer_website_de6d91b7": {
+    "id": "goutu_framer_website_de6d91b7",
     "title": "Goutu Restaurant",
     "url": "https://goutu.framer.website/",
-    "date": "2026-10-17 14:54",
-    "total_files": 67,
-    "total_size": 15402275,
-    "folder": "C:\\Users\\PC ASUS GAMER\\Downloads\\Nouveau dossier\\site-cloner\\cloned_sites\\goutu_framer_website_4d832dff"
+    "date": "2026-10-21 23:21",
+    "total_pages": 5,
+    "total_files": 140,
+    "total_size": 38732090,
+    "folder": "C:\\Users\\RCK COMPUTERS\\Documents\\boostlocal\\SiteCloner-SaaS\\cloned_sites\\goutu_framer_website_de6d91b7"
+  },
+  "foldfolio_framer_website_e552c7ae": {
+    "id": "foldfolio_framer_website_e552c7ae",
+    "title": "Foldfolio",
+    "url": "https://foldfolio.framer.website/",
+    "date": "2026-10-21 23:33",
+    "total_pages": 11,
+    "total_files": 169,
+    "total_size": 11546225,
+    "folder": "C:\\Users\\RCK COMPUTERS\\Documents\\boostlocal\\SiteCloner-SaaS\\cloned_sites\\foldfolio_framer_website_e552c7ae"
+  },
+  "lusion_co_78daa804": {
+    "id": "lusion_co_78daa804",
+    "title": "Lusion - Award Winning 3D and Interactive Web Studio",
+    "url": "https://lusion.co/",
+    "date": "2026-10-22 00:48",
+    "total_pages": 22,
+    "total_files": 449,
+    "total_size": 163289777,
+    "folder": "C:\\Users\\RCK COMPUTERS\\Documents\\boostlocal\\SiteCloner-SaaS\\cloned_sites\\lusion_co_78daa804"
+  },
+  "why_zero_university_9a44a8ea": {
+    "id": "why_zero_university_9a44a8ea",
+    "title": "Zero \u2014 Human Infrastructure to Get Hired",
+    "url": "https://why.zero.university/",
+    "date": "2026-10-22 11:00",
+    "total_pages": 1,
+    "total_files": 69,
+    "total_size": 12503900,
+    "folder": "C:\\Users\\RCK COMPUTERS\\Documents\\boostlocal\\SiteCloner-SaaS\\cloned_sites\\why_zero_university_9a44a8ea"
+  },
+  "kidsuper_puffer": {
+    "id": "kidsuper_puffer",
+    "title": "KidSuper World",
+    "url": "https://kidsuper.world/store/product/kissing-puffer",
+    "date": "2026-10-22 11:44",
+    "total_pages": 1,
+    "total_files": 226,
+    "total_size": 38834737,
+    "folder": "cloned_sites\\kidsuper_puffer"
+  },
+  "igloo_inc_github": {
+    "id": "igloo_inc_github",
+    "title": "Igloo Inc. (3D)",
+    "url": "",
+    "date": "2026-10-22 11:45",
+    "total_pages": 1,
+    "total_files": 116,
+    "total_size": 23472598,
+    "folder": "cloned_sites\\igloo_inc_github"
   }
 }

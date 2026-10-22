@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html><head><title>Identifiers (JavaScript: The Definitive Guide, 4th Edition)</title><link rel="stylesheet" type="text/css" href="../style/style1.css" />
+
+<meta name="DC.Creator" content="David Flanagan" /><meta name="DC.Format" content="text/xml" scheme="MIME" /><meta name="DC.Language" content="en-US" /><meta name="DC.Publisher" content="O'Reilly &amp; Associates, Inc." /><meta name="DC.Source" scheme="ISBN" content="0-596-00048-0" /><meta name="DC.Subject.Keyword" content="stuff" /><meta name="DC.Title" content="JavaScript: The Definitive Guide, 4th Edition" /><meta name="DC.Type" content="Text.Monograph" />
+
+<link rel="canonical" href="/_ext/docstore.mik.ua/orelly/webprog/jscript/ch02_07.htm" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=0.5, user-scalable=yes" />
+<meta name="HandheldFriendly" content="true" />
+<script async src="//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+<script>
+     (adsbygoogle = window.adsbygoogle || []).push({
+          google_ad_client: "ca-pub-0321943928525350",
+          enable_page_level_ads: true
+     });
+</script>
+</head><body style="background-color:white;margin:0 0 0 190px;padding: 5px;">
+<noindex>
+<center>
+<a href="/">home</a> |
+<a href="/_ext/docstore.mik.ua/orelly/bookshelfs.html">O'Reilly's CD bookshelfs</a> |
+<a href="/_ext/docstore.mik.ua/manuals/freebsd.html">FreeBSD</a> | 
+<a href="/_ext/docstore.mik.ua/manuals/linux.html">Linux</a> | 
+<a href="//docstore.mik.ua/univercd/cc/td/doc/product/">Cisco</a> |
+<a href="https://ciscoexam.online">Cisco Exam</a>
+&nbsp;
+<br/>
+</center>
+</noindex>
+<div style="position:fixed;width:165px;height:100%;justify-content:center;left:5px;bottom:0;border-right:1px solid lightgrey;padding:5px;" id="aleftblk">
+<script async src="//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+<div style="position:absolute;top:50%;transform:translateY(-50%);" id="ablock1"></div></div>
+<p id="blkadap1"></p>
+<script type="text/javascript"><!--
+if( window.innerWidth>800 && window.innerHeight>700 )
+{
+  document.getElementById('ablock1').innerHTML='<ins class="adsbygoogle" style="display:inline-block;width:160px;height:600px" data-ad-client="ca-pub-0321943928525350" data-ad-slot="5248352378"></ins>';
+}
+else
+{
+  document.getElementById('aleftblk').style.display='none';
+  document.getElementById('ablock1').style.display='none';
+  document.getElementsByTagName('body')[0].style.margin='0';
+  document.getElementById('blkadap1').innerHTML='<ins class="adsbygoogle" style="display:block" data-ad-client="ca-pub-0321943928525350" data-ad-slot="3969618309" data-ad-format="auto"></ins>';
+}
+(adsbygoogle = window.adsbygoogle || []).push({});
+//-->
+</script>
+<hr width=80% size=1><table border=0 width=100%><tr><td style="vertical-align: top;">
+
+
+<img src="gifs/smbanner.gif" usemap="#banner-map" border="0" alt="JavaScript: The Definitive Guide" /><map name="banner-map"><area shape="rect" coords="1,-2,616,66" href="index.htm" alt="JavaScript: The Definitive Guide" /><area shape="rect" coords="629,-11,726,25" href="jobjects/fsearch.htm" alt="Search this book" /></map>
+
+<div class="navbar"><table width="684" border="0"><tr><td align="left" valign="top" width="228"><a href="ch02_06.htm"><img src="../gifs/txtpreva.gif" alt="Previous" border="0" /></a></td><td align="center" valign="top" width="228" /><td align="right" valign="top" width="228"><a href="ch02_08.htm"><img src="../gifs/txtnexta.gif" alt="Next" border="0" /></a></td></tr></table></div>
+
+
+
+<h2 class="sect1">2.7. Identifiers</h2>
+
+<p><a name="IXT-2-56902" />
+<a name="IXT-2-56903" />
+<a name="IXT-2-56904" />An
+<em class="emphasis">identifier</em> is simply a name. In JavaScript,
+identifiers are used to name
+<a name="IXT-2-56905" />
+<a name="IXT-2-56906" />
+<a name="IXT-2-56907" />variables
+and functions and to provide labels for certain loops in JavaScript
+code. The rules for legal identifier names are the same in JavaScript
+as they are in Java and many other languages. The first character
+must be a <a name="IXT-2-56908" />
+<a name="IXT-2-56909" />letter, an <a name="IXT-2-56910" />underscore
+(<tt class="literal">_</tt>), or a <a name="IXT-2-56911" />dollar sign
+(<tt class="literal">$</tt>).<a href="#FOOTNOTE-3">[3]</a> Subsequent characters may be any letter or digit or an
+underscore or dollar sign. (Numbers are not allowed as the first
+character so that JavaScript can easily distinguish identifiers from
+<a name="IXT-2-56912" />numbers.) These are all legal
+identifiers:
+</p><blockquote class="footnote"> <a name="FOOTNOTE-3" /><p> [3]Note that dollar signs are
+not legal in identifiers prior to JavaScript 1.1. They are intended
+for use only by code-generation tools, so you should avoid using
+dollar signs in identifiers in the code you write yourself. </p>
+</blockquote>
+
+<blockquote><pre class="code">i
+my_variable_name
+v13
+_dummy
+$str</pre></blockquote>
+
+<p><a name="IXT-2-56913" /><a name="IXT-2-56914" />In ECMAScript v3, identifiers can
+contain letters and digits from the complete Unicode character set.
+Prior to this version of the standard, JavaScript identifiers are
+restricted to the ASCII character set. ECMAScript v3 also allows
+Unicode escape sequences to appear in identifiers. A Unicode escape
+is the characters <tt class="literal">\u</tt> followed by 4 hexadecimal
+digits that specify a 16-bit character encoding. For example, the
+identifier <img src="figs/U03C0.gif" alt="Figure " /> could also be written as <tt class="literal">\u03c0</tt>.
+Although this is an awkward syntax, it makes it possible to translate
+JavaScript programs that contain Unicode characters into a form that
+allows them to be manipulated with text editors and other tools that
+do not support the full Unicode character set.
+</p>
+
+<p>Finally, identifiers cannot be the same as any of the
+<a name="IXT-2-56915" />keywords used for other purposes in
+JavaScript. The next section lists the special names that are
+reserved in JavaScript.
+</p>
+
+
+
+<hr width="684" align="left" />
+<div class="navbar"><table width="684" border="0"><tr><td align="left" valign="top" width="228"><a href="ch02_06.htm"><img src="../gifs/txtpreva.gif" alt="Previous" border="0" /></a></td><td align="center" valign="top" width="228"><a href="index.htm"><img src="../gifs/txthome.gif" alt="Home" border="0" /></a></td><td align="right" valign="top" width="228"><a href="ch02_08.htm"><img src="../gifs/txtnexta.gif" alt="Next" border="0" /></a></td></tr><tr><td align="left" valign="top" width="228">2.6. Literals</td><td align="center" valign="top" width="228"><a href="index/index.htm"><img src="../gifs/index.gif" alt="Book Index" border="0" /></a></td><td align="right" valign="top" width="228">2.8. Reserved Words</td></tr></table></div>
+<hr width="684" align="left" />
+
+<img src="../gifs/navbar.gif" usemap="#library-map" border="0" alt="Library Navigation Links" />
+<p><p><p><font size="-1"><a href="copyrght.htm">Copyright &copy; 2003</a> O'Reilly &amp; Associates. All rights reserved.</font></p>
+
+<map name="library-map">
+<area shape="rect" coords="1,1,79,93" href="../index.htm"><area shape="rect" coords="82,1,168,96" href="../php/index.htm"><area shape="rect" coords="171,1,279,101" href="../webdb/index.htm"><area shape="rect" coords="282,3,372,100" href="../webnut/index.htm"><area shape="rect" coords="376,2,451,99" href="../pcook/index.htm"><area shape="rect" coords="454,2,560,107" href="../jscript/index.htm"><area shape="rect" coords="563,0,713,119" href="../dhtml/index.htm">
+</map>
+
+</td><td style="vertical-align: top; text-align: right; width: 200px;">
+<br><br><br><br><br><br>
+<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+<!-- 160x600, docstore-rightside -->
+<ins class="adsbygoogle"
+     style="display:inline-block;width:160px;height:600px"
+     data-ad-client="ca-pub-0321943928525350"
+     data-ad-slot="0404752187"></ins>
+<script>
+     (adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+</td></tr></table>
+<!-- ********************* FOOTER ********************** -->
+<noindex>
+<br>
+
+
+<center>
+
+<br>
+
+<script async src="//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+<!-- o-footer adaptiv -->
+<ins class="adsbygoogle"
+     style="display:block"
+     data-ad-client="ca-pub-0321943928525350"
+     data-ad-slot="3969618309"
+     data-ad-format="auto"></ins>
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+
+function addLink() {
+    var body_element = document.getElementsByTagName('body')[0];
+    var selection;
+    selection = window.getSelection();
+    var pagelink = " docstore.mik.ua" + window.location.pathname; 
+    var copytext = selection + pagelink;
+    var newdiv = document.createElement('div');
+    newdiv.style.position='absolute';
+    newdiv.style.left='-99999px';
+    body_element.appendChild(newdiv);
+    newdiv.innerHTML = copytext;
+    selection.selectAllChildren(newdiv);
+    window.setTimeout(function() {
+      body_element.removeChild(newdiv);
+    },0);
+}
+document.oncopy = addLink;
+
+</script>
+
+</center>
+
+
+<br>
+<hr size=1>
+
+
+<script type="text/javascript" src="/_ext/apis.google.com/js/plusone.js"></script></BODY></html>
