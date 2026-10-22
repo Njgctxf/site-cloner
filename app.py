@@ -5,6 +5,7 @@ Handles REST API endpoints, background worker jobs, local live preview servers, 
 """
 
 import os
+import re
 import json
 import uuid
 import shutil
@@ -13,11 +14,12 @@ import threading
 import urllib.parse
 from datetime import datetime
 from pathlib import Path
-from http.server import HTTPServer, SimpleHTTPRequestHandler
+from http.server import ThreadingHTTPServer, SimpleHTTPRequestHandler
 import hmac
 from flask import Flask, request, jsonify, render_template, send_file, send_from_directory, Response
 
 from cloner import clone_site
+from site_server import resolve, make_server
 
 app = Flask(__name__, template_folder="templates")
 
@@ -163,15 +165,39 @@ def list_sites():
             s["active_port"] = None
     return jsonify({"sites": sites})
 
-@app.route("/preview/<site_id>/", defaults={"filename": "index.html"})
+def _send_resolved(dest_dir, raw_path):
+    res = resolve(dest_dir, raw_path)
+    if res is None:
+        return None
+    if res[0] == "redirect":
+        return Response(status=302, headers={"Location": res[1]})
+    _, f, ctype = res
+    resp = send_file(str(f), mimetype=ctype.split(";")[0], conditional=True, max_age=0)
+    resp.headers["Cross-Origin-Resource-Policy"] = "cross-origin"
+    return resp
+
+@app.route("/preview/<site_id>/", defaults={"filename": ""})
 @app.route("/preview/<site_id>/<path:filename>")
 def preview_site(site_id, filename):
     dest_dir = CLONED_DIR / site_id
     if not dest_dir.is_dir():
         return jsonify({"error": "Site not found"}), 404
-    if filename.endswith("/"):
-        filename += "index.html"
-    return send_from_directory(str(dest_dir), filename)
+    raw = "/" + filename
+    if request.query_string:
+        raw += "?" + request.query_string.decode("utf-8", "ignore")
+    out = _send_resolved(dest_dir, raw)
+    return out if out is not None else (jsonify({"error": "Not found"}), 404)
+
+@app.errorhandler(404)
+def root_path_fallback(_e):
+    """Clones use root-absolute paths (/_next/..., /assets/...): resolve them via the page that asked for them."""
+    ref = request.headers.get("Referer", "")
+    m = re.search(r"/preview/([^/?#]+)/", ref)
+    if m and (CLONED_DIR / m.group(1)).is_dir() and not request.path.startswith(("/api/", "/preview/")):
+        out = _send_resolved(CLONED_DIR / m.group(1), request.full_path.rstrip("?"))
+        if out is not None:
+            return out
+    return jsonify({"error": "Not found"}), 404
 
 @app.route("/api/sites/<site_id>/serve", methods=["POST"])
 def serve_site(site_id):
@@ -189,14 +215,8 @@ def serve_site(site_id):
 
     port = find_free_port()
 
-    class CustomHandler(SimpleHTTPRequestHandler):
-        def __init__(self, *args, **kwargs):
-            super().__init__(*args, directory=str(dest_dir), **kwargs)
-        def log_message(self, format, *args):
-            pass # Suppress noisy server logs
-
     try:
-        httpd = HTTPServer(('127.0.0.1', port), CustomHandler)
+        httpd = make_server(dest_dir, port)
         thread = threading.Thread(target=httpd.serve_forever, daemon=True)
         thread.start()
 

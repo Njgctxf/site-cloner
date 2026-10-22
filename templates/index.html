@@ -577,6 +577,9 @@
               <button class="btn-action btn-preview" onclick="previewSite('${site.id}')">
                 <span>🌐 Aperçu</span>
               </button>
+              <button class="btn-action btn-edit" onclick="editSite('${site.id}')" style="background: rgba(99, 102, 241, 0.15); color: #a5b4fc; border: 1px solid rgba(99, 102, 241, 0.35);" title="Modifier les textes et les images du site">
+                <span>✏️ Éditer</span>
+              </button>
               <button class="btn-action btn-publish" onclick="publishSite('${site.id}')" style="background: rgba(16, 185, 129, 0.15); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.3);" title="Publier sur votre compte GitHub">
                 <span>🚀 GitHub</span>
               </button>
@@ -702,6 +705,24 @@
         }
       } catch (err) {
         showToast("Erreur lors de la prévisualisation", "error");
+      }
+    }
+
+    async function editSite(siteId) {
+      try {
+        showToast("Ouverture de l'éditeur...");
+        const res = await fetch(`/api/sites/${siteId}/serve`, { method: 'POST' });
+        const data = await res.json();
+        if (data.port) {
+          window.open(`${data.url}/?__edit=1`, '_blank');
+          loadSites();
+        } else if (data.url) {
+          showToast("L'éditeur est disponible uniquement en local.", "error");
+        } else {
+          showToast(data.error || "Impossible de lancer l'éditeur", "error");
+        }
+      } catch (err) {
+        showToast("Erreur lors de l'ouverture de l'éditeur", "error");
       }
     }
 
