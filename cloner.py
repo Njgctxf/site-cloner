@@ -20,6 +20,7 @@ import json
 import mimetypes
 import os
 import re
+import threading
 import time
 import urllib.parse
 from concurrent.futures import ThreadPoolExecutor
@@ -75,13 +76,101 @@ if(!m)return u;var h=m[1].toLowerCase();if(h===location.hostname)return u;var r=
 if(O[h])return r;if(M[h])return M[h]+r;return u;}
 try{var f=window.fetch;if(f)window.fetch=function(a,b){if(typeof a==='string'||a instanceof URL)a=fix(a);else if(a&&a.url){var n=fix(a.url);if(n!==a.url)a=new Request(n,a);}return f.call(this,a,b);};}catch(e){}
 try{var xo=XMLHttpRequest.prototype.open;XMLHttpRequest.prototype.open=function(m,u){arguments[1]=fix(String(u));return xo.apply(this,arguments);};}catch(e){}
-try{var sa=Element.prototype.setAttribute;Element.prototype.setAttribute=function(n,v){if((n==='src'||n==='href'||n==='poster'||n==='data')&&typeof v==='string'&&this.tagName!=='A'&&this.tagName!=='AREA')v=fix(v);return sa.call(this,n,v);};}catch(e){}
+try{var sa=Element.prototype.setAttribute;Element.prototype.setAttribute=function(n,v){if((n==='srcset'||n==='imagesrcset')&&typeof v==='string')v=fixSet(v);else if((n==='src'||n==='href'||n==='poster'||n==='data')&&typeof v==='string'&&this.tagName!=='A'&&this.tagName!=='AREA')v=fix(v);return sa.call(this,n,v);};}catch(e){}
 function P(C,p){try{var d=Object.getOwnPropertyDescriptor(C.prototype,p);if(d&&d.set)Object.defineProperty(C.prototype,p,{get:d.get,set:function(v){d.set.call(this,fix(v));},configurable:true,enumerable:d.enumerable});}catch(e){}}
+function fixSet(v){return String(v).split(',').map(function(c){c=c.trim();var i=c.indexOf(' ');return i<0?fix(c):fix(c.slice(0,i))+c.slice(i);}).join(', ');}
+try{['HTMLImageElement','HTMLSourceElement'].forEach(function(n){var C=window[n],d=Object.getOwnPropertyDescriptor(C.prototype,'srcset');if(d&&d.set)Object.defineProperty(C.prototype,'srcset',{get:d.get,set:function(v){d.set.call(this,fixSet(v));},configurable:true});});}catch(e){}
 P(HTMLImageElement,'src');P(HTMLScriptElement,'src');P(HTMLLinkElement,'href');P(HTMLMediaElement,'src');
 P(HTMLSourceElement,'src');P(HTMLIFrameElement,'src');P(HTMLVideoElement,'poster');
 try{var W=window.Worker;if(W)window.Worker=function(u,o){return new W(fix(String(u)),o);};window.Worker.prototype=W.prototype;}catch(e){}
 try{navigator.sendBeacon=function(){return true;};}catch(e){}
 })();</script>"""
+
+
+ENTER_JS = r"""() => {
+  const re = /^(enter|enter site|enter experience|start|start experience|explore|discover|begin|continue|skip|skip intro|play|go|let'?s go|sound on|sound off|with sound|without sound|enable sound|turn on sound|mute|unmute|accept|ok|got it|entrer|commencer|d[ée]couvrir|explorer|continuer|passer|avec son|sans son)$/i;
+  const els = [...document.querySelectorAll('button, a, [role=button], div, span')].filter(e => {
+    const t = (e.innerText || e.getAttribute('aria-label') || '').trim();
+    if (!t || t.length > 30 || !re.test(t)) return false;
+    const href = e.tagName === 'A' && e.getAttribute('href');
+    if (href && !/^(#|javascript:)/i.test(href)) return false;  // never leave the page
+    const r = e.getBoundingClientRect();
+    return r.width > 0 && r.height > 0 && getComputedStyle(e).visibility !== 'hidden';
+  });
+  els.slice(0, 2).forEach(e => { try { e.click(); } catch (_) {} });
+  return els.length;
+}"""
+
+HOVER_JS = """() => {
+  const els = [...document.querySelectorAll('a, button, [data-hover], [class*=hover], [class*=card], [class*=project], li')]
+    .filter(e => { const r = e.getBoundingClientRect(); return r.width > 0 && r.height > 0 && r.top < innerHeight && r.bottom > 0; });
+  return els.slice(0, 40).map(e => { const r = e.getBoundingClientRect(); return [r.left + r.width / 2, r.top + r.height / 2]; });
+}"""
+
+
+def interact(page, long=False):
+    """Behave like a visitor of an Awwwards-style site so every asset gets requested:
+    wait for the preloader, press Enter/Sound buttons, scroll with the wheel (Lenis / Locomotive / virtual scroll
+    ignore window.scrollTo), sweep the mouse and hover cards/links, start videos."""
+    last = [time.time()]
+    bump = lambda *_: last.__setitem__(0, time.time())
+    page.on("request", bump)
+
+    def idle(ms, calm=1.2):
+        """Wait until no request has started for `calm` seconds (or `ms` elapsed)."""
+        end = time.time() + ms / 1000
+        while time.time() < end and time.time() - last[0] < calm:
+            page.wait_for_timeout(250)
+    try:
+        idle(20000 if long else 8000)
+        for _ in range(2):  # preloader then intro screen
+            if page.evaluate(ENTER_JS):
+                page.wait_for_timeout(2500)
+                idle(15000 if long else 5000)
+        for x, y in [(200, 200), (1200, 250), (720, 450), (300, 750), (1250, 700)]:
+            page.mouse.move(x, y, steps=6)
+        page.mouse.move(720, 450)
+        steps = 90 if long else 25
+        prev = -1
+        stuck = 0
+        for i in range(steps):
+            page.mouse.wheel(0, 450)
+            page.wait_for_timeout(140)
+            if i % 6 == 5:
+                for x, y in (page.evaluate(HOVER_JS) or [])[:6]:
+                    page.mouse.move(x, y, steps=3)
+                    page.wait_for_timeout(60)
+                page.mouse.move(720, 450)
+            pos = page.evaluate("() => Math.round(window.scrollY + document.documentElement.scrollTop)")
+            stuck = stuck + 1 if pos == prev else 0
+            prev = pos
+            if stuck > 12 and i > 30:  # virtual-scroll sites never move scrollY: keep going a bit, then stop
+                break
+        page.evaluate(SCROLL_JS)
+        for _ in range(15):
+            page.mouse.wheel(0, -1500)
+            page.wait_for_timeout(60)
+        page.evaluate("() => document.querySelectorAll('video,audio').forEach(m => { m.preload='auto'; try{m.load(); m.play().catch(()=>{});}catch(e){} })")
+        page.wait_for_timeout(2500 if long else 1200)
+        idle(10000 if long else 4000)
+    except Exception:
+        pass
+    try:
+        page.remove_listener("request", bump)
+    except Exception:
+        pass
+
+
+def launch(pw, extra):
+    """Installed Google Chrome renders WebGL on the machine's GPU (far faster than CPU rendering), with its own
+    throw-away profile. Without it (servers) the bundled Chromium is used and falls back to SwiftShader."""
+    args = ["--ignore-gpu-blocklist", "--enable-gpu-rasterization", "--enable-unsafe-swiftshader"] + extra
+    for channel in ("chrome", "chromium", None):
+        try:
+            return pw.chromium.launch(channel=channel, headless=True, args=args) if channel else                 pw.chromium.launch(headless=True, args=args)
+        except Exception:
+            continue
+    raise RuntimeError("Aucun navigateur Chromium disponible")
 
 
 def norm_host(h):
@@ -112,6 +201,7 @@ class Cloner:
         self.errors = []
         self.partial = set()
         self.fresh = set()
+        self._lock = threading.Lock()
         self.total_bytes = 0
         self.session = requests.Session()
         self.session.headers.update({"User-Agent": UA, "Referer": self.start_url})
@@ -156,8 +246,9 @@ class Cloner:
         rel = self.rel_path(url, ctype)
         target = self.dest / rel
         try:
-            target.parent.mkdir(parents=True, exist_ok=True)
-            target.write_bytes(body)
+            with self._lock:  # several browsers capture in parallel
+                target.parent.mkdir(parents=True, exist_ok=True)
+                target.write_bytes(body)
         except OSError:
             rel = "_misc/" + hashlib.md5(url.encode()).hexdigest() + os.path.splitext(rel)[1][:8]
             target = self.dest / rel
@@ -178,6 +269,9 @@ class Cloner:
     def on_response(self, resp):
         try:
             req = resp.request
+            if req.method == "POST":
+                self.on_post(req, resp)
+                return
             if req.method != "GET":
                 return
             url = resp.url
@@ -207,6 +301,29 @@ class Cloner:
                 self.pages[urllib.parse.urldefrag(url)[0]] = self.captured[urllib.parse.urldefrag(url)[0]]
         except Exception:
             pass
+
+    def on_post(self, req, resp):
+        """Data requests the page needs to render (GraphQL, JSON APIs): keep the answer so the clone can replay it."""
+        url = resp.url
+        if resp.status != 200 or BLOCKED.search(url) or not url.startswith(("http://", "https://")):
+            return
+        ctype = resp.headers.get("content-type", "")
+        if "json" not in ctype and "graphql" not in ctype:
+            return
+        body = resp.body()
+        sent = req.post_data_buffer or b""
+        h = hashlib.md5(sent).hexdigest()
+        key = self.key_of(url)
+        rel = f"_post/{hashlib.md5((key + h).encode()).hexdigest()[:20]}.json"
+        with self._lock:
+            (self.dest / "_post").mkdir(parents=True, exist_ok=True)
+            (self.dest / rel).write_bytes(body)
+        entry = {"f": rel, "t": ctype.split(";")[0].strip()}
+        self.map[f"POST {key}#{h}"] = entry
+        self.map.setdefault(f"POST {key}", entry)
+        host = urllib.parse.urlparse(url).netloc.lower()
+        if not self.is_origin(host):
+            self.hosts.add(host)
 
     # ---------- crawling ----------
     def norm_page(self, url):
@@ -242,83 +359,100 @@ class Cloner:
             pass
         return out
 
-    def crawl(self, pw):
-        browser = pw.chromium.launch(headless=True, args=[
-            "--use-angle=swiftshader", "--enable-unsafe-swiftshader", "--ignore-gpu-blocklist",
+    def _open(self, pw):
+        browser = launch(pw, [
             "--enable-webgl", "--autoplay-policy=no-user-gesture-required", "--mute-audio",
             "--disable-features=PreloadMediaEngagementData,MediaEngagementBypassAutoplayPolicies"])
         context = browser.new_context(user_agent=UA, viewport={"width": 1440, "height": 900},
                                       service_workers="block", ignore_https_errors=True)
-
-        def route(r):
-            if BLOCKED.search(r.request.url):
-                r.abort()
-            else:
-                r.continue_()
-        context.route("**/*", route)
+        context.route("**/*", lambda r: r.abort() if BLOCKED.search(r.request.url) else r.continue_())
         context.on("response", self.on_response)
+        return browser, context
 
-        queue = [self.norm_page(self.start_url)]
-        seen = set(queue)
-        first = True
-        count = 0
-        while queue and count < self.max_pages:
-            url = queue.pop(0)
-            count += 1
-            self.cb(count, self.max_pages, f"Page {count} : {urllib.parse.urlparse(url).path or '/'}")
-            page = context.new_page()
+    def _visit(self, context, url, long=False):
+        """Open one page like a visitor; returns (final url, title, links)."""
+        page = context.new_page()
+        final, title, hrefs = url, None, []
+        try:
             try:
-                try:
-                    page.goto(url, wait_until="load", timeout=60000)
-                except Exception:
-                    pass
-                try:
-                    page.wait_for_load_state("networkidle", timeout=20000)
-                except Exception:
-                    pass
-                try:
-                    page.mouse.move(400, 300)
-                    page.mouse.move(900, 500, steps=8)
-                    page.evaluate(SCROLL_JS)
-                except Exception:
-                    pass
-                page.wait_for_timeout(2500)
-                try:
-                    page.wait_for_load_state("networkidle", timeout=8000)
-                except Exception:
-                    pass
-                if first:
-                    final = self.norm_page(page.url)
-                    if final is None:  # redirected to another host: that host becomes the origin
-                        self.origin = norm_host(urllib.parse.urlparse(page.url).netloc)
-                        final = self.norm_page(page.url)
-                    if final:
-                        seen.add(final)
-                    try:
-                        self.title = (page.title() or self.origin).strip() or self.origin
-                    except Exception:
-                        pass
-                    for u in self.sitemap_urls():
-                        n = self.norm_page(u)
-                        if n and n not in seen and len(seen) < self.max_pages * 3:
-                            seen.add(n)
-                            queue.append(n)
-                    first = False
-                hrefs = page.eval_on_selector_all("a[href]", "els => els.map(e => e.href)")
-                for h in hrefs:
-                    n = self.norm_page(h)
-                    if n and n not in seen:
-                        seen.add(n)
-                        queue.append(n)
-            except Exception as e:
-                self.errors.append(f"{url}: {e}")
-            finally:
-                try:
-                    page.close()
-                except Exception:
-                    pass
+                page.goto(url, wait_until="load", timeout=60000)
+            except Exception:
+                pass
+            interact(page, long=long)
+            final = page.url
+            title = page.title()
+            hrefs = page.eval_on_selector_all("a[href]", "els => els.map(e => e.href)")
+        except Exception as e:
+            self.errors.append(f"{url}: {e}")
+        finally:
+            try:
+                page.close()
+            except Exception:
+                pass
+        return final, title, hrefs
+
+    def crawl(self, pw, workers=2):
+        import threading
+        from playwright.sync_api import sync_playwright
+
+        # 1. home page alone: resolves redirects (www, other host), title, sitemap
+        browser, context = self._open(pw)
+        start = self.norm_page(self.start_url)
+        self.cb(1, self.max_pages, "Page 1 : /")
+        final, title, hrefs = self._visit(context, start, long=True)
         context.close()
         browser.close()
+        if self.norm_page(final) is None and final.startswith("http"):
+            self.origin = norm_host(urllib.parse.urlparse(final).netloc)
+        if title:
+            self.title = title.strip() or self.origin
+        seen = {start, self.norm_page(final)}
+        queue = []
+        lock = threading.Lock()
+        state = {"count": 1, "active": 0}
+
+        def enqueue(urls):
+            with lock:
+                for h in urls:
+                    n = self.norm_page(h)
+                    if n and n not in seen and len(seen) < self.max_pages * 3:
+                        seen.add(n)
+                        queue.append(n)
+        enqueue(hrefs)
+        enqueue(self.sitemap_urls())
+
+        # 2. the other pages, several browsers in parallel
+        def worker():
+            with sync_playwright() as pw2:
+                b, ctx = self._open(pw2)
+                try:
+                    while True:
+                        with lock:
+                            if queue and state["count"] < self.max_pages:
+                                url = queue.pop(0)
+                                state["count"] += 1
+                                state["active"] += 1
+                                n = state["count"]
+                            elif state["active"] == 0 or state["count"] >= self.max_pages:
+                                break
+                            else:
+                                url = None
+                        if url is None:
+                            time.sleep(0.5)
+                            continue
+                        self.cb(n, self.max_pages, f"Page {n} : {urllib.parse.urlparse(url).path or '/'}")
+                        _, _, links = self._visit(ctx, url)
+                        enqueue(links)
+                        with lock:
+                            state["active"] -= 1
+                finally:
+                    ctx.close()
+                    b.close()
+        threads = [threading.Thread(target=worker, daemon=True) for _ in range(workers)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
 
     # ---------- completing the capture ----------
     def refetch_partial(self):
@@ -419,6 +553,14 @@ class Cloner:
                 return m.group(0)  # a page / API we never captured (e.g. a vimeo.com link): keep it as it was
             return ext_sub(m) + path
 
+        imports = {f"https://{h}/": "/_ext/" + safe_segment(h) + "/" for h in ext_hosts}
+        imports.update({f"http://{h}/": "/_ext/" + safe_segment(h) + "/" for h in ext_hosts})
+        for h in (self.origin, "www." + self.origin):
+            imports[f"https://{h}/"] = "/"
+            imports[f"http://{h}/"] = "/"
+        importmap = '<script type="importmap">' + json.dumps({"imports": imports}) + "</script>"
+        hide = ("<style>#__framer-badge-container,.w-webflow-badge,a[href*='framer.com/?via'],"
+                "a[href*='webflow.com?utm_campaign=brandjs']{display:none!important}</style>")
         shim = SHIM % {
             "ext": json.dumps({h.split(":")[0]: "/_ext/" + safe_segment(h) for h in ext_hosts}),
             "orig": json.dumps({self.origin: 1, "www." + self.origin: 1}),
@@ -443,17 +585,15 @@ class Cloner:
                 continue
             is_html = "html" in ctype or rel.lower().endswith((".html", ".htm"))
             is_js = os.path.splitext(rel)[1].lower() in (".js", ".mjs")
-            if is_js:
-                new = text  # origin URLs stay as written (new URL("https://site/") must remain valid); the shim re-routes them
-                if ext_js:
-                    new = ext_js.sub(ext_sub_js, new)
+            if is_js or rel.lower().endswith(".json"):
+                continue  # code/data stay byte-identical; requests are re-routed at runtime (import map + shim)
             elif is_html:
                 new = origin_html.sub("", text)
                 if ext_html:  # leave <a> tags alone: links to third-party pages stay real links
                     new = "".join(p if p.lower().startswith("<a ") else ext_html.sub(ext_sub, p)
                                   for p in re.split(r"(<a\s[^>]*>)", new, flags=re.I))
             else:
-                new = text if rel.lower().endswith(".json") else origin_html.sub("", text)
+                new = origin_html.sub("", text)
                 if ext_html:
                     new = ext_html.sub(ext_sub, new)
             if is_html:
@@ -466,7 +606,7 @@ class Cloner:
                 new = re.sub(r"<base\b[^>]*>", "", new, flags=re.I)
                 new = re.sub(r"<link\b[^>]*rel=[\"'](?:canonical|preconnect|dns-prefetch)[\"'][^>]*>", "", new, flags=re.I)
                 m = re.search(r"<head[^>]*>", new, re.I)
-                new = (new[:m.end()] + CSP + shim + new[m.end():]) if m else (CSP + shim + new)
+                new = (new[:m.end()] + CSP + importmap + shim + hide + new[m.end():]) if m else (CSP + importmap + shim + hide + new)
             if new != text:
                 f.write_text(new, encoding="utf-8")
 
@@ -477,40 +617,42 @@ class Cloner:
         from site_server import make_server
         import threading
         origin_root = f"{urllib.parse.urlparse(self.start_url).scheme}://{urllib.parse.urlparse(self.start_url).netloc}"
+        dirty = set()
         for rnd in range(rounds):
             (self.dest / "_map.json").write_text(json.dumps(self.map, ensure_ascii=False), encoding="utf-8")
-            httpd = make_server(self.dest, 0)
+            httpd = make_server(self.dest, 0, record_misses=True)
             port = httpd.server_address[1]
             threading.Thread(target=httpd.serve_forever, daemon=True).start()
             base = f"http://127.0.0.1:{port}"
             missing = set()
             try:
                 with sync_playwright() as pw:
-                    b = pw.chromium.launch(headless=True, args=["--use-angle=swiftshader", "--enable-unsafe-swiftshader",
+                    b = launch(pw, [
                                                               "--ignore-gpu-blocklist", "--autoplay-policy=no-user-gesture-required", "--mute-audio"])
                     ctx = b.new_context(service_workers="block", viewport={"width": 1440, "height": 900})
                     ctx.route("**/*", lambda r: r.continue_() if r.request.url.startswith((base, "data:", "blob:")) else r.abort())
                     pages = sorted(self.pages.keys(), key=lambda u: (urllib.parse.urlparse(u).path.count("/"), u))[:max_visit] or [self.start_url]
+                    if rnd and dirty:
+                        pages = [u for u in pages if u in dirty]
+                    dirty = set()
                     for u in pages:
+                        before = len(httpd.misses)
                         p = ctx.new_page()
                         p.on("response", lambda r: missing.add(r.url) if r.status == 404 and r.url.startswith(base) else None)
                         try:
                             pu = urllib.parse.urlparse(u)
                             p.goto(base + (pu.path or "/") + (("?" + pu.query) if pu.query else ""), wait_until="load", timeout=45000)
-                            try:
-                                p.wait_for_load_state("networkidle", timeout=20000)
-                            except Exception:
-                                pass
-                            p.mouse.move(500, 400, steps=6)
-                            p.evaluate(SCROLL_JS)
-                            p.evaluate("() => document.querySelectorAll('video,audio').forEach(m => { m.preload='auto'; try{m.load(); m.play().catch(()=>{});}catch(e){} })")
-                            p.wait_for_timeout(7000)
+                            interact(p, long=(u == pages[0]))
+                            p.wait_for_timeout(1500)
                         except Exception:
                             pass
                         p.close()
+                        if len(httpd.misses) > before:
+                            dirty.add(u)
                     b.close()
             finally:
                 httpd.shutdown()
+            missing |= {base + p for p in httpd.misses}
             fetched = 0
             for murl in missing:
                 mp = urllib.parse.urlparse(murl)

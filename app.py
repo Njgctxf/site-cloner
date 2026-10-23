@@ -4,6 +4,7 @@ app.py - Flask Web Backend for SiteCloner SaaS
 Handles REST API endpoints, background worker jobs, local live preview servers, and site management.
 """
 
+import sys
 import os
 import re
 import json
@@ -16,10 +17,17 @@ from datetime import datetime
 from pathlib import Path
 from http.server import ThreadingHTTPServer, SimpleHTTPRequestHandler
 import hmac
-from flask import Flask, request, jsonify, render_template, send_file, send_from_directory, Response
+from flask import Flask, request, jsonify, render_template, send_file, send_from_directory, Response, redirect
+
+if hasattr(sys.stdout, "reconfigure"):
+    try:
+        sys.stdout.reconfigure(encoding="utf-8")
+        sys.stderr.reconfigure(encoding="utf-8")
+    except Exception:
+        pass
 
 from cloner import clone_site
-from site_server import resolve, make_server
+from site_server import resolve, resolve_post, make_server
 
 app = Flask(__name__, template_folder="templates")
 
@@ -53,13 +61,61 @@ jobs = {}
 active_servers = {}  # site_id -> {"port": port, "httpd": server_instance, "thread": thread}
 
 def load_manifest():
+    manifest = {}
     if MANIFEST_FILE.exists():
         try:
             with open(MANIFEST_FILE, "r", encoding="utf-8") as f:
-                return json.load(f)
+                manifest = json.load(f)
         except Exception:
-            return {}
-    return {}
+            manifest = {}
+
+    changed = False
+    cleaned = {k: v for k, v in manifest.items() if (CLONED_DIR / k).is_dir()}
+    if len(cleaned) != len(manifest):
+        changed = True
+        manifest = cleaned
+
+    for d in CLONED_DIR.iterdir():
+        if not d.is_dir():
+            continue
+        sid = d.name
+        if sid not in manifest:
+            rep_file = d / "_clone-report.txt"
+            url = ""
+            pages = 1
+            files = 0
+            if rep_file.exists():
+                txt = rep_file.read_text("utf-8", errors="ignore")
+                m_src = re.search(r"Source\s*:\s*(.+)", txt)
+                if m_src:
+                    url = m_src.group(1).strip()
+                m_p = re.search(r"Pages\s*:\s*(\d+)", txt)
+                if m_p:
+                    pages = int(m_p.group(1))
+                m_f = re.search(r"Fichiers\s*:\s*(\d+)", txt)
+                if m_f:
+                    files = int(m_f.group(1))
+            all_files = [f for f in d.rglob("*") if f.is_file()]
+            size = sum(f.stat().st_size for f in all_files)
+            if not files:
+                files = len(all_files)
+            title = sid.replace("_", " ").title()
+            manifest[sid] = {
+                "id": sid,
+                "title": title,
+                "url": url or ("https://" + sid.split("_")[0]),
+                "date": datetime.fromtimestamp(d.stat().st_mtime).strftime("%Y-%m-%d %H:%M"),
+                "total_pages": pages,
+                "total_files": files,
+                "total_size": size,
+                "folder": str(d)
+            }
+            changed = True
+
+    if changed:
+        save_manifest(manifest)
+
+    return manifest
 
 def save_manifest(data):
     try:
@@ -75,11 +131,34 @@ def find_free_port(start_port=4000, end_port=4999):
                 return port
     return 4050
 
-@app.route("/")
-def index():
-    return render_template("index.html")
+SITE_COOKIE = "sc_site"
 
-@app.route("/api/clone", methods=["POST"])
+
+@app.before_request
+def serve_active_clone():
+    """While a clone is open (cookie), the whole origin belongs to it: root-absolute paths
+    and client-side routers (Next.js, Framer, Astro...) then work exactly as on the real site."""
+    if request.path.startswith(("/__sc/", "/preview/")):
+        return None
+    sid = request.cookies.get(SITE_COOKIE)
+    if not sid or not (CLONED_DIR / sid).is_dir():
+        return redirect("/__sc/") if request.path == "/" else None
+    if request.method not in ("GET", "HEAD"):
+        res = resolve_post(CLONED_DIR / sid, request.full_path.rstrip("?"), request.get_data())
+        if res:  # recorded data request (GraphQL, JSON API)
+            return send_file(str(res[1]), mimetype=res[2])
+        return Response(status=204)  # analytics beacons, forms: no backend offline
+    out = _send_resolved(CLONED_DIR / sid, request.full_path.rstrip("?"))
+    return out if out is not None else (jsonify({"error": "Not found"}), 404)
+
+
+@app.route("/__sc/")
+def index():
+    resp = Response(render_template("index.html"), mimetype="text/html")
+    resp.delete_cookie(SITE_COOKIE, path="/")
+    return resp
+
+@app.route("/__sc/api/clone", methods=["POST"])
 def start_clone():
     data = request.get_json() or {}
     url = data.get("url", "").strip()
@@ -145,14 +224,14 @@ def start_clone():
 
     return jsonify({"job_id": job_id, "status": "started", "site_id": site_id})
 
-@app.route("/api/status/<job_id>", methods=["GET"])
+@app.route("/__sc/api/status/<job_id>", methods=["GET"])
 def get_status(job_id):
     job = jobs.get(job_id)
     if not job:
         return jsonify({"error": "Job not found"}), 404
     return jsonify(job)
 
-@app.route("/api/sites", methods=["GET"])
+@app.route("/__sc/api/sites", methods=["GET"])
 def list_sites():
     manifest = load_manifest()
     sites = [m for m in manifest.values() if (CLONED_DIR / m.get("id", "")).is_dir()]
@@ -172,34 +251,24 @@ def _send_resolved(dest_dir, raw_path):
     if res[0] == "redirect":
         return Response(status=302, headers={"Location": res[1]})
     _, f, ctype = res
-    resp = send_file(str(f), mimetype=ctype.split(";")[0], conditional=True, max_age=0)
+    max_age = 0 if "text/html" in ctype else 31536000
+    resp = send_file(str(f), mimetype=ctype.split(";")[0], conditional=True, max_age=max_age)
     resp.headers["Cross-Origin-Resource-Policy"] = "cross-origin"
     return resp
 
 @app.route("/preview/<site_id>/", defaults={"filename": ""})
 @app.route("/preview/<site_id>/<path:filename>")
 def preview_site(site_id, filename):
-    dest_dir = CLONED_DIR / site_id
-    if not dest_dir.is_dir():
+    if not (CLONED_DIR / site_id).is_dir():
         return jsonify({"error": "Site not found"}), 404
-    raw = "/" + filename
+    target = "/" + filename
     if request.query_string:
-        raw += "?" + request.query_string.decode("utf-8", "ignore")
-    out = _send_resolved(dest_dir, raw)
-    return out if out is not None else (jsonify({"error": "Not found"}), 404)
+        target += "?" + request.query_string.decode("utf-8", "ignore")
+    resp = redirect(target)
+    resp.set_cookie(SITE_COOKIE, site_id, path="/", samesite="Lax")
+    return resp
 
-@app.errorhandler(404)
-def root_path_fallback(_e):
-    """Clones use root-absolute paths (/_next/..., /assets/...): resolve them via the page that asked for them."""
-    ref = request.headers.get("Referer", "")
-    m = re.search(r"/preview/([^/?#]+)/", ref)
-    if m and (CLONED_DIR / m.group(1)).is_dir() and not request.path.startswith(("/api/", "/preview/")):
-        out = _send_resolved(CLONED_DIR / m.group(1), request.full_path.rstrip("?"))
-        if out is not None:
-            return out
-    return jsonify({"error": "Not found"}), 404
-
-@app.route("/api/sites/<site_id>/serve", methods=["POST"])
+@app.route("/__sc/api/sites/<site_id>/serve", methods=["POST"])
 def serve_site(site_id):
     dest_dir = CLONED_DIR / site_id
     if not dest_dir.exists():
@@ -229,7 +298,7 @@ def serve_site(site_id):
     except Exception as e:
         return jsonify({"error": f"Failed to start server: {str(e)}"}), 500
 
-@app.route("/api/sites/<site_id>/stop", methods=["POST"])
+@app.route("/__sc/api/sites/<site_id>/stop", methods=["POST"])
 def stop_serve(site_id):
     if site_id in active_servers:
         srv = active_servers.pop(site_id)
@@ -240,7 +309,7 @@ def stop_serve(site_id):
         return jsonify({"status": "stopped"})
     return jsonify({"status": "not_running"})
 
-@app.route("/api/sites/<site_id>/download", methods=["GET"])
+@app.route("/__sc/api/sites/<site_id>/download", methods=["GET"])
 def download_zip(site_id):
     dest_dir = CLONED_DIR / site_id
     if not dest_dir.exists():
@@ -251,7 +320,7 @@ def download_zip(site_id):
     final_zip = CLONED_DIR / f"{site_id}.zip"
     return send_file(final_zip, as_attachment=True, download_name=f"{site_id}.zip")
 
-@app.route("/api/sites/<site_id>", methods=["DELETE"])
+@app.route("/__sc/api/sites/<site_id>", methods=["DELETE"])
 def delete_site(site_id):
     # Stop if running
     if site_id in active_servers:
@@ -275,7 +344,7 @@ def delete_site(site_id):
 
     return jsonify({"status": "deleted"})
 
-@app.route("/api/sites/<site_id>/publish", methods=["POST"])
+@app.route("/__sc/api/sites/<site_id>/publish", methods=["POST"])
 def publish_github(site_id):
     dest_dir = CLONED_DIR / site_id
     if not dest_dir.exists():
@@ -296,15 +365,32 @@ def publish_github(site_id):
         gh = shutil.which("gh") or "C:\\Program Files\\GitHub CLI\\gh.exe"
         if not shutil.which("gh") and not os.path.exists(gh):
             return jsonify({"error": "GitHub CLI indisponible sur ce serveur : utilise le bouton ZIP."}), 501
-        cmd = [gh, "repo", "create", f"Njgctxf/{repo_name}", "--public", "--source=.", "--remote=origin", "--push", "--confirm"]
+        cmd = [gh, "repo", "create", repo_name, "--public", "--source=.", "--remote=origin", "--push", "--confirm"]
         res = subprocess.run(cmd, cwd=str(dest_dir), capture_output=True, text=True)
+        if res.returncode != 0 and "already exists" not in res.stderr:
+            return jsonify({"error": res.stderr or res.stdout or "Erreur lors de la création GitHub"}), 500
 
-        repo_url = f"https://github.com/Njgctxf/{repo_name}"
+        # Retrieve repo URL
+        view_cmd = [gh, "repo", "view", repo_name, "--json", "url", "-q", ".url"]
+        view_res = subprocess.run(view_cmd, cwd=str(dest_dir), capture_output=True, text=True)
+        repo_url = view_res.stdout.strip() or f"https://github.com/{repo_name}"
         return jsonify({"success": True, "repo_url": repo_url})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
 if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 5000))
-    print(f"🚀 SiteCloner SaaS starting on http://localhost:{port} ...")
+    port = int(os.environ.get("PORT", 0))
+    if not port:
+        for p in (5050, 5000, 5500, 8080):
+            try:
+                with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+                    s.bind(("0.0.0.0", p))
+                    port = p
+                    break
+            except Exception:
+                continue
+        if not port:
+            port = find_free_port(5000, 6000)
+
+    print(f"[SiteCloner SaaS] starting on http://localhost:{port} ...")
     app.run(host="0.0.0.0", port=port, debug=False)

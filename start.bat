@@ -7,12 +7,17 @@ echo.
 
 cd /d "%~dp0"
 
-echo [1/2] Verification des dependances Python...
+echo [1/3] Verification des dependances Python...
 python -m pip install -r requirements.txt --quiet
 
 echo.
-echo [2/2] Demarrage de l'application SaaS sur http://localhost:5000 ...
+echo [2/3] Verification des navigateurs Playwright...
+python -m playwright install chromium
+
 echo.
-start "" http://localhost:5000
+echo [3/3] Demarrage de l'application SaaS sur http://localhost:5050 ...
+echo.
+set PORT=5050
+start "" http://localhost:5050
 python app.py
 pause

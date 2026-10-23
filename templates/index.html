@@ -531,7 +531,7 @@
 
     async function loadSites() {
       try {
-        const res = await fetch('/api/sites');
+        const res = await fetch('/__sc/api/sites');
         const data = await res.json();
         const grid = document.getElementById('sitesGrid');
         const empty = document.getElementById('emptyState');
@@ -583,7 +583,7 @@
               <button class="btn-action btn-publish" onclick="publishSite('${site.id}')" style="background: rgba(16, 185, 129, 0.15); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.3);" title="Publier sur votre compte GitHub">
                 <span>🚀 GitHub</span>
               </button>
-              <a href="/api/sites/${site.id}/download" class="btn-action btn-download" title="Télécharger l'archive ZIP">
+              <a href="/__sc/api/sites/${site.id}/download" class="btn-action btn-download" title="Télécharger l'archive ZIP">
                 <span>📦 ZIP</span>
               </a>
               <button class="btn-action btn-delete" onclick="deleteSite('${site.id}')" title="Supprimer">
@@ -616,7 +616,7 @@
       progressCard.style.display = 'block';
 
       try {
-        const res = await fetch('/api/clone', {
+        const res = await fetch('/__sc/api/clone', {
           method: 'POST',
           headers: {'Content-Type': 'application/json'},
           body: JSON.stringify({
@@ -652,7 +652,7 @@
         if (!activeJobId) return;
 
         try {
-          const res = await fetch(`/api/status/${activeJobId}`);
+          const res = await fetch(`/__sc/api/status/${activeJobId}`);
           const job = await res.json();
 
           if (job.status === 'running') {
@@ -695,7 +695,7 @@
     async function previewSite(siteId) {
       try {
         showToast("Démarrage du serveur local...");
-        const res = await fetch(`/api/sites/${siteId}/serve`, { method: 'POST' });
+        const res = await fetch(`/__sc/api/sites/${siteId}/serve`, { method: 'POST' });
         const data = await res.json();
         if (data.url) {
           window.open(data.url, '_blank');
@@ -711,7 +711,7 @@
     async function editSite(siteId) {
       try {
         showToast("Ouverture de l'éditeur...");
-        const res = await fetch(`/api/sites/${siteId}/serve`, { method: 'POST' });
+        const res = await fetch(`/__sc/api/sites/${siteId}/serve`, { method: 'POST' });
         const data = await res.json();
         if (data.port) {
           window.open(`${data.url}/?__edit=1`, '_blank');
@@ -732,7 +732,7 @@
 
       showToast("Publication sur GitHub en cours...", "info");
       try {
-        const res = await fetch(`/api/sites/${siteId}/publish`, {
+        const res = await fetch(`/__sc/api/sites/${siteId}/publish`, {
           method: 'POST',
           headers: {'Content-Type': 'application/json'},
           body: JSON.stringify({ repo_name: repoName })
@@ -752,7 +752,7 @@
     async function deleteSite(siteId) {
       if (!confirm("Voulez-vous vraiment supprimer ce site cloné ?")) return;
       try {
-        await fetch(`/api/sites/${siteId}`, { method: 'DELETE' });
+        await fetch(`/__sc/api/sites/${siteId}`, { method: 'DELETE' });
         showToast("Site supprimé");
         loadSites();
       } catch (err) {

@@ -2,6 +2,7 @@
 import sys, json, urllib.parse
 from pathlib import Path
 from site_server import make_server
+from cloner import launch
 import threading
 from playwright.sync_api import sync_playwright
 
@@ -12,7 +13,7 @@ def verify(root, port, max_pages=12):
     base = f"http://127.0.0.1:{port}"
     external, bad, errors, visited = set(), set(), [], []
     with sync_playwright() as pw:
-        b = pw.chromium.launch(headless=True, args=["--use-angle=swiftshader", "--enable-unsafe-swiftshader", "--ignore-gpu-blocklist"])
+        b = launch(pw, ["--use-angle=swiftshader", "--enable-unsafe-swiftshader", "--ignore-gpu-blocklist"])
         ctx = b.new_context(service_workers="block")
         def route(r):
             u = r.request.url
