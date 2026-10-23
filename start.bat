@@ -1,7 +1,7 @@
 @echo off
-title SiteCloner SaaS Engine
+title SiteCloner SaaS v2 Engine
 echo ========================================================
-echo          SiteCloner SaaS - Cloneur de Sites Web
+echo         SiteCloner SaaS v2 - Cloneur de Sites Web
 echo ========================================================
 echo.
 

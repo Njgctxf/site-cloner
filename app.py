@@ -392,5 +392,5 @@ if __name__ == "__main__":
         if not port:
             port = find_free_port(5000, 6000)
 
-    print(f"[SiteCloner SaaS] starting on http://localhost:{port} ...")
+    print(f"[SiteCloner SaaS v2] starting on http://localhost:{port} ...")
     app.run(host="0.0.0.0", port=port, debug=False)
