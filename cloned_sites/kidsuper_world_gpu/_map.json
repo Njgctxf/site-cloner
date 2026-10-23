@@ -1,0 +1,294 @@
+{
+  "/favicon-32x32.png": {
+    "f": "favicon-32x32.png",
+    "t": "image/png"
+  },
+  "/": {
+    "f": "index.html",
+    "t": "text/html"
+  },
+  "/index.html": {
+    "f": "index.html",
+    "t": "text/html"
+  },
+  "/audio/downy-reverie.mp3": {
+    "f": "audio/downy-reverie.mp3",
+    "t": "audio/mpeg"
+  },
+  "/audio/el-coso-de-la-luna.mp3": {
+    "f": "audio/el-coso-de-la-luna.mp3",
+    "t": "audio/mpeg"
+  },
+  "/audio/jazzito.mp3": {
+    "f": "audio/jazzito.mp3",
+    "t": "audio/mpeg"
+  },
+  "/audio/rolling.mp3": {
+    "f": "audio/rolling.mp3",
+    "t": "audio/mpeg"
+  },
+  "/audio/rythms-of-serenity.mp3": {
+    "f": "audio/rythms-of-serenity.mp3",
+    "t": "audio/mpeg"
+  },
+  "/audio/sueno-etereo.mp3": {
+    "f": "audio/sueno-etereo.mp3",
+    "t": "audio/mpeg"
+  },
+  "/images/intro-preview-wide.webp": {
+    "f": "images/intro-preview-wide.webp",
+    "t": "image/webp"
+  },
+  "/images/loading-bg.webp": {
+    "f": "images/loading-bg.webp",
+    "t": "image/webp"
+  },
+  "/models/Atelier-2k-fix2.glb": {
+    "f": "models/Atelier-2k-fix2.glb",
+    "t": "application/octet-stream"
+  },
+  "/models/bag.glb": {
+    "f": "models/bag.glb",
+    "t": "application/octet-stream"
+  },
+  "/models/boot.glb": {
+    "f": "models/boot.glb",
+    "t": "application/octet-stream"
+  },
+  "/models/exterior.glb": {
+    "f": "models/exterior.glb",
+    "t": "application/octet-stream"
+  },
+  "/models/KS_Atelier-mobile.glb": {
+    "f": "models/KS_Atelier-mobile.glb",
+    "t": "application/octet-stream"
+  },
+  "/models/KS_Book.glb": {
+    "f": "models/KS_Book.glb",
+    "t": "application/octet-stream"
+  },
+  "/models/KS_CanvasBoy.glb": {
+    "f": "models/KS_CanvasBoy.glb",
+    "t": "application/octet-stream"
+  },
+  "/models/KS_CanvasCasa.glb": {
+    "f": "models/KS_CanvasCasa.glb",
+    "t": "application/octet-stream"
+  },
+  "/models/KS_ClothCasa.glb": {
+    "f": "models/KS_ClothCasa.glb",
+    "t": "application/octet-stream"
+  },
+  "/models/puffer.glb": {
+    "f": "models/puffer.glb",
+    "t": "application/octet-stream"
+  },
+  "/models/winco.glb": {
+    "f": "models/winco.glb",
+    "t": "application/octet-stream"
+  },
+  "/textures/360.webp": {
+    "f": "textures/360.webp",
+    "t": "image/webp"
+  },
+  "/textures/bag-ao.jpg": {
+    "f": "textures/bag-ao.jpg",
+    "t": "image/jpeg"
+  },
+  "/textures/bag-color.webp": {
+    "f": "textures/bag-color.webp",
+    "t": "image/webp"
+  },
+  "/textures/bag-fabric.jpg": {
+    "f": "textures/bag-fabric.jpg",
+    "t": "image/jpeg"
+  },
+  "/textures/bag-leather.jpg": {
+    "f": "textures/bag-leather.jpg",
+    "t": "image/jpeg"
+  },
+  "/textures/bag-seam-alpha.png": {
+    "f": "textures/bag-seam-alpha.png",
+    "t": "image/png"
+  },
+  "/textures/bag-seam-normal.png": {
+    "f": "textures/bag-seam-normal.png",
+    "t": "image/png"
+  },
+  "/textures/bag-seam.png": {
+    "f": "textures/bag-seam.png",
+    "t": "image/png"
+  },
+  "/textures/canvas-normal.webp": {
+    "f": "textures/canvas-normal.webp",
+    "t": "image/webp"
+  },
+  "/textures/matcap.webp": {
+    "f": "textures/matcap.webp",
+    "t": "image/webp"
+  },
+  "/textures/noise-1.jpg": {
+    "f": "textures/noise-1.jpg",
+    "t": "image/jpeg"
+  },
+  "/textures/paint-brush-mask.webp": {
+    "f": "textures/paint-brush-mask.webp",
+    "t": "image/webp"
+  },
+  "/_next/image": {
+    "f": "_next/image__d9b3923b",
+    "t": "application/octet-stream"
+  },
+  "/_next/image?hash=undefined": {
+    "f": "_next/image__d9b3923b",
+    "t": "application/octet-stream"
+  },
+  "POST /_post/5b98483bf489ff8bd3bc.json": {
+    "f": "_post/5b98483bf489ff8bd3bc.json",
+    "t": "application/json"
+  },
+  "/_next/static/chunks/101.e8bd351fb10bf8fc.js": {
+    "f": "_next/static/chunks/101.e8bd351fb10bf8fc.js",
+    "t": "text/javascript"
+  },
+  "/_next/static/chunks/102.03fb582437b15478.js": {
+    "f": "_next/static/chunks/102.03fb582437b15478.js",
+    "t": "text/javascript"
+  },
+  "/_next/static/chunks/31-f7f66a648cef0472.js": {
+    "f": "_next/static/chunks/31-f7f66a648cef0472.js",
+    "t": "text/javascript"
+  },
+  "/_next/static/chunks/396-cfa677bc762f1c0a.js": {
+    "f": "_next/static/chunks/396-cfa677bc762f1c0a.js",
+    "t": "text/javascript"
+  },
+  "/_next/static/chunks/608.915226a69f09e3a4.js": {
+    "f": "_next/static/chunks/608.915226a69f09e3a4.js",
+    "t": "text/javascript"
+  },
+  "/_next/static/chunks/818.85cb1101664baf3f.js": {
+    "f": "_next/static/chunks/818.85cb1101664baf3f.js",
+    "t": "text/javascript"
+  },
+  "/_next/static/chunks/ee9ce975.886b610d48dd87b1.js": {
+    "f": "_next/static/chunks/ee9ce975.886b610d48dd87b1.js",
+    "t": "text/javascript"
+  },
+  "/_next/static/chunks/framework-7910649aacea8d37.js": {
+    "f": "_next/static/chunks/framework-7910649aacea8d37.js",
+    "t": "text/javascript"
+  },
+  "/_next/static/chunks/main-9dc2e9cbceef9f77.js": {
+    "f": "_next/static/chunks/main-9dc2e9cbceef9f77.js",
+    "t": "text/javascript"
+  },
+  "/_next/static/chunks/webpack-be754407b0694fbb.js": {
+    "f": "_next/static/chunks/webpack-be754407b0694fbb.js",
+    "t": "text/javascript"
+  },
+  "/_next/static/css/0b67356388a71460.css": {
+    "f": "_next/static/css/0b67356388a71460.css",
+    "t": "text/css"
+  },
+  "/_next/static/css/481c45a61e242a0b.css": {
+    "f": "_next/static/css/481c45a61e242a0b.css",
+    "t": "text/css"
+  },
+  "/_next/static/media/027c42dcfa0542b2-s.p.woff2": {
+    "f": "_next/static/media/027c42dcfa0542b2-s.p.woff2",
+    "t": "application/octet-stream"
+  },
+  "/_next/static/media/11a80b9f11d4656e-s.p.woff": {
+    "f": "_next/static/media/11a80b9f11d4656e-s.p.woff",
+    "t": "application/octet-stream"
+  },
+  "/_next/static/media/8e5bc50e771da03d-s.p.woff": {
+    "f": "_next/static/media/8e5bc50e771da03d-s.p.woff",
+    "t": "application/octet-stream"
+  },
+  "/_next/static/media/cde4191b83f2f41d-s.p.woff": {
+    "f": "_next/static/media/cde4191b83f2f41d-s.p.woff",
+    "t": "application/octet-stream"
+  },
+  "/_next/static/media/empty.1fd0839f.svg": {
+    "f": "_next/static/media/empty.1fd0839f.svg",
+    "t": "image/svg+xml"
+  },
+  "/_next/static/XkpEJgPmJ8evdDbXv-tAF/_buildManifest.js": {
+    "f": "_next/static/XkpEJgPmJ8evdDbXv-tAF/_buildManifest.js",
+    "t": "text/javascript"
+  },
+  "/_next/static/XkpEJgPmJ8evdDbXv-tAF/_ssgManifest.js": {
+    "f": "_next/static/XkpEJgPmJ8evdDbXv-tAF/_ssgManifest.js",
+    "t": "text/javascript"
+  },
+  "/_next/static/chunks/pages/index-267138596ba5eeca.js": {
+    "f": "_next/static/chunks/pages/index-267138596ba5eeca.js",
+    "t": "text/javascript"
+  },
+  "/_next/static/chunks/pages/_app-20913cae8ef123a6.js": {
+    "f": "_next/static/chunks/pages/_app-20913cae8ef123a6.js",
+    "t": "text/javascript"
+  },
+  "/_next/data/XkpEJgPmJ8evdDbXv-tAF/index.json": {
+    "f": "_next/data/XkpEJgPmJ8evdDbXv-tAF/index.json",
+    "t": "application/json"
+  },
+  "/_ext/www.gstatic.com/draco/versioned/decoders/1.5.5/draco_decoder.wasm": {
+    "f": "_ext/www.gstatic.com/draco/versioned/decoders/1.5.5/draco_decoder.wasm",
+    "t": "application/wasm"
+  },
+  "/_ext/www.gstatic.com/draco/versioned/decoders/1.5.5/draco_wasm_wrapper.js": {
+    "f": "_ext/www.gstatic.com/draco/versioned/decoders/1.5.5/draco_wasm_wrapper.js",
+    "t": "text/javascript"
+  },
+  "/textures/boots/base.webp": {
+    "f": "textures/boots/base.webp",
+    "t": "image/webp"
+  },
+  "/textures/puffer/base.webp": {
+    "f": "textures/puffer/base.webp",
+    "t": "image/webp"
+  },
+  "/textures/puffer/normal.webp": {
+    "f": "textures/puffer/normal.webp",
+    "t": "image/webp"
+  },
+  "/models/room/KS_Sky.glb": {
+    "f": "models/room/KS_Sky.glb",
+    "t": "application/octet-stream"
+  },
+  "/images/cursor/default.gif": {
+    "f": "images/cursor/default__68faf517.gif",
+    "t": "image/gif"
+  },
+  "/images/cursor/default.gif?hash=undefined": {
+    "f": "images/cursor/default__68faf517.gif",
+    "t": "image/gif"
+  },
+  "/images/cursor/grab.gif": {
+    "f": "images/cursor/grab__68faf517.gif",
+    "t": "image/gif"
+  },
+  "/images/cursor/grab.gif?hash=undefined": {
+    "f": "images/cursor/grab__68faf517.gif",
+    "t": "image/gif"
+  },
+  "/images/cursor/paint.gif": {
+    "f": "images/cursor/paint__68faf517.gif",
+    "t": "image/gif"
+  },
+  "/images/cursor/paint.gif?hash=undefined": {
+    "f": "images/cursor/paint__68faf517.gif",
+    "t": "image/gif"
+  },
+  "/images/cursor/pointer.gif": {
+    "f": "images/cursor/pointer__68faf517.gif",
+    "t": "image/gif"
+  },
+  "/images/cursor/pointer.gif?hash=undefined": {
+    "f": "images/cursor/pointer__68faf517.gif",
+    "t": "image/gif"
+  }
+}

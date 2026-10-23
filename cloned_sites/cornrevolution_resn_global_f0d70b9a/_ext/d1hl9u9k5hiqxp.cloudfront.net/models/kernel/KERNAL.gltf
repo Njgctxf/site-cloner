@@ -1,0 +1,173 @@
+{
+    "accessors" : [
+        {
+            "bufferView" : 0,
+            "componentType" : 5123,
+            "count" : 8640,
+            "max" : [
+                1539
+            ],
+            "min" : [
+                0
+            ],
+            "type" : "SCALAR"
+        },
+        {
+            "bufferView" : 1,
+            "componentType" : 5126,
+            "count" : 1540,
+            "max" : [
+                95.86132049560547,
+                65.41986846923828,
+                128.19700622558594
+            ],
+            "min" : [
+                -95.86132049560547,
+                -65.41986846923828,
+                -128.10572814941406
+            ],
+            "type" : "VEC3"
+        },
+        {
+            "bufferView" : 2,
+            "componentType" : 5126,
+            "count" : 1540,
+            "max" : [
+                0.999969482421875,
+                0.9998779296875,
+                0.999755859375
+            ],
+            "min" : [
+                -0.999786376953125,
+                -0.9993896484375,
+                -0.9977111220359802
+            ],
+            "type" : "VEC3"
+        },
+        {
+            "bufferView" : 3,
+            "componentType" : 5126,
+            "count" : 1540,
+            "max" : [
+                0.9999984502792358,
+                0.9999997615814209,
+                0.6823887228965759,
+                1.0
+            ],
+            "min" : [
+                -0.012255417183041573,
+                -0.9999132752418518,
+                -0.6671134233474731,
+                1.0
+            ],
+            "type" : "VEC4"
+        },
+        {
+            "bufferView" : 4,
+            "componentType" : 5126,
+            "count" : 1540,
+            "max" : [
+                0.9714707136154175,
+                0.9743940830230713
+            ],
+            "min" : [
+                0.027431176975369453,
+                0.022759318351745605
+            ],
+            "type" : "VEC2"
+        }
+    ],
+    "asset" : {
+        "generator" : "Khronos Blender glTF 2.0 exporter",
+        "version" : "2.0"
+    },
+    "bufferViews" : [
+        {
+            "buffer" : 0,
+            "byteLength" : 17280,
+            "byteOffset" : 0,
+            "target" : 34963
+        },
+        {
+            "buffer" : 0,
+            "byteLength" : 18480,
+            "byteOffset" : 17280,
+            "target" : 34962
+        },
+        {
+            "buffer" : 0,
+            "byteLength" : 18480,
+            "byteOffset" : 35760,
+            "target" : 34962
+        },
+        {
+            "buffer" : 0,
+            "byteLength" : 24640,
+            "byteOffset" : 54240,
+            "target" : 34962
+        },
+        {
+            "buffer" : 0,
+            "byteLength" : 12320,
+            "byteOffset" : 78880,
+            "target" : 34962
+        }
+    ],
+    "buffers" : [
+        {
+            "byteLength" : 91200,
+            "uri" : "KERNAL.bin"
+        }
+    ],
+    "materials" : [
+        {
+            "name" : "default.002",
+            "pbrMetallicRoughness" : {
+                "metallicFactor" : 0.0
+            }
+        }
+    ],
+    "meshes" : [
+        {
+            "name" : "Subdivision_Surface.2",
+            "primitives" : [
+                {
+                    "attributes" : {
+                        "NORMAL" : 2,
+                        "POSITION" : 1,
+                        "TANGENT" : 3,
+                        "TEXCOORD_0" : 4
+                    },
+                    "indices" : 0,
+                    "material" : 0
+                }
+            ]
+        }
+    ],
+    "nodes" : [
+        {
+            "mesh" : 0,
+            "name" : "kernel",
+            "rotation" : [
+                0.7071068286895752,
+                0.0,
+                -0.0,
+                0.7071067094802856
+            ],
+            "scale" : [
+                0.009999999776482582,
+                0.009999999776482582,
+                0.009999999776482582
+            ]
+        }
+    ],
+    "scene" : 0,
+    "scenes" : [
+        {
+            "name" : "Scene",
+            "nodes" : [
+                0
+            ]
+        }
+    ]
+}

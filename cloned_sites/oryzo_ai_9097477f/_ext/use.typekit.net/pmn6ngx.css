@@ -1,0 +1,31 @@
+/*
+ * The Typekit service used to deliver this font or fonts for use on websites
+ * is provided by Adobe and is subject to these Terms of Use
+ * http://www.adobe.com/products/eulas/tou_typekit. For font license
+ * information, see the list below.
+ *
+ * halyard-display-variable:
+ *   - http://typekit.com/eulas/0000000000000000775abe8b
+ * halyard-text-variable:
+ *   - http://typekit.com/eulas/0000000000000000775abe87
+ *
+ * © 2009-2026 Adobe Systems Incorporated. All Rights Reserved.
+ */
+/*{"last_published":"2026-03-02 10:20:41 UTC"}*/
+
+@import url("/_ext/p.typekit.net/p.css?s=1&k=pmn6ngx&ht=tk&f=52149.52151&a=83030954&app=typekit&e=css");
+
+@font-face {
+font-family:"halyard-text-variable";
+src:url("/_ext/use.typekit.net/af/778414/0000000000000000775abe87/31/l?primer=388f68b35a7cbf1ee3543172445c23e26935269fadd3b392a13ac7b2903677eb&fvd=n4&v=3") format("woff2"),url("/_ext/use.typekit.net/af/778414/0000000000000000775abe87/31/d?primer=388f68b35a7cbf1ee3543172445c23e26935269fadd3b392a13ac7b2903677eb&fvd=n4&v=3") format("woff"),url("/_ext/use.typekit.net/af/778414/0000000000000000775abe87/31/a?primer=388f68b35a7cbf1ee3543172445c23e26935269fadd3b392a13ac7b2903677eb&fvd=n4&v=3") format("opentype");
+font-display:swap;font-style:normal;font-weight:100 800;font-stretch:normal;
+}
+
+@font-face {
+font-family:"halyard-display-variable";
+src:url("/_ext/use.typekit.net/af/daa5d6/0000000000000000775abe8b/31/l?primer=388f68b35a7cbf1ee3543172445c23e26935269fadd3b392a13ac7b2903677eb&fvd=n4&v=3") format("woff2"),url("/_ext/use.typekit.net/af/daa5d6/0000000000000000775abe8b/31/d?primer=388f68b35a7cbf1ee3543172445c23e26935269fadd3b392a13ac7b2903677eb&fvd=n4&v=3") format("woff"),url("/_ext/use.typekit.net/af/daa5d6/0000000000000000775abe8b/31/a?primer=388f68b35a7cbf1ee3543172445c23e26935269fadd3b392a13ac7b2903677eb&fvd=n4&v=3") format("opentype");
+font-display:swap;font-style:normal;font-weight:100 900;font-stretch:normal;
+}
+
+.tk-halyard-text-variable { font-family: "halyard-text-variable",sans-serif; }
+.tk-halyard-display-variable { font-family: "halyard-display-variable",sans-serif; }
