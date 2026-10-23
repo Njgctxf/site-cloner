@@ -164,13 +164,37 @@ def interact(page, long=False):
 def launch(pw, extra):
     """Installed Google Chrome renders WebGL on the machine's GPU (far faster than CPU rendering), with its own
     throw-away profile. Without it (servers) the bundled Chromium is used and falls back to SwiftShader."""
-    args = ["--ignore-gpu-blocklist", "--enable-gpu-rasterization", "--enable-unsafe-swiftshader"] + extra
+    args = [
+        "--no-sandbox",
+        "--disable-setuid-sandbox",
+        "--disable-dev-shm-usage",
+        "--disable-gpu-sandbox",
+        "--ignore-gpu-blocklist",
+        "--enable-gpu-rasterization",
+        "--enable-unsafe-swiftshader"
+    ] + extra
+
+    errors = []
     for channel in ("chrome", "chromium", None):
         try:
-            return pw.chromium.launch(channel=channel, headless=True, args=args) if channel else                 pw.chromium.launch(headless=True, args=args)
-        except Exception:
+            if channel:
+                return pw.chromium.launch(channel=channel, headless=True, args=args)
+            else:
+                return pw.chromium.launch(headless=True, args=args)
+        except Exception as e:
+            errors.append(f"{channel or 'bundled'}: {e}")
             continue
-    raise RuntimeError("Aucun navigateur Chromium disponible")
+
+    # On cloud servers / containers: try on-the-fly playwright chromium install if missing
+    try:
+        import subprocess, sys
+        subprocess.run([sys.executable, "-m", "playwright", "install", "chromium"], check=False, timeout=180)
+        return pw.chromium.launch(headless=True, args=args)
+    except Exception as e:
+        errors.append(f"auto_install: {e}")
+
+    err_msg = "; ".join(errors)
+    raise RuntimeError(f"Aucun navigateur Chromium disponible: {err_msg}")
 
 
 def norm_host(h):
