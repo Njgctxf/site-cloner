@@ -46,9 +46,11 @@ APP_PASSWORD = os.environ.get("APP_PASSWORD", "")
 def require_auth():
     if not ONLINE:
         return None
+    if not APP_PASSWORD:
+        return None  # No password configured -> open access
     auth = request.authorization
     ok = bool(
-        APP_PASSWORD and auth and auth.password
+        auth and auth.password
         and hmac.compare_digest(auth.username or "", APP_USER)
         and hmac.compare_digest(auth.password, APP_PASSWORD)
     )
@@ -251,6 +253,23 @@ def _send_resolved(dest_dir, raw_path):
     if res[0] == "redirect":
         return Response(status=302, headers={"Location": res[1]})
     _, f, ctype = res
+    if "text/html" in ctype and ONLINE:
+        try:
+            content = f.read_text(encoding="utf-8", errors="ignore")
+            if "</body>" in content and "/__sc/" not in content:
+                badge = (
+                    '<div style="position:fixed;bottom:16px;left:16px;z-index:999999;'
+                    'background:rgba(9,10,15,0.88);backdrop-filter:blur(10px);border:1px solid rgba(99,102,241,0.5);'
+                    'padding:8px 16px;border-radius:24px;font-family:sans-serif;font-size:12px;box-shadow:0 6px 20px rgba(0,0,0,0.6);">'
+                    '<a href="/__sc/" style="color:#818cf8;text-decoration:none;font-weight:700;display:flex;align-items:center;gap:6px;">'
+                    '⚡ SiteCloner &bull; <span style="color:#f8fafc;font-weight:500;">&larr; Tableau de bord</span></a></div>'
+                )
+                content = content.replace("</body>", f"{badge}</body>", 1)
+                resp = Response(content, mimetype="text/html")
+                resp.headers["Cross-Origin-Resource-Policy"] = "cross-origin"
+                return resp
+        except Exception:
+            pass
     max_age = 0 if "text/html" in ctype else 31536000
     resp = send_file(str(f), mimetype=ctype.split(";")[0], conditional=True, max_age=max_age)
     resp.headers["Cross-Origin-Resource-Policy"] = "cross-origin"
@@ -265,7 +284,8 @@ def preview_site(site_id, filename):
     if request.query_string:
         target += "?" + request.query_string.decode("utf-8", "ignore")
     resp = redirect(target)
-    resp.set_cookie(SITE_COOKIE, site_id, path="/", samesite="Lax")
+    is_https = request.is_secure or request.headers.get("X-Forwarded-Proto") == "https"
+    resp.set_cookie(SITE_COOKIE, site_id, path="/", samesite="Lax", secure=is_https)
     return resp
 
 @app.route("/__sc/api/sites/<site_id>/serve", methods=["POST"])

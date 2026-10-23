@@ -4,7 +4,5 @@ services:
     runtime: docker
     plan: free
     envVars:
-      - key: APP_USER
-        value: admin
-      - key: APP_PASSWORD
-        generateValue: true
+      - key: PYTHONUNBUFFERED
+        value: "1"
