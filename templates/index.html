@@ -647,9 +647,15 @@
 
     function pollStatus() {
       if (pollInterval) clearInterval(pollInterval);
+      const MAX_SECONDS = 7 * 60; // matches cloner MAX_RUN_SECONDS
+      const jobStart = Date.now();
 
       pollInterval = setInterval(async () => {
         if (!activeJobId) return;
+
+        // Always animate the bar forward based on real elapsed time
+        const elapsed = Math.floor((Date.now() - jobStart) / 1000);
+        const localPct = Math.min(95, Math.round((elapsed / MAX_SECONDS) * 100));
 
         try {
           const res = await fetch(`/__sc/api/status/${activeJobId}`);
@@ -658,13 +664,15 @@
           if (job.status === 'running') {
             const p = job.progress || {};
             const cur = p.current || 0;
-            const tot = p.total || 10;
-            const pct = Math.min(100, Math.round((cur / Math.max(1, tot)) * 100));
+            const tot = p.total || MAX_SECONDS;
+            // Use the higher of: server-reported % OR local time-based %
+            const serverPct = Math.min(95, Math.round((cur / Math.max(1, tot)) * 100));
+            const pct = Math.max(serverPct, localPct);
 
             document.getElementById('progressBar').style.width = pct + '%';
             document.getElementById('progressPct').textContent = pct + '%';
-            document.getElementById('progressStatus').textContent = `Clonage en cours (${cur}/${tot})...`;
-            document.getElementById('progressDetail').textContent = p.message || '';
+            document.getElementById('progressStatus').textContent = `Clonage en cours... (${elapsed}s)`;
+            document.getElementById('progressDetail').textContent = p.message || 'Traitement...';
           } else if (job.status === 'completed') {
             clearInterval(pollInterval);
             document.getElementById('progressBar').style.width = '100%';
@@ -687,9 +695,12 @@
             document.getElementById('cloneBtn').style.opacity = '1';
           }
         } catch (e) {
-          console.error(e);
+          // Network hiccup: keep the local timer going
+          document.getElementById('progressBar').style.width = localPct + '%';
+          document.getElementById('progressPct').textContent = localPct + '%';
+          console.warn('Poll error:', e);
         }
-      }, 600);
+      }, 1500);
     }
 
     async function previewSite(siteId) {

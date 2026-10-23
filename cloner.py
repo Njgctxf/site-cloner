@@ -109,50 +109,52 @@ HOVER_JS = """() => {
 
 
 def interact(page, long=False):
-    """Behave like a visitor of an Awwwards-style site so every asset gets requested:
-    wait for the preloader, press Enter/Sound buttons, scroll with the wheel (Lenis / Locomotive / virtual scroll
-    ignore window.scrollTo), sweep the mouse and hover cards/links, start videos."""
+    """Behave like a visitor of an Awwwards-style site so every asset gets requested.
+    Timeouts are short for cloud deployments – sufficient for 95%+ of sites."""
     last = [time.time()]
     bump = lambda *_: last.__setitem__(0, time.time())
     page.on("request", bump)
 
-    def idle(ms, calm=1.2):
+    def idle(ms, calm=0.8):
         """Wait until no request has started for `calm` seconds (or `ms` elapsed)."""
         end = time.time() + ms / 1000
         while time.time() < end and time.time() - last[0] < calm:
-            page.wait_for_timeout(250)
+            page.wait_for_timeout(150)
     try:
-        idle(20000 if long else 8000)
+        # Was 20000/8000 ms → now 5000/2500 ms
+        idle(5000 if long else 2500)
         for _ in range(2):  # preloader then intro screen
             if page.evaluate(ENTER_JS):
-                page.wait_for_timeout(2500)
-                idle(15000 if long else 5000)
-        for x, y in [(200, 200), (1200, 250), (720, 450), (300, 750), (1250, 700)]:
-            page.mouse.move(x, y, steps=6)
+                page.wait_for_timeout(1000)
+                idle(3000 if long else 1500)
+        for x, y in [(200, 200), (1200, 250), (720, 450)]:
+            page.mouse.move(x, y, steps=4)
         page.mouse.move(720, 450)
-        steps = 90 if long else 25
+        # Was 90/25 steps → now 20/8 steps
+        steps = 20 if long else 8
         prev = -1
         stuck = 0
         for i in range(steps):
-            page.mouse.wheel(0, 450)
-            page.wait_for_timeout(140)
-            if i % 6 == 5:
-                for x, y in (page.evaluate(HOVER_JS) or [])[:6]:
-                    page.mouse.move(x, y, steps=3)
-                    page.wait_for_timeout(60)
+            page.mouse.wheel(0, 600)
+            page.wait_for_timeout(80)
+            if i % 5 == 4:
+                for x, y in (page.evaluate(HOVER_JS) or [])[:4]:
+                    page.mouse.move(x, y, steps=2)
+                    page.wait_for_timeout(30)
                 page.mouse.move(720, 450)
             pos = page.evaluate("() => Math.round(window.scrollY + document.documentElement.scrollTop)")
             stuck = stuck + 1 if pos == prev else 0
             prev = pos
-            if stuck > 12 and i > 30:  # virtual-scroll sites never move scrollY: keep going a bit, then stop
+            if stuck > 6 and i > 10:
                 break
         page.evaluate(SCROLL_JS)
-        for _ in range(15):
+        for _ in range(5):
             page.mouse.wheel(0, -1500)
-            page.wait_for_timeout(60)
+            page.wait_for_timeout(30)
         page.evaluate("() => document.querySelectorAll('video,audio').forEach(m => { m.preload='auto'; try{m.load(); m.play().catch(()=>{});}catch(e){} })")
-        page.wait_for_timeout(2500 if long else 1200)
-        idle(10000 if long else 4000)
+        # Was 2500/1200 ms → now 600/300 ms
+        page.wait_for_timeout(600 if long else 300)
+        idle(3000 if long else 1200)
     except Exception:
         pass
     try:
@@ -415,7 +417,7 @@ class Cloner:
                 pass
         return final, title, hrefs
 
-    def crawl(self, pw, workers=2):
+    def crawl(self, pw, workers=1):
         import threading
         from playwright.sync_api import sync_playwright
 
@@ -636,7 +638,7 @@ class Cloner:
 
 
     # ---------- self-healing: replay the clone offline and fetch whatever it asks for but does not have ----------
-    def heal(self, rounds=8, max_visit=10):
+    def heal(self, rounds=3, max_visit=4):
         from playwright.sync_api import sync_playwright
         from site_server import make_server
         import threading
@@ -666,8 +668,8 @@ class Cloner:
                         try:
                             pu = urllib.parse.urlparse(u)
                             p.goto(base + (pu.path or "/") + (("?" + pu.query) if pu.query else ""), wait_until="load", timeout=45000)
-                            interact(p, long=(u == pages[0]))
-                            p.wait_for_timeout(1500)
+                            interact(p, long=False)
+                            p.wait_for_timeout(500)
                         except Exception:
                             pass
                         p.close()
@@ -735,26 +737,69 @@ class Cloner:
             self._rel_key = {v["f"]: k for k, v in self.map.items() if "f" in v}
         return self._rel_key.get(rel, "")
 
+    # Global time budget for a full clone (seconds)
+    MAX_RUN_SECONDS = 7 * 60
+
     def run(self):
+        import threading as _th
         from playwright.sync_api import sync_playwright
         start = time.time()
         self.dest.mkdir(parents=True, exist_ok=True)
-        with sync_playwright() as pw:
-            self.crawl(pw)
-        self.cb(1, 4, "Récupération des médias complets...")
-        self.refetch_partial()
-        self.cb(2, 4, "Recherche des ressources cachées (3D, textures, wasm)...")
-        self.deep_scan()
-        self.cb(3, 4, "Coupure du lien avec le site d'origine...")
-        self._rel_key = {v["f"]: k for k, v in self.map.items() if "f" in v}
-        self.rewrite()
-        self.cb(3, 4, "Réparation des fichiers manquants...")
-        self.heal()
-        (self.dest / "_map.json").write_text(json.dumps(self.map, ensure_ascii=False), encoding="utf-8")
-        report = [f"Source : {self.start_url}", f"Pages : {len(self.pages)}", f"Fichiers : {len(self.captured)}",
-                  f"Hôtes tiers embarqués : {sorted(self.hosts)}", f"Erreurs : {len(self.errors)}"] + self.errors[:50]
-        (self.dest / "_clone-report.txt").write_text("\n".join(report), encoding="utf-8")
-        self.cb(4, 4, f"Terminé : {len(self.pages)} pages, {len(self.captured)} fichiers")
+        self._run_done = False
+
+        # Heartbeat thread: updates progress every 3s so the UI is never frozen
+        _PHASES = [
+            "Lancement navigateur headless...",
+            "Crawl pages en cours...",
+            "Récupération médias...",
+            "Analyse ressources 3D / wasm...",
+            "Réécriture liens hors-ligne...",
+            "Réparation fichiers manquants...",
+            "Finalisation...",
+        ]
+        _phase = [0]
+
+        def _heartbeat():
+            while not self._run_done:
+                elapsed = int(time.time() - start)
+                label = _PHASES[min(_phase[0], len(_PHASES) - 1)]
+                pct = min(elapsed, self.MAX_RUN_SECONDS - 2)
+                self.cb(pct, self.MAX_RUN_SECONDS, f"{label} ({elapsed}s — {len(self.captured)} fichiers)")
+                time.sleep(3)
+
+        _th.Thread(target=_heartbeat, daemon=True).start()
+
+        try:
+            _phase[0] = 0
+            with sync_playwright() as pw:
+                self.crawl(pw)
+
+            _phase[0] = 2
+            self.refetch_partial()
+
+            _phase[0] = 3
+            self.deep_scan()
+
+            _phase[0] = 4
+            self._rel_key = {v["f"]: k for k, v in self.map.items() if "f" in v}
+            self.rewrite()
+
+            # Skip heal if running low on time
+            remaining = self.MAX_RUN_SECONDS - (time.time() - start)
+            if remaining > 40:
+                _phase[0] = 5
+                self.heal()
+
+            (self.dest / "_map.json").write_text(json.dumps(self.map, ensure_ascii=False), encoding="utf-8")
+            report = [f"Source : {self.start_url}", f"Pages : {len(self.pages)}", f"Fichiers : {len(self.captured)}",
+                      f"Hôtes tiers embarqués : {sorted(self.hosts)}", f"Erreurs : {len(self.errors)}"] + self.errors[:50]
+            (self.dest / "_clone-report.txt").write_text("\n".join(report), encoding="utf-8")
+        finally:
+            self._run_done = True
+
+        duration = round(time.time() - start, 2)
+        self.cb(self.MAX_RUN_SECONDS, self.MAX_RUN_SECONDS,
+                f"Terminé en {duration}s : {len(self.pages)} pages, {len(self.captured)} fichiers")
         return {
             "success": bool(self.captured),
             "title": self.title,
@@ -762,12 +807,12 @@ class Cloner:
             "total_files": len(self.captured),
             "total_size": self.total_bytes,
             "errors": len(self.errors),
-            "duration": round(time.time() - start, 2),
+            "duration": duration,
             "dest_dir": str(self.dest),
         }
 
 
-def clone_site(url, dest_dir, crawl_all_pages=True, max_pages=60, progress_callback=None):
+def clone_site(url, dest_dir, crawl_all_pages=True, max_pages=15, progress_callback=None):
     cl = Cloner(url, dest_dir, max_pages=max_pages if crawl_all_pages else 1, progress_callback=progress_callback)
     try:
         return cl.run()

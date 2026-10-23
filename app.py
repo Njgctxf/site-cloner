@@ -168,7 +168,7 @@ def start_clone():
         return jsonify({"error": "URL is required"}), 400
 
     crawl_all_pages = bool(data.get("crawl_all_pages", True))
-    max_pages = int(data.get("max_pages", 40))
+    max_pages = min(int(data.get("max_pages", 15)), 30)  # hard cap: 30 pages max
 
     if not url.startswith("http://") and not url.startswith("https://"):
         url = "https://" + url
