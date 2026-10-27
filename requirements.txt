@@ -5,3 +5,4 @@ lxml
 urllib3
 gunicorn
 playwright
+curl_cffi

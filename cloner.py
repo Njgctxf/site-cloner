@@ -26,7 +26,7 @@ import urllib.parse
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
-import requests
+from curl_cffi import requests
 
 UA = ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) "
       "Chrome/128.0.0.0 Safari/537.36")
@@ -108,14 +108,14 @@ HOVER_JS = """() => {
 }"""
 
 
-def interact(page, long=False):
+def interact(page, long=False, calm=0.8):
     """Behave like a visitor of an Awwwards-style site so every asset gets requested.
     Timeouts are short for cloud deployments – sufficient for 95%+ of sites."""
     last = [time.time()]
     bump = lambda *_: last.__setitem__(0, time.time())
     page.on("request", bump)
 
-    def idle(ms, calm=0.8):
+    def idle(ms, calm=calm):
         """Wait until no request has started for `calm` seconds (or `ms` elapsed)."""
         end = time.time() + ms / 1000
         while time.time() < end and time.time() - last[0] < calm:
@@ -161,6 +161,39 @@ def interact(page, long=False):
         page.remove_listener("request", bump)
     except Exception:
         pass
+
+
+def free_memory_mb():
+    """Available RAM in MB (None if unknown): each Chrome needs ~600-800 MB, too many at once makes everything crawl."""
+    try:
+        if os.name == "nt":
+            import ctypes
+
+            class MS(ctypes.Structure):
+                _fields_ = [("l", ctypes.c_ulong), ("load", ctypes.c_ulong), ("tp", ctypes.c_ulonglong),
+                            ("ap", ctypes.c_ulonglong), ("tv", ctypes.c_ulonglong), ("av", ctypes.c_ulonglong),
+                            ("tx", ctypes.c_ulonglong), ("ax", ctypes.c_ulonglong), ("ae", ctypes.c_ulonglong)]
+            m = MS()
+            m.l = ctypes.sizeof(MS)
+            ctypes.windll.kernel32.GlobalMemoryStatusEx(ctypes.byref(m))
+            return m.ap // (1024 * 1024)
+        with open("/proc/meminfo") as f:
+            for line in f:
+                if line.startswith("MemAvailable"):
+                    return int(line.split()[1]) // 1024
+    except Exception:
+        pass
+    return None
+
+
+def default_workers():
+    env = os.environ.get("CLONER_WORKERS")
+    if env:
+        return max(1, int(env))
+    if os.environ.get("RENDER"):
+        return 1
+    mem = free_memory_mb()
+    return 2 if mem is None else max(1, min(3, mem // 900))
 
 
 def launch(pw, extra):
@@ -229,8 +262,8 @@ class Cloner:
         self.fresh = set()
         self._lock = threading.Lock()
         self.total_bytes = 0
-        self.session = requests.Session()
-        self.session.headers.update({"User-Agent": UA, "Referer": self.start_url})
+        self.session = requests.Session(impersonate="chrome124")
+        self.session.headers.update({"Referer": self.start_url})
 
     # ---------- path / key helpers ----------
     def is_origin(self, netloc):
@@ -417,17 +450,18 @@ class Cloner:
                 pass
         return final, title, hrefs
 
-    def crawl(self, pw, workers=1):
+    def crawl(self, pw, workers=None):
         import threading
         from playwright.sync_api import sync_playwright
+
+        if workers is None:  # one browser on small cloud instances, a few in parallel when RAM allows
+            workers = default_workers()
 
         # 1. home page alone: resolves redirects (www, other host), title, sitemap
         browser, context = self._open(pw)
         start = self.norm_page(self.start_url)
         self.cb(1, self.max_pages, "Page 1 : /")
         final, title, hrefs = self._visit(context, start, long=True)
-        context.close()
-        browser.close()
         if self.norm_page(final) is None and final.startswith("http"):
             self.origin = norm_host(urllib.parse.urlparse(final).netloc)
         if title:
@@ -474,9 +508,14 @@ class Cloner:
                 finally:
                     ctx.close()
                     b.close()
-        threads = [threading.Thread(target=worker, daemon=True) for _ in range(workers)]
+        # no extra browser when there is nothing left to crawl (single page / page limit reached)
+        n_workers = min(workers, self.max_pages - 1) if queue else 0
+        threads = [threading.Thread(target=worker, daemon=True) for _ in range(n_workers)]
         for t in threads:
             t.start()
+        # closing Chrome takes ~2 s: do it while the workers already crawl
+        context.close()
+        browser.close()
         for t in threads:
             t.join()
 
@@ -644,66 +683,70 @@ class Cloner:
         import threading
         origin_root = f"{urllib.parse.urlparse(self.start_url).scheme}://{urllib.parse.urlparse(self.start_url).netloc}"
         dirty = set()
-        for rnd in range(rounds):
-            (self.dest / "_map.json").write_text(json.dumps(self.map, ensure_ascii=False), encoding="utf-8")
-            httpd = make_server(self.dest, 0, record_misses=True)
-            port = httpd.server_address[1]
-            threading.Thread(target=httpd.serve_forever, daemon=True).start()
-            base = f"http://127.0.0.1:{port}"
-            missing = set()
+        with sync_playwright() as pw:
+            # one browser for every round: closing/launching Chrome costs ~3 s each time
+            b = launch(pw, ["--ignore-gpu-blocklist", "--autoplay-policy=no-user-gesture-required", "--mute-audio"])
             try:
-                with sync_playwright() as pw:
-                    b = launch(pw, [
-                                                              "--ignore-gpu-blocklist", "--autoplay-policy=no-user-gesture-required", "--mute-audio"])
-                    ctx = b.new_context(service_workers="block", viewport={"width": 1440, "height": 900})
-                    ctx.route("**/*", lambda r: r.continue_() if r.request.url.startswith((base, "data:", "blob:")) else r.abort())
-                    pages = sorted(self.pages.keys(), key=lambda u: (urllib.parse.urlparse(u).path.count("/"), u))[:max_visit] or [self.start_url]
-                    if rnd and dirty:
-                        pages = [u for u in pages if u in dirty]
-                    dirty = set()
-                    for u in pages:
-                        before = len(httpd.misses)
-                        p = ctx.new_page()
-                        p.on("response", lambda r: missing.add(r.url) if r.status == 404 and r.url.startswith(base) else None)
+                for rnd in range(rounds):
+                    (self.dest / "_map.json").write_text(json.dumps(self.map, ensure_ascii=False), encoding="utf-8")
+                    httpd = make_server(self.dest, 0, record_misses=True)
+                    port = httpd.server_address[1]
+                    threading.Thread(target=httpd.serve_forever, daemon=True).start()
+                    base = f"http://127.0.0.1:{port}"
+                    missing = set()
+                    try:
+                        ctx = b.new_context(service_workers="block", viewport={"width": 1440, "height": 900})
+                        ctx.route("**/*", lambda r: r.continue_() if r.request.url.startswith((base, "data:", "blob:")) else r.abort())
+                        pages = sorted(self.pages.keys(), key=lambda u: (urllib.parse.urlparse(u).path.count("/"), u))[:max_visit] or [self.start_url]
+                        if rnd and dirty:
+                            pages = [u for u in pages if u in dirty]
+                        dirty = set()
+                        for u in pages:
+                            before = len(httpd.misses)
+                            p = ctx.new_page()
+                            p.on("response", lambda r: missing.add(r.url) if r.status == 404 and r.url.startswith(base) else None)
+                            try:
+                                pu = urllib.parse.urlparse(u)
+                                p.goto(base + (pu.path or "/") + (("?" + pu.query) if pu.query else ""), wait_until="load", timeout=45000)
+                                # local server answers in ms: a short quiet window is enough to see every miss
+                                interact(p, long=False, calm=0.35)
+                                p.wait_for_timeout(150)
+                            except Exception:
+                                pass
+                            p.close()
+                            if len(httpd.misses) > before:
+                                dirty.add(u)
+                        ctx.close()
+                    finally:
+                        httpd.shutdown()
+                    missing |= {base + p for p in httpd.misses}
+                    fetched = 0
+                    for murl in missing:
+                        mp = urllib.parse.urlparse(murl)
+                        path = mp.path
+                        if path in ("/", "") or os.path.splitext(path)[1].lower() in (".html", ".htm") or path.startswith("/preview/"):
+                            continue
+                        m = re.match(r"^/_ext/([^/]+)(/.*)?$", urllib.parse.unquote(path))
+                        if m:
+                            target = f"https://{m.group(1)}{m.group(2) or '/'}"
+                        else:
+                            target = origin_root + path
+                        if mp.query:
+                            target += "?" + mp.query
                         try:
-                            pu = urllib.parse.urlparse(u)
-                            p.goto(base + (pu.path or "/") + (("?" + pu.query) if pu.query else ""), wait_until="load", timeout=45000)
-                            interact(p, long=False)
-                            p.wait_for_timeout(500)
+                            r = self.session.get(target, timeout=60)
                         except Exception:
-                            pass
-                        p.close()
-                        if len(httpd.misses) > before:
-                            dirty.add(u)
-                    b.close()
+                            continue
+                        ct = r.headers.get("content-type", "")
+                        if r.status_code == 200 and r.content and "text/html" not in ct:
+                            self.save(target, ct, r.content)
+                            fetched += 1
+                    self.cb(3, 4, f"Réparation {rnd + 1} : {fetched} fichiers manquants récupérés")
+                    self.rewrite()
+                    if not fetched:
+                        break
             finally:
-                httpd.shutdown()
-            missing |= {base + p for p in httpd.misses}
-            fetched = 0
-            for murl in missing:
-                mp = urllib.parse.urlparse(murl)
-                path = mp.path
-                if path in ("/", "") or os.path.splitext(path)[1].lower() in (".html", ".htm") or path.startswith("/preview/"):
-                    continue
-                m = re.match(r"^/_ext/([^/]+)(/.*)?$", urllib.parse.unquote(path))
-                if m:
-                    target = f"https://{m.group(1)}{m.group(2) or '/'}"
-                else:
-                    target = origin_root + path
-                if mp.query:
-                    target += "?" + mp.query
-                try:
-                    r = self.session.get(target, timeout=60)
-                except Exception:
-                    continue
-                ct = r.headers.get("content-type", "")
-                if r.status_code == 200 and r.content and "text/html" not in ct:
-                    self.save(target, ct, r.content)
-                    fetched += 1
-            self.cb(3, 4, f"Réparation {rnd + 1} : {fetched} fichiers manquants récupérés")
-            self.rewrite()
-            if not fetched:
-                break
+                b.close()
 
 
     @classmethod
