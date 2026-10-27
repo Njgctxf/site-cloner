@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="noindex">
+  <title>Admin - Tableau de bord</title>
+  <style>
+    :root { --bg:#090a0f; --card:#121420; --border:#1e2238; --accent:#6366f1; --text:#f8fafc; --muted:#94a3b8; --ok:#10b981; --danger:#ef4444; --warn:#f59e0b; }
+    [hidden] { display:none !important; }
+    * { box-sizing:border-box; margin:0; padding:0; font-family:Inter,system-ui,sans-serif; }
+    body { background:var(--bg); color:var(--text); min-height:100vh; }
+    header { display:flex; justify-content:space-between; align-items:center; gap:12px; padding:16px 24px; border-bottom:1px solid var(--border); flex-wrap:wrap; }
+    header h1 { font-size:1.1rem; }
+    nav { display:flex; gap:8px; flex-wrap:wrap; }
+    nav button, .btn { background:var(--card); color:var(--text); border:1px solid var(--border); border-radius:8px; padding:7px 12px; font-size:.85rem; cursor:pointer; text-decoration:none; display:inline-block; }
+    nav button.active { background:var(--accent); border-color:var(--accent); }
+    .btn.danger { color:var(--danger); }
+    .btn:hover, nav button:hover { filter:brightness(1.2); }
+    main { max-width:1100px; margin:0 auto; padding:24px 16px 48px; }
+    section { display:none; }
+    section.active { display:block; }
+    .stats { display:grid; grid-template-columns:repeat(auto-fit,minmax(170px,1fr)); gap:12px; margin-bottom:8px; }
+    .stat { background:var(--card); border:1px solid var(--border); border-radius:12px; padding:16px; }
+    .stat .v { font-size:1.6rem; font-weight:700; }
+    .stat .l { color:var(--muted); font-size:.8rem; margin-top:4px; }
+    .table-wrap { background:var(--card); border:1px solid var(--border); border-radius:12px; overflow-x:auto; }
+    table { width:100%; border-collapse:collapse; font-size:.88rem; }
+    th, td { text-align:left; padding:10px 14px; border-bottom:1px solid var(--border); vertical-align:middle; }
+    th { color:var(--muted); font-weight:500; font-size:.78rem; text-transform:uppercase; letter-spacing:.04em; }
+    tr:last-child td { border-bottom:0; }
+    td .actions { display:flex; gap:6px; flex-wrap:wrap; }
+    .badge { padding:2px 8px; border-radius:999px; font-size:.75rem; }
+    .badge.completed { background:rgba(16,185,129,.15); color:var(--ok); }
+    .badge.running { background:rgba(245,158,11,.15); color:var(--warn); }
+    .badge.failed { background:rgba(239,68,68,.15); color:var(--danger); }
+    .empty { color:var(--muted); padding:24px; text-align:center; }
+    form.pw { max-width:380px; display:flex; flex-direction:column; gap:12px; background:var(--card); border:1px solid var(--border); border-radius:12px; padding:20px; }
+    form.pw label { font-size:.8rem; color:var(--muted); display:flex; flex-direction:column; gap:6px; }
+    input { background:#0b0d16; border:1px solid var(--border); color:var(--text); border-radius:8px; padding:9px 11px; font-size:.9rem; }
+    h2 { font-size:1rem; margin:20px 0 12px; }
+    #toast { position:fixed; bottom:16px; right:16px; background:var(--card); border:1px solid var(--border); padding:10px 16px; border-radius:10px; font-size:.85rem; display:none; }
+    form.pw.wide { max-width:560px; margin-bottom:16px; }
+    textarea { background:#0b0d16; border:1px solid var(--border); color:var(--text); border-radius:8px; padding:9px 11px; font-size:.9rem; resize:vertical; }
+    .warn { background:rgba(245,158,11,.12); border:1px solid var(--warn); color:var(--warn); border-radius:10px; padding:10px 14px; font-size:.85rem; margin-bottom:12px; }
+    .mono { font-family:'JetBrains Mono',monospace; font-size:.8rem; }
+    .trunc { max-width:280px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>⚡ SiteCloner Admin</h1>
+    <nav id="tabs">
+      <button data-tab="overview" class="active">Vue d'ensemble</button>
+      <button data-tab="sites">Sites clonés</button>
+      <button data-tab="jobs">Jobs</button>
+      <button data-tab="products">Boutique</button>
+      <button data-tab="orders">Commandes</button>
+      <button data-tab="settings">Compte</button>
+      <a class="btn" href="/__sc/" target="_blank" rel="noopener">App ↗</a>
+    </nav>
+    <form method="post" action="/admin/logout">
+      <input type="hidden" name="csrf" value="{{ csrf }}">
+      <span style="color:var(--muted);font-size:.85rem;margin-right:8px">{{ username }}</span>
+      <button class="btn" type="submit">Déconnexion</button>
+    </form>
+  </header>
+
+  <main>
+    <section id="tab-overview" class="active">
+      <div class="stats" id="stats"></div>
+    </section>
+
+    <section id="tab-sites">
+      <div class="table-wrap"><table>
+        <thead><tr><th>Site</th><th>Source</th><th>Date</th><th>Pages</th><th>Taille</th><th>Aperçu</th><th></th></tr></thead>
+        <tbody id="sites-body"></tbody>
+      </table></div>
+    </section>
+
+    <section id="tab-jobs">
+      <div class="table-wrap"><table>
+        <thead><tr><th>Job</th><th>URL</th><th>Statut</th><th>Détail</th><th></th></tr></thead>
+        <tbody id="jobs-body"></tbody>
+      </table></div>
+    </section>
+
+    <section id="tab-products">
+      <div id="stripe-warn" class="warn" hidden></div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+        <span style="color:var(--muted);font-size:.85rem">Visible publiquement sur <a href="/shop/" target="_blank" rel="noopener" style="color:var(--accent)">/shop/</a></span>
+        <button class="btn" id="new-product">+ Nouveau projet</button>
+      </div>
+      <form id="product-form" class="pw wide" hidden enctype="multipart/form-data">
+        <h2 id="pf-title" style="margin:0">Nouveau projet</h2>
+        <label>Titre<input name="title" required maxlength="200"></label>
+        <label>Description<textarea name="description" rows="5" maxlength="5000"></textarea></label>
+        <label>Prix (<span id="cur">€</span>)<input name="price" type="number" step="0.01" min="0.5" required></label>
+        <label>URL de démo (optionnel)<input name="demo_url" type="url" placeholder="https://..."></label>
+        <label>Image de couverture (png, jpg, webp)<input name="cover" type="file" accept=".png,.jpg,.jpeg,.webp"></label>
+        <label>Fichier à livrer (zip, pdf, apk, exe…) <small id="pf-file" style="color:var(--ok)"></small><input name="file" type="file"></label>
+        <label style="flex-direction:row;align-items:center;gap:8px"><input name="published" type="checkbox" value="1" style="width:auto"> Publié (visible dans la boutique)</label>
+        <div style="display:flex;gap:8px"><button class="btn" type="submit">Enregistrer</button><button class="btn" type="button" id="pf-cancel">Annuler</button></div>
+      </form>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Projet</th><th>Prix</th><th>Fichier</th><th>Statut</th><th></th></tr></thead>
+        <tbody id="products-body"></tbody>
+      </table></div>
+    </section>
+
+    <section id="tab-orders">
+      <div class="stats" id="order-stats"></div>
+      <div class="table-wrap" style="margin-top:12px"><table>
+        <thead><tr><th>Date</th><th>Projet</th><th>E-mail</th><th>Montant</th><th>Statut</th><th>Téléch.</th></tr></thead>
+        <tbody id="orders-body"></tbody>
+      </table></div>
+    </section>
+
+    <section id="tab-settings">
+      <h2>Changer le mot de passe</h2>
+      <form class="pw" id="pw-form">
+        <label>Mot de passe actuel<input type="password" id="pw-current" autocomplete="current-password" required></label>
+        <label>Nouveau mot de passe (10 caractères min.)<input type="password" id="pw-new" autocomplete="new-password" minlength="10" required></label>
+        <button class="btn" type="submit">Mettre à jour</button>
+      </form>
+    </section>
+  </main>
+  <div id="toast" role="status"></div>
+
+<script>
+const CSRF = {{ csrf|tojson }};
+const $ = (s) => document.querySelector(s);
+
+function esc(v) {
+  const d = document.createElement('div');
+  d.textContent = v == null ? '' : String(v);
+  return d.innerHTML;
+}
+function fmtSize(b) {
+  if (!b) return '0 o';
+  const u = ['o','Ko','Mo','Go','To']; let i = 0;
+  while (b >= 1024 && i < u.length - 1) { b /= 1024; i++; }
+  return b.toFixed(i ? 1 : 0) + ' ' + u[i];
+}
+function toast(msg) {
+  const t = $('#toast'); t.textContent = msg; t.style.display = 'block';
+  clearTimeout(toast._t); toast._t = setTimeout(() => t.style.display = 'none', 3000);
+}
+async function api(path, method = 'GET', body) {
+  const r = await fetch('/admin/api' + path, {
+    method, credentials: 'same-origin',
+    headers: { 'X-CSRF-Token': CSRF, ...(body ? { 'Content-Type': 'application/json' } : {}) },
+    body: body ? JSON.stringify(body) : undefined,
+  });
+  if (r.status === 401) { location.href = '/admin/login'; return {}; }
+  const data = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(data.error || ('Erreur ' + r.status));
+  return data;
+}
+
+async function loadOverview() {
+  const o = await api('/overview');
+  const cards = [
+    [o.sites, 'Sites clonés'], [o.total_pages, 'Pages au total'], [fmtSize(o.total_size), 'Taille des clones'],
+    [o.jobs_running, 'Jobs en cours'], [o.jobs_completed, 'Jobs réussis'], [o.jobs_failed, 'Jobs en échec'],
+    [o.active_previews, 'Aperçus actifs'], [fmtSize(o.disk_free) + ' / ' + fmtSize(o.disk_total), 'Disque libre'],
+  ];
+  $('#stats').innerHTML = cards.map(([v, l]) => `<div class="stat"><div class="v">${esc(v)}</div><div class="l">${esc(l)}</div></div>`).join('');
+}
+
+async function loadSites() {
+  const { sites } = await api('/sites');
+  $('#sites-body').innerHTML = sites.length ? sites.map(s => `
+    <tr>
+      <td><strong>${esc(s.title)}</strong><div class="mono" style="color:var(--muted)">${esc(s.id)}</div></td>
+      <td class="trunc">${esc(s.url)}</td>
+      <td>${esc(s.date)}</td>
+      <td>${esc(s.total_pages)}</td>
+      <td>${esc(fmtSize(s.total_size))}</td>
+      <td>${s.active_port ? 'port ' + esc(s.active_port) : '—'}</td>
+      <td><div class="actions">
+        <a class="btn" href="/preview/${encodeURIComponent(s.id)}/" target="_blank" rel="noopener">Ouvrir</a>
+        <a class="btn" href="/__sc/api/sites/${encodeURIComponent(s.id)}/download">ZIP</a>
+        ${s.active_port ? `<button class="btn" data-stop="${esc(s.id)}">Arrêter</button>` : ''}
+        <button class="btn danger" data-del="${esc(s.id)}">Supprimer</button>
+      </div></td>
+    </tr>`).join('') : '<tr><td colspan="7" class="empty">Aucun site cloné.</td></tr>';
+}
+
+async function loadJobs() {
+  const { jobs } = await api('/jobs');
+  $('#jobs-body').innerHTML = jobs.length ? jobs.map(j => `
+    <tr>
+      <td class="mono">${esc(j.job_id)}</td>
+      <td class="trunc">${esc(j.url)}</td>
+      <td><span class="badge ${esc(j.status)}">${esc(j.status)}</span></td>
+      <td class="trunc">${esc(j.error || j.message)}</td>
+      <td>${j.status !== 'running' ? `<button class="btn" data-clear="${esc(j.job_id)}">Effacer</button>` : ''}</td>
+    </tr>`).join('') : '<tr><td colspan="5" class="empty">Aucun job depuis le démarrage du serveur.</td></tr>';
+}
+
+let products = [];
+async function loadProducts() {
+  const r = await api('/shop/products');
+  products = r.products;
+  const missing = [];
+  if (!r.stripe_ready) missing.push('STRIPE_SECRET_KEY');
+  if (!r.webhook_ready) missing.push('STRIPE_WEBHOOK_SECRET');
+  const w = $('#stripe-warn');
+  w.hidden = !missing.length;
+  w.textContent = missing.length ? 'Paiement non configuré : variable(s) manquante(s) → ' + missing.join(', ') + '. Les achats sont désactivés tant que STRIPE_SECRET_KEY est absente.' : '';
+  $('#products-body').innerHTML = products.length ? products.map(p => `
+    <tr>
+      <td><strong>${esc(p.title)}</strong><div class="mono" style="color:var(--muted)">/shop/p/${esc(p.slug)}</div></td>
+      <td>${esc(p.price)}</td>
+      <td>${p.has_file ? esc(p.file) : '<span style="color:var(--warn)">aucun</span>'}</td>
+      <td><span class="badge ${p.published ? 'completed' : 'running'}">${p.published ? 'publié' : 'brouillon'}</span></td>
+      <td><div class="actions">
+        <button class="btn" data-edit="${p.id}">Modifier</button>
+        <button class="btn" data-toggle="${p.id}">${p.published ? 'Dépublier' : 'Publier'}</button>
+        <button class="btn danger" data-delp="${p.id}">Supprimer</button>
+      </div></td>
+    </tr>`).join('') : '<tr><td colspan="5" class="empty">Aucun projet. Clique sur « Nouveau projet ».</td></tr>';
+}
+
+async function loadOrders() {
+  const r = await api('/shop/orders');
+  $('#order-stats').innerHTML = [[r.revenue, 'Chiffre d\'affaires'], [r.paid_count, 'Commandes payées'], [r.orders.length, 'Commandes (total)']]
+    .map(([v, l]) => `<div class="stat"><div class="v">${esc(v)}</div><div class="l">${esc(l)}</div></div>`).join('');
+  const fmt = (t) => t ? new Date(t * 1000).toLocaleString('fr-FR') : '—';
+  $('#orders-body').innerHTML = r.orders.length ? r.orders.map(o => `
+    <tr><td>${esc(fmt(o.paid_at || o.created_at))}</td><td>${esc(o.title || '(supprimé)')}</td><td>${esc(o.email)}</td>
+    <td>${esc(o.amount)}</td><td><span class="badge ${o.status === 'paid' ? 'completed' : 'running'}">${esc(o.status === 'paid' ? 'payée' : 'en attente')}</span></td>
+    <td>${esc(o.downloads)}</td></tr>`).join('') : '<tr><td colspan="6" class="empty">Aucune commande.</td></tr>';
+}
+
+async function shopApi(path, method, formData) {
+  const r = await fetch('/admin/api/shop' + path, { method, credentials: 'same-origin', headers: { 'X-CSRF-Token': CSRF }, body: formData });
+  const data = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(data.error || ('Erreur ' + r.status));
+  return data;
+}
+
+const pf = $('#product-form');
+let editingId = null;
+function openForm(p) {
+  editingId = p ? p.id : null;
+  pf.reset();
+  $('#pf-title').textContent = p ? 'Modifier le projet' : 'Nouveau projet';
+  $('#pf-file').textContent = p && p.has_file ? '(actuel : ' + p.file + ' — laisse vide pour garder)' : '';
+  if (p) {
+    pf.title.value = p.title; pf.description.value = p.description;
+    pf.price.value = (p.price_cents / 100).toFixed(2); pf.demo_url.value = p.demo_url;
+    pf.published.checked = !!p.published;
+  }
+  pf.hidden = false; pf.scrollIntoView({ behavior: 'smooth' });
+}
+$('#new-product').addEventListener('click', () => openForm(null));
+$('#pf-cancel').addEventListener('click', () => pf.hidden = true);
+pf.addEventListener('submit', async e => {
+  e.preventDefault();
+  try {
+    await shopApi(editingId ? '/products/' + editingId : '/products', 'POST', new FormData(pf));
+    pf.hidden = true; toast('Projet enregistré'); loadProducts();
+  } catch (err) { toast(err.message); }
+});
+
+const loaders = { overview: loadOverview, sites: loadSites, jobs: loadJobs, products: loadProducts, orders: loadOrders, settings: async () => {} };
+let current = 'overview';
+function show(tab) {
+  current = tab;
+  document.querySelectorAll('#tabs button').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
+  document.querySelectorAll('main section').forEach(s => s.classList.toggle('active', s.id === 'tab-' + tab));
+  loaders[tab]().catch(e => toast(e.message));
+}
+$('#tabs').addEventListener('click', e => { const t = e.target.dataset && e.target.dataset.tab; if (t) show(t); });
+
+document.addEventListener('click', async e => {
+  const d = e.target.dataset || {};
+  try {
+    if (d.del && confirm('Supprimer définitivement ce site cloné ?')) { await api('/sites/' + encodeURIComponent(d.del), 'DELETE'); toast('Site supprimé'); loadSites(); }
+    if (d.stop) { await api('/sites/' + encodeURIComponent(d.stop) + '/stop', 'POST'); toast('Aperçu arrêté'); loadSites(); }
+    if (d.edit) openForm(products.find(p => String(p.id) === d.edit));
+    if (d.toggle) {
+      const p = products.find(x => String(x.id) === d.toggle);
+      const fd = new FormData();
+      fd.set('title', p.title); fd.set('description', p.description); fd.set('price', (p.price_cents / 100).toFixed(2));
+      fd.set('demo_url', p.demo_url); if (!p.published) fd.set('published', '1');
+      await shopApi('/products/' + p.id, 'POST', fd); loadProducts();
+    }
+    if (d.delp && confirm('Supprimer ce projet et ses fichiers ?')) { await shopApi('/products/' + d.delp, 'DELETE'); toast('Projet supprimé'); loadProducts(); }
+    if (d.clear) { await api('/jobs/' + encodeURIComponent(d.clear), 'DELETE'); loadJobs(); }
+  } catch (err) { toast(err.message); }
+});
+
+$('#pw-form').addEventListener('submit', async e => {
+  e.preventDefault();
+  try {
+    await api('/password', 'POST', { current: $('#pw-current').value, new: $('#pw-new').value });
+    e.target.reset(); toast('Mot de passe mis à jour');
+  } catch (err) { toast(err.message); }
+});
+
+show('overview');
+setInterval(() => { if (current === 'overview' || current === 'jobs') loaders[current]().catch(() => {}); }, 5000);
+</script>
+</body>
+</html>

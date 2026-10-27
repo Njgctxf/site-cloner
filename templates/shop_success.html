@@ -1,0 +1,17 @@
+{% extends "shop_base.html" %}
+{% block title %}Commande{% endblock %}
+{% block content %}
+{% if expired %}
+  <h1>Lien expiré</h1>
+  <p class="sub">Ce lien a expiré ou a atteint sa limite de téléchargements. Contacte le vendeur en indiquant ton e-mail ({{ order.email }}).</p>
+{% elif link %}
+  <h1>Merci pour ton achat ✅</h1>
+  <p class="sub">Ton lien de téléchargement est prêt (valable 7 jours, 5 téléchargements).</p>
+  <p><a class="btn" href="{{ link }}">Télécharger mon projet</a></p>
+  <p class="sub" style="margin-top:16px">Garde cette page ou ce lien : il est personnel.</p>
+{% else %}
+  <meta http-equiv="refresh" content="4">
+  <h1>Paiement en cours de confirmation…</h1>
+  <p class="sub">Cette page se met à jour automatiquement.</p>
+{% endif %}
+{% endblock %}

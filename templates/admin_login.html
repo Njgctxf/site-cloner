@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="noindex">
+  <title>Admin - Connexion</title>
+  <style>
+    :root { --bg:#090a0f; --card:#121420; --border:#1e2238; --accent:#6366f1; --text:#f8fafc; --muted:#94a3b8; --danger:#ef4444; }
+    * { box-sizing:border-box; margin:0; padding:0; font-family:Inter,system-ui,sans-serif; }
+    body { background:var(--bg); color:var(--text); min-height:100vh; display:grid; place-items:center; padding:16px; }
+    form { width:100%; max-width:360px; background:var(--card); border:1px solid var(--border); border-radius:16px; padding:28px; display:flex; flex-direction:column; gap:14px; }
+    h1 { font-size:1.25rem; }
+    p.sub { color:var(--muted); font-size:.85rem; margin-top:-6px; }
+    label { font-size:.8rem; color:var(--muted); display:flex; flex-direction:column; gap:6px; }
+    input { background:#0b0d16; border:1px solid var(--border); color:var(--text); border-radius:10px; padding:10px 12px; font-size:.95rem; }
+    input:focus { outline:2px solid var(--accent); border-color:transparent; }
+    button { background:var(--accent); color:#fff; border:0; border-radius:10px; padding:11px; font-weight:600; font-size:.95rem; cursor:pointer; }
+    button:hover { filter:brightness(1.1); }
+    .err { color:var(--danger); font-size:.85rem; }
+  </style>
+</head>
+<body>
+  <form method="post" autocomplete="on">
+    <h1>⚡ SiteCloner Admin</h1>
+    <p class="sub">Connecte-toi pour gérer la plateforme.</p>
+    {% if error %}<div class="err" role="alert">{{ error }}</div>{% endif %}
+    <label>Identifiant<input name="username" autocomplete="username" required autofocus></label>
+    <label>Mot de passe<input name="password" type="password" autocomplete="current-password" required></label>
+    <button type="submit">Se connecter</button>
+  </form>
+</body>
+</html>
