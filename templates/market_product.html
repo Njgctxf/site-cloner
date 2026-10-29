@@ -1,0 +1,217 @@
+{% extends "market_base.html" %}
+{% block title %}{{ p.title }}{% endblock %}
+{% block head %}
+<meta name="description" content="{{ (p.tagline or p.description)[:160] }}">
+{% if p.cover %}<meta property="og:image" content="{{ p.cover }}">{% endif %}
+<style>
+  .crumbs { color: var(--dim); font-size: .85rem; margin-bottom: 18px; display: flex; gap: 8px; flex-wrap: wrap; }
+  .crumbs a { text-decoration: none; color: var(--muted); }
+  .crumbs a:hover { color: var(--text); }
+  .layout { display: grid; grid-template-columns: minmax(0, 1.55fr) minmax(300px, 1fr); gap: 28px; align-items: start; }
+  @media (max-width: 900px) { .layout { grid-template-columns: 1fr; } }
+  .gallery { overflow: hidden; padding: 0; }
+  .stage { position: relative; aspect-ratio: 16/10; background: #05060a; cursor: zoom-in; overflow: hidden; }
+  .stage > img, .stage > video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; animation: g-in .5s var(--ease); }
+  @keyframes g-in { from { opacity: 0; transform: scale(1.02); } }
+  .stage .nav { position: absolute; top: 50%; transform: translateY(-50%); z-index: 2; opacity: 0; transition: opacity .3s; }
+  .stage:hover .nav { opacity: 1; }
+  .stage .prev { left: 12px; } .stage .next { right: 12px; }
+  .stage .ph { position: absolute; inset: 0; display: grid; place-items: center; font-size: 4rem; background: linear-gradient(135deg, #191d33, #2a1b3f); }
+  .thumbs { display: flex; gap: 10px; padding: 12px; overflow-x: auto; }
+  .thumbs button { flex: 0 0 96px; height: 62px; border-radius: 10px; overflow: hidden; border: 2px solid transparent; padding: 0; cursor: pointer; background: #111; position: relative; opacity: .65; transition: all .25s; }
+  .thumbs button:hover { opacity: 1; }
+  .thumbs button.on { border-color: var(--accent-2); opacity: 1; box-shadow: 0 0 18px -4px rgba(196, 92, 255, .7); }
+  .thumbs img, .thumbs video { width: 100%; height: 100%; object-fit: cover; }
+  .thumbs .play { position: absolute; inset: 0; display: grid; place-items: center; color: #fff; background: rgba(0, 0, 0, .35); }
+  .buy { position: sticky; top: 84px; padding: 24px; display: flex; flex-direction: column; gap: 14px; }
+  .buy h1 { margin: 0; font-size: clamp(1.5rem, 3vw, 2rem); letter-spacing: -.03em; line-height: 1.15; }
+  .bigprice { font-size: 2.2rem; font-weight: 800; letter-spacing: -.03em; }
+  .bigprice.free { background: linear-gradient(90deg, var(--ok), var(--cyan)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .row { display: flex; gap: 8px; flex-wrap: wrap; }
+  .row .ui-btn { flex: 1; }
+  .facts { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; font-size: .85rem; }
+  .facts div { padding: 10px 12px; border-radius: 12px; background: rgba(255, 255, 255, .03); border: 1px solid var(--line); }
+  .facts b { display: block; font-size: 1rem; margin-top: 2px; }
+  .section { padding: 24px; margin-top: 24px; }
+  .desc { color: #cfd4e4; line-height: 1.7; white-space: pre-line; font-size: .97rem; }
+  .code { position: relative; background: #05060a; border: 1px solid var(--line); border-radius: 12px; padding: 18px; font: .86rem/1.6 var(--mono); white-space: pre-wrap; color: #dcd8ff; max-height: 420px; overflow: auto; }
+  .code .ui-btn { position: sticky; float: right; top: 0; }
+  .lightbox { background: rgba(0, 0, 0, .92); }
+  .lightbox .box { width: auto; max-width: 95vw; background: none; border: 0; box-shadow: none; }
+  .lightbox img, .lightbox video { max-width: 92vw; max-height: 88vh; border-radius: 12px; display: block; }
+  /* demo preview */
+  .demo-box { width: min(1280px, 100%) !important; height: calc(100vh - 40px); display: flex; flex-direction: column; padding: 0 !important; overflow: hidden !important; }
+  .demo-bar { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-bottom: 1px solid var(--line); }
+  .demo-bar .url { flex: 1; font: .82rem var(--mono); color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding: 7px 12px; background: rgba(0, 0, 0, .3); border-radius: 8px; }
+  .demo-stage { flex: 1; display: grid; place-items: center; background: #05060a; overflow: auto; padding: 14px; }
+  .demo-stage iframe { width: 100%; height: 100%; border: 0; border-radius: 10px; background: #fff; transition: width .5s var(--ease); box-shadow: 0 20px 60px rgba(0, 0, 0, .6); }
+  .demo-dots { display: flex; gap: 6px; } .demo-dots i { width: 11px; height: 11px; border-radius: 50%; background: #ff5f57; } .demo-dots i:nth-child(2) { background: #febc2e; } .demo-dots i:nth-child(3) { background: #28c840; }
+</style>
+{% endblock %}
+{% block content %}
+{% set icons = {"design":"🎨","template":"🧩","prompt":"💬","skill":"🤖","software":"💻","asset":"🧊","other":"📦"} %}
+{% set media = p.media if p.media else ([{"kind": "image", "url": p.cover}] if p.cover else []) %}
+<main class="ui-wrap">
+  <div class="crumbs" data-reveal="fade"><a href="/shop/">Marketplace</a> / <a href="/shop/?cat={{ p.category }}">{{ p.category_label }}</a> / <span>{{ p.title }}</span></div>
+  <div class="layout">
+    <div>
+      <div class="gallery ui-card" data-reveal="zoom">
+        <div class="stage" id="stage">
+          {% if not media %}<div class="ph">{{ icons[p.category] }}</div>{% endif %}
+          {% if media|length > 1 %}
+          <button class="ui-btn icon nav prev" id="prev">‹</button><button class="ui-btn icon nav next" id="next">›</button>
+          {% endif %}
+        </div>
+        {% if media|length > 1 %}
+        <div class="thumbs" id="thumbs">
+          {% for m in media %}
+          <button data-i="{{ loop.index0 }}" class="{{ 'on' if loop.first }}">
+            {% if m.kind == "video" %}<video src="{{ m.url }}#t=0.5" muted preload="metadata"></video><span class="play">▶</span>{% else %}<img src="{{ m.url }}" alt="" loading="lazy">{% endif %}
+          </button>
+          {% endfor %}
+        </div>
+        {% endif %}
+      </div>
+
+      {% if p.preview_text %}
+      <div class="section ui-card" data-reveal>
+        <h2 class="ui-h2">{{ "💬 Aperçu du prompt" if p.category == "prompt" else "📄 Aperçu" }}</h2>
+        <div class="code" id="pv"><button class="ui-btn sm" id="copyPv">Copier</button>{{ p.preview_text }}</div>
+      </div>
+      {% endif %}
+
+      <div class="section ui-card" data-reveal>
+        <h2 class="ui-h2">Description</h2>
+        <div class="desc">{{ p.description or "Pas encore de description." }}</div>
+        {% if p.tags %}
+        <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:18px">{% for t in p.tags %}<span class="m-tag">#{{ t }}</span>{% endfor %}</div>
+        {% endif %}
+      </div>
+    </div>
+
+    <aside class="buy ui-card ui-border-glow" data-reveal style="--d:.1s">
+      <div class="row" style="align-items:center">
+        <span class="ui-badge accent" style="flex:0 0 auto">{{ icons[p.category] }} {{ p.category_label }}</span>
+        {% if p.featured %}<span class="ui-badge grad" style="flex:0 0 auto">★ À la une</span>{% endif %}
+        <span style="flex:1"></span>
+        <button class="m-fav" data-fav="{{ p.id }}" title="Favori" style="flex:0 0 38px">♡</button>
+      </div>
+      <h1>{{ p.title }}</h1>
+      {% if p.tagline %}<p class="ui-muted" style="margin:0;line-height:1.5">{{ p.tagline }}</p>{% endif %}
+      <div class="bigprice {{ 'free' if p.free }}">{{ p.price }}</div>
+      {% if error %}<div class="ui-badge danger" style="padding:8px 12px">{{ error }}</div>{% endif %}
+
+      {% if p.free %}
+        {% if p.has_file %}
+        <a class="ui-btn primary" href="/shop/p/{{ p.slug }}/get" id="dl">⬇ Télécharger gratuitement</a>
+        {% else %}
+        <span class="ui-badge warn" style="padding:8px 12px">Fichier bientôt disponible</span>
+        {% endif %}
+      {% elif can_pay %}
+        <form method="post" action="/shop/p/{{ p.slug }}/buy" style="display:flex;flex-direction:column;gap:10px">
+          <input class="ui-input" type="email" name="email" placeholder="ton@email.com" required>
+          <button class="ui-btn primary" type="submit">Acheter · {{ p.price }}</button>
+          <small class="ui-muted">Paiement sécurisé par Stripe. Lien de téléchargement valable 7 jours.</small>
+        </form>
+      {% else %}
+        <span class="ui-badge warn" style="padding:8px 12px">Achat indisponible pour le moment</span>
+      {% endif %}
+
+      <div class="row">
+        {% if p.demo_url %}<button class="ui-btn" id="demoBtn">👁 Prévisualiser</button>{% endif %}
+        <button class="ui-btn" id="share">🔗 Partager</button>
+      </div>
+      <div class="facts">
+        <div>Vues<b data-count="{{ p.views }}">{{ p.views }}</b></div>
+        <div>{{ "Téléchargements" if p.free else "Médias" }}<b data-count="{{ p.downloads if p.free else p.media|length }}">0</b></div>
+        <div>Catégorie<b>{{ p.category_label }}</b></div>
+        <div>Livrable<b>{{ "Inclus" if p.has_file else "À venir" }}</b></div>
+      </div>
+    </aside>
+  </div>
+
+  {% if related %}
+  <h2 class="ui-h2" style="margin-top:56px" data-reveal>Dans la même catégorie</h2>
+  <div class="m-grid" data-stagger>
+    {% for r in related %}
+    <a class="m-card ui-card hover ui-spot" href="/shop/p/{{ r.slug }}">
+      <div class="m-media">
+        {% if r.cover %}<img src="{{ r.cover }}" alt="" loading="lazy">{% else %}<div class="ph">{{ icons[r.category] }}</div>{% endif %}
+        <div class="m-top"><span class="m-fav" data-fav="{{ r.id }}">♡</span></div>
+      </div>
+      <div class="m-body"><h3>{{ r.title }}</h3><p>{{ r.tagline or r.description }}</p>
+        <div class="m-foot"><span class="m-price {{ 'free' if r.free }}">{{ r.price }}</span><span class="m-meta">👁 {{ r.views }}</span></div></div>
+    </a>
+    {% endfor %}
+  </div>
+  {% endif %}
+</main>
+
+<div class="ui-modal lightbox" id="lb"><div class="box" id="lbBox"></div></div>
+{% if p.demo_url %}
+<div class="ui-modal" id="demo">
+  <div class="box ui-card demo-box">
+    <div class="demo-bar">
+      <span class="demo-dots"><i></i><i></i><i></i></span>
+      <span class="url">{{ p.demo_url }}</span>
+      <div class="seg" id="devices" style="display:inline-flex;padding:3px;border-radius:10px;background:rgba(255,255,255,.04);border:1px solid var(--line)">
+        <button class="ui-btn sm ghost" data-w="100%">🖥</button><button class="ui-btn sm ghost" data-w="820px">📱 Tablette</button><button class="ui-btn sm ghost" data-w="390px">📱 Mobile</button>
+      </div>
+      <a class="ui-btn sm" href="{{ p.demo_url }}" target="_blank" rel="noopener">↗</a>
+      <button class="ui-btn sm icon ghost" data-close>✕</button>
+    </div>
+    <div class="demo-stage"><iframe id="demoFrame" title="Démo" loading="lazy"></iframe></div>
+  </div>
+</div>
+{% endif %}
+{% endblock %}
+{% block scripts %}
+<script>
+  const MEDIA = {{ (p.media if p.media else ([{"kind": "image", "url": p.cover}] if p.cover else []))|tojson }};
+  let cur = 0;
+  const stage = document.getElementById("stage");
+  const el = m => m.kind === "video" ? `<video src="${m.url}" controls autoplay muted loop playsinline></video>` : `<img src="${m.url}" alt="">`;
+  function show(i) {
+    if (!MEDIA.length) return;
+    cur = (i + MEDIA.length) % MEDIA.length;
+    stage.querySelectorAll("img,video").forEach(x => x.remove());
+    stage.insertAdjacentHTML("afterbegin", el(MEDIA[cur]));
+    document.querySelectorAll("#thumbs button").forEach(b => b.classList.toggle("on", +b.dataset.i === cur));
+  }
+  show(0);
+  document.querySelectorAll("#thumbs button").forEach(b => b.onclick = () => show(+b.dataset.i));
+  const pv = document.getElementById("prev"), nx = document.getElementById("next");
+  if (pv) { pv.onclick = e => { e.stopPropagation(); show(cur - 1); }; nx.onclick = e => { e.stopPropagation(); show(cur + 1); }; }
+  stage.addEventListener("click", e => {
+    if (!MEDIA.length || e.target.closest("button") || MEDIA[cur].kind === "video") return;
+    document.getElementById("lbBox").innerHTML = el(MEDIA[cur]); UI.open("lb");
+  });
+  addEventListener("keydown", e => {
+    if (document.querySelector(".ui-modal.open:not(#lb)")) return;
+    if (e.key === "ArrowLeft") show(cur - 1); if (e.key === "ArrowRight") show(cur + 1);
+    if (document.getElementById("lb").classList.contains("open")) document.getElementById("lbBox").innerHTML = el(MEDIA[cur]);
+  });
+
+  const copy = document.getElementById("copyPv");
+  if (copy) copy.onclick = () => {
+    const text = document.getElementById("pv").textContent.replace(/^Copier/, "").trim();
+    navigator.clipboard.writeText(text).then(() => { copy.textContent = "Copié ✓"; UI.toast("Copié dans le presse-papiers", "ok"); setTimeout(() => copy.textContent = "Copier", 1600); });
+  };
+  document.getElementById("share").onclick = async () => {
+    const data = {title: {{ p.title|tojson }}, url: location.href};
+    if (navigator.share) { try { await navigator.share(data); return; } catch (e) {} }
+    navigator.clipboard.writeText(location.href).then(() => UI.toast("Lien copié", "ok"));
+  };
+  const dl = document.getElementById("dl");
+  if (dl) dl.addEventListener("click", () => UI.toast("Téléchargement lancé", "ok"));
+
+  const demoBtn = document.getElementById("demoBtn");
+  if (demoBtn) {
+    const frame = document.getElementById("demoFrame");
+    demoBtn.onclick = () => { if (!frame.src) frame.src = {{ p.demo_url|tojson }}; UI.open("demo"); };
+    document.getElementById("devices").addEventListener("click", e => {
+      const b = e.target.closest("[data-w]"); if (b) frame.style.width = b.dataset.w;
+    });
+  }
+</script>
+{% endblock %}

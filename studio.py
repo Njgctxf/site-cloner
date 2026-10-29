@@ -591,6 +591,17 @@ def thumb(site_id, pid):
     return send_file(str(f), mimetype="image/jpeg", max_age=0)
 
 
+@bp.route("/__sc/studio/<site_id>/cover.jpg")
+def cover(site_id):
+    """Preview of the site for the dashboard cards: the home page thumbnail, else the shallowest page that has one."""
+    site_dir = _site(site_id)
+    tdir = site_dir / "_studio" / "thumbs"
+    f = next((tdir / f"{p['id']}.jpg" for p in _pages(site_dir) if p["thumb"]), None) if tdir.is_dir() else None
+    if not f:
+        abort(404)
+    return send_file(str(f), mimetype="image/jpeg", max_age=0)
+
+
 @bp.route("/__sc/api/studio/<site_id>/design")
 def api_design(site_id):
     return jsonify(_design(_site(site_id)))
@@ -738,3 +749,173 @@ def clean_code(site_id):
     buf.seek(0)
     suffix = f"section-{n + 1}" if n is not None else "page"
     return send_file(buf, mimetype="application/zip", as_attachment=True, download_name=f"{site_id}-{suffix}-code.zip")
+
+
+# ---------------------------------------------------------------- inspector (component tree + live edits)
+
+OVERRIDE_TAG = '<script src="/_edited/overrides.js" data-sc-overrides></script>'
+OP_ACTS = {"text", "img", "video", "link", "src", "hide", "dup", "embed"}
+UPLOAD_EXT = {"img": {".png", ".jpg", ".jpeg", ".webp", ".avif", ".gif", ".svg"},
+              "video": {".mp4", ".webm", ".mov"},
+              "model": {".glb", ".gltf", ".usdz", ".fbx", ".obj"}}
+MAX_INSPECT_UPLOAD = 120 * 1024 * 1024
+
+
+def _norm_page(p):
+    p = re.sub(r"/index\.html?$", "/", p or "/", flags=re.I)
+    return (p.rstrip("/") or "/") if p != "/" else "/"
+
+
+def _ovr_file(site_dir):
+    return site_dir / "_edited" / "overrides.json"
+
+
+def _load_ovr(site_dir):
+    try:
+        data = json.loads(_ovr_file(site_dir).read_text(encoding="utf-8"))
+        return data if isinstance(data.get("pages"), dict) else {"pages": {}}
+    except Exception:
+        return {"pages": {}}
+
+
+def _publish_ovr(site_dir, data):
+    """overrides.js = the edits + the runtime; every page of the clone loads it once."""
+    ed = site_dir / "_edited"
+    ed.mkdir(exist_ok=True)
+    runtime = Path(__file__).with_name("sc_overrides.js").read_text(encoding="utf-8")
+    (ed / "overrides.js").write_text("window.__SC_OVERRIDES = " + json.dumps(data, ensure_ascii=False) + ";\n" + runtime,
+                                     encoding="utf-8")
+    for p in _pages(site_dir):
+        f = site_dir / p["file"]
+        try:
+            t = f.read_text(encoding="utf-8")
+        except OSError:
+            continue
+        if "data-sc-overrides" in t:
+            continue
+        i = t.lower().rfind("</body>")
+        f.write_text((t[:i] + OVERRIDE_TAG + t[i:]) if i >= 0 else (t + OVERRIDE_TAG), encoding="utf-8")
+
+
+def _save_ovr(site_dir, data):
+    ed = site_dir / "_edited"
+    (ed / "history").mkdir(parents=True, exist_ok=True)
+    cur = _ovr_file(site_dir)
+    if cur.exists():
+        shutil.copy2(cur, ed / "history" / f"{int(time.time() * 1000)}.json")
+    cur.write_text(json.dumps(data, ensure_ascii=False, indent=1), encoding="utf-8")
+    _publish_ovr(site_dir, data)
+
+
+def _clean_ops(ops):
+    out = []
+    for op in ops if isinstance(ops, list) else []:
+        if not isinstance(op, dict) or op.get("act") not in OP_ACTS or not isinstance(op.get("sel"), str):
+            continue
+        clean = {"act": op["act"], "sel": op["sel"][:600]}
+        for k in ("value", "src", "href", "text", "html", "label"):
+            if isinstance(op.get(k), str):
+                clean[k] = op[k][:20000]
+        out.append(clean)
+    return out[:2000]
+
+
+@bp.route("/__sc/studio/<site_id>/inspect")
+def inspect_page(site_id):
+    site_dir = _site(site_id)
+    pages = _pages(site_dir)
+    key = request.args.get("key") or (pages[0]["key"] if pages else "/")
+    return render_template("inspect.html", site_id=site_id, site_name=site_dir.name, key=key,
+                           pages=[{"key": p["key"], "title": p["title"]} for p in pages])
+
+
+@bp.route("/__sc/api/studio/<site_id>/inspect/ops")
+def inspect_ops(site_id):
+    site_dir = _site(site_id)
+    data = _load_ovr(site_dir)
+    hist = site_dir / "_edited" / "history"
+    return jsonify({"ops": data["pages"].get(_norm_page(request.args.get("key", "/")), []),
+                    "history": len(list(hist.glob("*.json"))) if hist.exists() else 0})
+
+
+@bp.route("/__sc/api/studio/<site_id>/inspect/save", methods=["POST"])
+def inspect_save(site_id):
+    site_dir = _site(site_id)
+    body = request.get_json(silent=True) or {}
+    page = _norm_page(body.get("key", "/"))
+    data = _load_ovr(site_dir)
+    ops = _clean_ops(body.get("ops"))
+    if ops:
+        data["pages"][page] = ops
+    else:
+        data["pages"].pop(page, None)
+    _save_ovr(site_dir, data)
+    return jsonify({"ok": True, "count": len(ops)})
+
+
+@bp.route("/__sc/api/studio/<site_id>/inspect/undo", methods=["POST"])
+def inspect_undo(site_id):
+    site_dir = _site(site_id)
+    hist = sorted((site_dir / "_edited" / "history").glob("*.json")) if (site_dir / "_edited" / "history").exists() else []
+    if not hist:
+        return jsonify({"error": "Aucune sauvegarde précédente"}), 409
+    last = hist[-1]
+    data = json.loads(last.read_text(encoding="utf-8"))
+    _ovr_file(site_dir).write_text(json.dumps(data, ensure_ascii=False, indent=1), encoding="utf-8")
+    last.unlink()
+    _publish_ovr(site_dir, data)
+    return jsonify({"ok": True})
+
+
+@bp.route("/__sc/api/studio/<site_id>/inspect/upload", methods=["POST"])
+def inspect_upload(site_id):
+    site_dir = _site(site_id)
+    kind = request.form.get("kind", "")
+    f = request.files.get("file")
+    if kind not in UPLOAD_EXT or not f or not f.filename:
+        return jsonify({"error": "Fichier manquant"}), 400
+    name = re.sub(r"[^A-Za-z0-9._-]", "_", os.path.basename(f.filename))[-80:]
+    ext = os.path.splitext(name)[1].lower()
+    if ext not in UPLOAD_EXT[kind]:
+        return jsonify({"error": f"Format non pris en charge ({ext or 'inconnu'})"}), 400
+    data = f.read(MAX_INSPECT_UPLOAD + 1)
+    if not data or len(data) > MAX_INSPECT_UPLOAD:
+        return jsonify({"error": "Fichier vide ou trop lourd (120 Mo maximum)"}), 400
+    if kind != "model":
+        out = site_dir / "_edited"
+        out.mkdir(exist_ok=True)
+        fname = hashlib.md5(data).hexdigest()[:8] + "_" + name
+        (out / fname).write_bytes(data)
+        return jsonify({"src": "/_edited/" + fname})
+    # a 3D model replaces the file the page already loads: the site's code keeps working with it
+    if ext == ".glb" and data[:4] != b"glTF":
+        return jsonify({"error": "Ce fichier n'est pas un modèle .glb valide"}), 400
+    target = urllib.parse.urlsplit(request.form.get("target", ""))
+    key = target.path + (("?" + target.query) if target.query else "")
+    res = resolve(site_dir, key)
+    if not res or res[0] != "file":
+        return jsonify({"error": "Modèle d'origine introuvable dans le clone"}), 404
+    dest = res[1]
+    rel = dest.relative_to(site_dir).as_posix()
+    backup = site_dir / "_edited" / "_backup_assets" / (rel + ".orig")
+    if not backup.exists():
+        backup.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(dest, backup)
+    dest.write_bytes(data)
+    return jsonify({"ok": True, "replaced": rel})
+
+
+@bp.route("/__sc/api/studio/<site_id>/inspect/model-restore", methods=["POST"])
+def inspect_model_restore(site_id):
+    site_dir = _site(site_id)
+    target = urllib.parse.urlsplit((request.get_json(silent=True) or {}).get("target", ""))
+    res = resolve(site_dir, target.path + (("?" + target.query) if target.query else ""))
+    if not res or res[0] != "file":
+        return jsonify({"error": "Modèle introuvable"}), 404
+    rel = res[1].relative_to(site_dir).as_posix()
+    backup = site_dir / "_edited" / "_backup_assets" / (rel + ".orig")
+    if not backup.exists():
+        return jsonify({"error": "Ce modèle n'a pas été remplacé"}), 409
+    shutil.copy2(backup, res[1])
+    backup.unlink()
+    return jsonify({"ok": True})

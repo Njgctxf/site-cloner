@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}Marketplace{% endblock %} · SiteCloner</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/__sc/static/ui.css">
+  <style>
+    .m-card { overflow: hidden; display: flex; flex-direction: column; text-decoration: none; cursor: pointer; }
+    .m-media { position: relative; aspect-ratio: 16/10; overflow: hidden; background: linear-gradient(135deg, #191d33, #2a1b3f); }
+    .m-media img, .m-media video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; transition: transform 1s var(--ease), opacity .4s; }
+    .m-media video { opacity: 0; }
+    .m-card:hover .m-media img { transform: scale(1.06); }
+    .m-card:hover .m-media video.ready { opacity: 1; }
+    .m-media .ph { position: absolute; inset: 0; display: grid; place-items: center; font-size: 2.6rem; opacity: .8; }
+    .m-media::after { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, transparent 55%, rgba(7, 8, 13, .75)); pointer-events: none; }
+    .m-top { position: absolute; left: 12px; top: 12px; right: 12px; display: flex; gap: 6px; z-index: 2; align-items: flex-start; }
+    .m-top .ui-badge { backdrop-filter: blur(8px); background: rgba(7, 8, 13, .6); color: #e3e6f3; }
+    .m-fav {
+      margin-left: auto; width: 36px; height: 36px; border-radius: 50%; border: 1px solid rgba(255, 255, 255, .15); background: rgba(7, 8, 13, .55);
+      backdrop-filter: blur(8px); display: grid; place-items: center; cursor: pointer; color: #fff; font-size: 1rem; transition: transform .3s var(--ease), background .2s;
+    }
+    .m-fav:hover { transform: scale(1.12); }
+    .m-fav.on { background: rgba(255, 92, 157, .25); border-color: rgba(255, 92, 157, .6); }
+    .m-fav.pop { animation: m-pop .45s var(--ease); }
+    @keyframes m-pop { 40% { transform: scale(1.35); } }
+    .m-quick {
+      position: absolute; left: 50%; bottom: 14px; z-index: 2; transform: translate(-50%, 12px); opacity: 0; transition: all .35s var(--ease);
+    }
+    .m-card:hover .m-quick { opacity: 1; transform: translate(-50%, 0); }
+    .m-body { padding: 16px 18px 18px; display: flex; flex-direction: column; gap: 8px; flex: 1; }
+    .m-body h3 { margin: 0; font-size: 1.02rem; font-weight: 700; letter-spacing: -.01em; }
+    .m-body p { margin: 0; color: var(--muted); font-size: .88rem; line-height: 1.45; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+    .m-foot { margin-top: auto; display: flex; align-items: center; justify-content: space-between; padding-top: 6px; }
+    .m-price { font-weight: 800; font-size: 1.05rem; }
+    .m-price.free { background: linear-gradient(90deg, var(--ok), var(--cyan)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+    .m-meta { display: flex; gap: 10px; color: var(--dim); font-size: .78rem; }
+    .m-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 20px; }
+    .m-tag { font-size: .75rem; color: var(--muted); padding: 3px 9px; border-radius: 999px; border: 1px solid var(--line); }
+  </style>
+  {% block head %}{% endblock %}
+</head>
+<body class="ui">
+  <nav class="ui-nav">
+    <a class="ui-brand" href="/shop/"><span class="ui-logo">⚡</span> SiteCloner <span class="ui-badge accent">Market</span></a>
+    <div class="ui-links">
+      <a href="/__sc/">Cloneur</a>
+      <a href="/shop/" class="{% block nav_market %}on{% endblock %}">Marketplace</a>
+      <a href="/shop/#favoris" data-favlink>♥ Favoris <span data-favcount></span></a>
+      <a href="/admin">Admin</a>
+    </div>
+  </nav>
+  {% block content %}{% endblock %}
+  <script src="/__sc/static/ui.js"></script>
+  <script>
+    // Favorites live in the visitor's browser (no account needed)
+    window.Favs = {
+      key: "sc_market_favs",
+      all() { try { return JSON.parse(localStorage.getItem(this.key) || "[]"); } catch (e) { return []; } },
+      has(id) { return this.all().includes(id); },
+      toggle(id) {
+        let a = this.all(); const on = !a.includes(id);
+        a = on ? [...a, id] : a.filter(x => x !== id);
+        try { localStorage.setItem(this.key, JSON.stringify(a)); } catch (e) {}
+        this.badge(); document.dispatchEvent(new CustomEvent("favs")); return on;
+      },
+      badge() { const n = this.all().length; document.querySelectorAll("[data-favcount]").forEach(e => e.textContent = n ? `(${n})` : ""); },
+    };
+    Favs.badge();
+    document.addEventListener("click", e => {
+      const b = e.target.closest("[data-fav]");
+      if (!b) return;
+      e.preventDefault(); e.stopPropagation();
+      const id = +b.dataset.fav, on = Favs.toggle(id);
+      document.querySelectorAll(`[data-fav="${id}"]`).forEach(x => { x.classList.toggle("on", on); x.textContent = on ? "♥" : "♡"; x.classList.remove("pop"); void x.offsetWidth; x.classList.add("pop"); });
+      UI.toast(on ? "Ajouté aux favoris" : "Retiré des favoris", on ? "ok" : "");
+    });
+    document.querySelectorAll("[data-fav]").forEach(x => { const on = Favs.has(+x.dataset.fav); x.classList.toggle("on", on); x.textContent = on ? "♥" : "♡"; });
+    // Hover videos on cards
+    document.addEventListener("pointerover", e => {
+      const c = e.target.closest(".m-card"); if (!c) return;
+      const v = c.querySelector("video[data-src]");
+      if (v && !v.src) { v.src = v.dataset.src; v.addEventListener("loadeddata", () => v.classList.add("ready"), {once: true}); }
+      if (v) v.play().catch(() => {});
+    });
+    document.addEventListener("pointerout", e => {
+      const c = e.target.closest(".m-card"); if (!c || c.contains(e.relatedTarget)) return;
+      const v = c.querySelector("video"); if (v) v.pause();
+    });
+  </script>
+  {% block scripts %}{% endblock %}
+</body>
+</html>

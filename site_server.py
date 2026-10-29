@@ -102,6 +102,8 @@ def resolve(root, raw_path: str):
 
 # ---------- in-place editor (editor.js is injected into pages opened with ?__edit=1) ----------
 EDITOR_JS = Path(__file__).with_name("editor.js")
+# Studio inspector: overrides runtime + bridge, injected into pages opened with ?__inspect=1
+INSPECTOR_FILES = (Path(__file__).with_name("sc_overrides.js"), Path(__file__).with_name("inspector.js"))
 IMG_EXT = {".png", ".jpg", ".jpeg", ".gif", ".webp", ".svg", ".avif"}
 MAX_UPLOAD = 40 * 1024 * 1024
 
@@ -283,6 +285,9 @@ class _Handler(BaseHTTPRequestHandler):
         sp = urllib.parse.urlsplit(self.path)
         if sp.path == "/__editor.js" and EDITOR_JS.exists():
             return self._send_bytes(200, "text/javascript; charset=utf-8", EDITOR_JS.read_bytes(), head_only)
+        if sp.path == "/__inspector.js" and all(f.exists() for f in INSPECTOR_FILES):
+            return self._send_bytes(200, "text/javascript; charset=utf-8",
+                                    b"\n".join(f.read_bytes() for f in INSPECTOR_FILES), head_only)
         if sp.path == "/__pages":
             return self._send_bytes(200, "application/json", json.dumps(list_pages(self.root)).encode(), head_only)
         res = resolve(self.root, self.path)
@@ -303,6 +308,12 @@ class _Handler(BaseHTTPRequestHandler):
             self.end_headers()
             return
         _, f, ctype = res
+        if "text/html" in ctype and urllib.parse.parse_qs(sp.query).get("__inspect") == ["1"]:
+            raw = f.read_bytes()
+            tag = b'<script src="/__inspector.js"></script>'
+            i = raw.lower().rfind(b"</body>")
+            body = raw[:i] + tag + raw[i:] if i >= 0 else raw + tag
+            return self._send_bytes(200, "text/html; charset=utf-8", body, head_only)
         if "text/html" in ctype and urllib.parse.parse_qs(sp.query).get("__edit") == ["1"]:
             raw = f.read_bytes()
             tag = b'<script src="/__editor.js"></script>'
@@ -328,7 +339,8 @@ class _Handler(BaseHTTPRequestHandler):
             ctype += "; charset=utf-8" if "charset" not in ctype else ""
         self.send_header("Content-Type", ctype)
         self.send_header("Accept-Ranges", "bytes")
-        if "text/html" in ctype:
+        # pages, the inspector's edits and 3D models (replaceable in the Studio) must never be served stale
+        if "text/html" in ctype or "_edited" in f.parts or f.suffix.lower() in (".glb", ".gltf", ".usdz", ".fbx", ".obj"):
             self.send_header("Cache-Control", "no-cache")
         else:
             self.send_header("Cache-Control", "public, max-age=31536000, immutable")

@@ -32,7 +32,7 @@ from admin import init_admin
 from shop import init_shop
 from studio import init_studio
 
-app = Flask(__name__, template_folder="templates")
+app = Flask(__name__, template_folder="templates", static_folder="static", static_url_path="/__sc/static")
 
 BASE_DIR = Path(__file__).resolve().parent
 CLONED_DIR = BASE_DIR / "cloned_sites"

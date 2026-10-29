@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Inspecteur — {{ site_name }}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+  <style>
+    :root { --bg:#090a0f; --panel:#11131c; --card:#161925; --border:#232842; --accent:#6366f1; --accent-soft:rgba(99,102,241,.16);
+            --pink:#ff6fae; --text:#f1f5f9; --muted:#8b95ab; --ok:#10b981; --warn:#f59e0b; }
+    * { box-sizing:border-box; margin:0; padding:0; font-family:'Inter',sans-serif; }
+    html, body { height:100%; background:var(--bg); color:var(--text); overflow:hidden; }
+    button, input, select, textarea { font:inherit; color:inherit; }
+    .top { height:56px; display:flex; align-items:center; gap:8px; padding:0 14px; border-bottom:1px solid var(--border); background:var(--panel); }
+    .top a { color:var(--muted); text-decoration:none; font-size:13px; white-space:nowrap; }
+    .top a:hover { color:var(--text); }
+    .btn { background:var(--card); border:1px solid var(--border); border-radius:8px; padding:7px 11px; font-size:13px; cursor:pointer;
+           white-space:nowrap; display:inline-flex; align-items:center; gap:6px; }
+    .btn:hover { border-color:#3a4170; }
+    .btn.primary { background:var(--accent); border-color:var(--accent); font-weight:600; }
+    .btn.on { background:var(--accent-soft); border-color:var(--accent); }
+    .btn:disabled { opacity:.45; cursor:default; }
+    .btn.danger:hover { border-color:#ef4444; color:#fca5a5; }
+    select { background:var(--card); border:1px solid var(--border); border-radius:8px; padding:7px 9px; font-size:13px; max-width:260px; }
+    .seg { display:flex; border:1px solid var(--border); border-radius:8px; overflow:hidden; }
+    .seg button { background:var(--card); border:0; padding:7px 10px; font-size:12.5px; cursor:pointer; color:var(--muted); }
+    .seg button.on { background:var(--accent-soft); color:var(--text); }
+    .sp { flex:1; }
+    .status { font-size:12px; color:var(--muted); white-space:nowrap; }
+    .status.dirty { color:var(--warn); }
+    main { display:flex; height:calc(100% - 56px); }
+    .stage { flex:1; display:flex; justify-content:center; background:#05060a; overflow:auto; padding:14px; position:relative; }
+    .frame { height:100%; border:1px solid var(--border); border-radius:10px; overflow:hidden; background:#fff; transition:width .2s; box-shadow:0 20px 60px rgba(0,0,0,.5); }
+    iframe { width:100%; height:100%; border:0; display:block; }
+    .loading { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; color:var(--muted); font-size:14px; pointer-events:none; }
+    aside { width:400px; border-left:1px solid var(--border); background:var(--panel); display:flex; flex-direction:column; min-height:0; }
+    .tree { flex:1; overflow:auto; padding:10px 8px; min-height:120px; }
+    .props { border-top:1px solid var(--border); max-height:58%; overflow:auto; padding:14px; display:none; }
+    .props.open { display:block; }
+    .blk { margin-bottom:6px; border:1px solid transparent; border-radius:9px; }
+    .blk > .head { display:flex; align-items:center; gap:6px; padding:7px 8px; border-radius:8px; cursor:pointer; }
+    .blk > .head:hover, .row:hover, .row.hov, .blk > .head.hov { background:#1a1e2e; }
+    .blk > .head b { font-size:12px; text-transform:uppercase; letter-spacing:.05em; color:#c7d2fe; }
+    .blk > .head span { font-size:12.5px; color:var(--muted); flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .chev { color:var(--muted); font-size:11px; width:12px; transition:transform .15s; }
+    .blk.closed .chev { transform:rotate(-90deg); }
+    .blk.closed .items { display:none; }
+    .items { padding-left:16px; }
+    .row { display:flex; align-items:center; gap:8px; padding:5px 8px; border-radius:7px; cursor:pointer; font-size:12.5px; }
+    .row .ic { width:22px; height:20px; border-radius:5px; background:#1e2235; display:flex; align-items:center; justify-content:center;
+               font-size:11px; font-weight:700; color:#a5b4fc; flex:none; }
+    .row .lb { flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:#d6dbe7; }
+    .row.sel, .blk > .head.sel { background:var(--accent-soft); outline:1px solid var(--accent); }
+    .row .ed { width:7px; height:7px; border-radius:50%; background:var(--pink); flex:none; }
+    .row.hidden .lb, .head.hidden span { text-decoration:line-through; opacity:.55; }
+    .props h4 { font-size:13px; margin-bottom:4px; }
+    .props .sub { font-size:12px; color:var(--muted); margin-bottom:12px; line-height:1.45; }
+    .props label { display:block; font-size:12px; color:var(--muted); margin:12px 0 5px; }
+    .props input[type=text], .props textarea { width:100%; background:#0b0d14; border:1px solid var(--border); border-radius:8px; padding:8px 10px; font-size:13px; }
+    .props textarea { min-height:84px; resize:vertical; line-height:1.45; }
+    .props .acts { display:flex; flex-wrap:wrap; gap:6px; margin-top:12px; }
+    .props img.pv { max-width:100%; max-height:150px; border-radius:8px; border:1px solid var(--border); display:block; background:#0b0d14; }
+    .model { border:1px solid var(--border); border-radius:8px; padding:9px 10px; margin-top:8px; font-size:12px; }
+    .model code { font-family:'JetBrains Mono',monospace; font-size:11px; color:#c7d2fe; word-break:break-all; display:block; margin-bottom:7px; }
+    .note { font-size:12px; color:var(--muted); line-height:1.5; background:#0b0d14; border:1px solid var(--border); border-radius:8px; padding:9px 10px; margin-top:10px; }
+    .empty { color:var(--muted); font-size:13px; padding:14px 8px; line-height:1.5; }
+    .toast { position:fixed; top:66px; left:50%; transform:translateX(-50%); background:var(--panel); border:1px solid var(--border); border-radius:8px;
+             padding:8px 14px; font-size:13px; z-index:50; opacity:0; transition:opacity .2s; pointer-events:none; }
+    .toast.on { opacity:1; }
+    @media (max-width:1100px) { aside { width:330px; } .top .hide-s { display:none; } }
+  </style>
+  <link rel="stylesheet" href="/__sc/static/ui.css">
+  <link rel="stylesheet" href="/__sc/static/tool.css">
+</head>
+<body>
+  <div class="top">
+    <a href="/__sc/studio/{{ site_id }}">← Studio</a>
+    <select id="page"></select>
+    <div class="seg hide-s" id="device">
+      <button data-w="100%" class="on" title="Ordinateur">🖥</button><button data-w="820px" title="Tablette">▭</button><button data-w="390px" title="Mobile">📱</button>
+    </div>
+    <div class="seg" id="mode">
+      <button data-m="select" class="on" title="Cliquer dans la page sélectionne l'élément">Sélection</button><button data-m="nav" title="Utiliser la page normalement">Navigation</button>
+    </div>
+    <span class="sp"></span>
+    <span class="status" id="status"></span>
+    <button class="btn" id="undo" disabled title="Annuler la dernière modification">↶</button>
+    <button class="btn hide-s" id="undoSave" title="Revenir à la sauvegarde précédente">Restaurer la version précédente</button>
+    <button class="btn primary" id="save" disabled>Enregistrer</button>
+  </div>
+  <main>
+    <div class="stage"><div class="frame" id="frame"><iframe id="view" title="Page inspectée"></iframe></div><div class="loading" id="loading">Chargement de la page…</div></div>
+    <aside>
+      <div class="tree" id="tree"><p class="empty">Analyse de la page…</p></div>
+      <div class="props" id="props"></div>
+    </aside>
+  </main>
+  <div class="toast" id="toast"></div>
+
+<script>
+const SITE = {{ site_id|tojson }}, PAGES = {{ pages|tojson }};
+let KEY = {{ key|tojson }};
+const API = `/__sc/api/studio/${SITE}/inspect`;
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const norm = p => (p || '/').replace(/\/index\.html?$/i, '/').replace(/(.)\/+$/, '$1') || '/';
+let base = '', tree = null, byId = {}, ops = [], savedOps = '[]', undoStack = [], selected = null, frameReady = false;
+const ICON = {heading:'H', text:'¶', image:'🖼', video:'▶', '3d':'3D', embed:'⧉', link:'🔗', button:'▣', form:'▤'};
+const TYPE = {heading:'Titre', text:'Texte', image:'Image', video:'Vidéo', '3d':'Élément 3D', embed:'Intégration', link:'Lien', button:'Bouton', form:'Formulaire'};
+
+function toast(m) { const t = $('toast'); t.textContent = m; t.classList.add('on'); clearTimeout(t._h); t._h = setTimeout(() => t.classList.remove('on'), 2600); }
+const send = msg => $('view').contentWindow && $('view').contentWindow.postMessage(Object.assign({scParent: true}, msg), '*');
+function dirty() { return JSON.stringify(ops) !== savedOps; }
+function refreshStatus() {
+  const d = dirty();
+  $('status').textContent = d ? `${ops.length} modification(s) · non enregistré` : (ops.length ? `${ops.length} modification(s) enregistrée(s)` : 'Aucune modification');
+  $('status').classList.toggle('dirty', d);
+  $('save').disabled = !d; $('undo').disabled = !undoStack.length;
+}
+
+// ---------- page loading ----------
+PAGES.forEach(p => { const o = document.createElement('option'); o.value = p.key; o.textContent = (p.title || p.key) + '  ·  ' + p.key; $('page').appendChild(o); });
+async function openPage(key) {
+  KEY = key; $('page').value = key; selected = null; tree = null; $('props').classList.remove('open');
+  $('tree').innerHTML = '<p class="empty">Analyse de la page…</p>'; $('loading').style.display = 'flex';
+  const d = await (await fetch(`${API}/ops?key=${encodeURIComponent(key)}`)).json();
+  ops = d.ops || []; savedOps = JSON.stringify(ops); undoStack = []; refreshStatus();
+  if (!base) { const s = await (await fetch(`/__sc/api/sites/${SITE}/serve`, {method: 'POST'})).json(); base = (s.url || '').replace(/\/$/, ''); }
+  frameReady = false;
+  $('view').src = `${base}${key}${key.includes('?') ? '&' : '?'}__inspect=1`;
+  history_push_url(key);
+}
+function history_push_url(key) { const u = new URL(location.href); u.searchParams.set('key', key); window.history.replaceState(null, '', u); }
+$('page').onchange = () => { if (dirty() && !confirm('Des modifications ne sont pas enregistrées. Changer de page quand même ?')) { $('page').value = KEY; return; } openPage($('page').value); };
+function reloadFrame() { frameReady = false; $('loading').style.display = 'flex'; $('view').src = `${base}${KEY}${KEY.includes('?') ? '&' : '?'}__inspect=1&t=${Date.now()}`; }
+
+// ---------- messages from the page ----------
+addEventListener('message', ev => {
+  const m = ev.data; if (!m || !m.sc) return;
+  if (m.type === 'hello') { frameReady = true; send({type: 'mode', select: $('mode').querySelector('.on').dataset.m === 'select'}); send({type: 'apply', ops}); }
+  if (m.type === 'tree') {
+    $('loading').style.display = 'none';
+    if (norm(m.page) !== norm(KEY)) {  // navigation inside the page (navigation mode)
+      const match = PAGES.find(p => norm(p.key) === norm(m.page));
+      if (match && !dirty()) { KEY = match.key; $('page').value = KEY; history_push_url(KEY);
+        fetch(`${API}/ops?key=${encodeURIComponent(KEY)}`).then(r => r.json()).then(d => { ops = d.ops || []; savedOps = JSON.stringify(ops); undoStack = []; refreshStatus(); send({type: 'apply', ops}); }); }
+    }
+    tree = m; renderTree();
+  }
+  if (m.type === 'hover') markHover(m.id);
+  if (m.type === 'select') selectId(m.id, true);
+});
+
+// ---------- tree ----------
+function opFor(sel, act) { return ops.find(o => o.sel === sel && o.act === act); }
+function editedSel(sel) { return ops.some(o => o.sel === sel); }
+function renderTree() {
+  byId = {};
+  if (!tree || !tree.blocks.length) { $('tree').innerHTML = '<p class="empty">Aucun bloc détecté sur cette page.</p>'; return; }
+  $('tree').innerHTML = tree.blocks.map(b => {
+    byId[b.id] = Object.assign({type: 'block'}, b);
+    const hidden = !!opFor(b.sel, 'hide');
+    const rows = b.items.map(it => { byId[it.id] = it;
+      const h = !!opFor(it.sel, 'hide');
+      return `<div class="row${h ? ' hidden' : ''}" data-id="${it.id}"><span class="ic">${ICON[it.type] || '•'}</span><span class="lb">${esc(it.label)}</span>${editedSel(it.sel) ? '<i class="ed"></i>' : ''}</div>`; }).join('');
+    return `<div class="blk" data-blk="${b.id}"><div class="head${hidden ? ' hidden' : ''}" data-id="${b.id}"><span class="chev">▼</span><b>${esc(b.kind)}</b><span>${esc(b.label)}</span>${editedSel(b.sel) ? '<i class="ed" style="width:7px;height:7px;border-radius:50%;background:var(--pink)"></i>' : ''}</div>
+      <div class="items">${rows || '<p class="empty" style="padding:4px 8px">Aucun élément modifiable repéré.</p>'}</div></div>`;
+  }).join('');
+  $('tree').querySelectorAll('[data-id]').forEach(el => {
+    el.onmouseenter = () => send({type: 'hover', id: +el.dataset.id});
+    el.onclick = e => { if (e.target.classList.contains('chev')) { el.parentElement.classList.toggle('closed'); return; } selectId(+el.dataset.id, false); };
+  });
+  if (selected && byId[selected.id]) markSelected(selected.id);
+}
+function markHover(id) { $('tree').querySelectorAll('.hov').forEach(e => e.classList.remove('hov')); const r = $('tree').querySelector(`[data-id="${id}"]`); if (r) r.classList.add('hov'); }
+function markSelected(id) {
+  $('tree').querySelectorAll('.sel').forEach(e => e.classList.remove('sel'));
+  const r = $('tree').querySelector(`[data-id="${id}"]`);
+  if (r) { r.classList.add('sel'); const blk = r.closest('.blk'); blk && blk.classList.remove('closed'); r.scrollIntoView({block: 'nearest'}); }
+}
+function selectId(id, fromPage) {
+  const it = byId[id]; if (!it) return;
+  selected = it; markSelected(id); if (!fromPage) send({type: 'select', id}); renderProps();
+}
+
+// ---------- edits ----------
+function setOp(op, opts = {}) {
+  undoStack.push(JSON.stringify(ops));
+  ops = ops.filter(o => !(o.sel === op.sel && o.act === op.act));
+  if (!opts.remove) ops.push(op);
+  send({type: 'apply', ops, rebuild: !!opts.rebuild});
+  if (opts.reload) reloadFrame();
+  refreshStatus(); renderTree();
+}
+$('undo').onclick = () => {
+  if (!undoStack.length) return;
+  const prev = JSON.parse(undoStack.pop());
+  const structural = ops.some(o => ['hide', 'dup', 'embed'].includes(o.act) && !prev.some(p => p.sel === o.sel && p.act === o.act));
+  ops = prev; refreshStatus(); renderTree();
+  if (structural) reloadFrame(); else send({type: 'apply', ops});
+};
+$('save').onclick = async () => {
+  const r = await fetch(`${API}/save`, {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({key: KEY, ops})});
+  if (!r.ok) { toast('Enregistrement impossible'); return; }
+  savedOps = JSON.stringify(ops); undoStack = []; refreshStatus(); toast('Modifications enregistrées dans le clone');
+};
+$('undoSave').onclick = async () => {
+  if (!confirm('Revenir à la version enregistrée précédente ? Les modifications non enregistrées seront perdues.')) return;
+  const r = await fetch(`${API}/undo`, {method: 'POST'}); const d = await r.json();
+  if (!r.ok) { toast(d.error || 'Impossible'); return; }
+  toast('Version précédente restaurée'); openPage(KEY);
+};
+async function upload(kind, file, target) {
+  const fd = new FormData(); fd.append('kind', kind); fd.append('file', file); if (target) fd.append('target', target);
+  toast('Envoi du fichier…');
+  const r = await fetch(`${API}/upload`, {method: 'POST', body: fd}); const d = await r.json();
+  if (!r.ok) { toast(d.error || 'Envoi impossible'); return null; }
+  return d;
+}
+const pickFile = accept => new Promise(res => { const i = document.createElement('input'); i.type = 'file'; i.accept = accept; i.onchange = () => res(i.files[0] || null); i.click(); });
+
+// ---------- properties panel ----------
+function renderProps() {
+  const it = selected, P = $('props'); if (!it) { P.classList.remove('open'); return; }
+  P.classList.add('open');
+  const kind = it.type === 'block' ? it.kind : (TYPE[it.type] || it.type);
+  let h = `<h4>${esc(kind)}</h4><div class="sub">${esc(it.label || '')}</div>`;
+  const textOp = opFor(it.sel, 'text'), linkOp = opFor(it.sel, 'link');
+  if (it.type === 'heading' || it.type === 'text' || it.type === 'button') {
+    const cur = textOp ? textOp.value : (it.text || it.label.replace(/^H\d · /, ''));
+    h += `<label>Texte</label><textarea id="fText">${esc(cur)}</textarea>`;
+  }
+  if (it.type === 'link') {
+    h += `<label>Texte du lien</label><input type="text" id="fLinkText" value="${esc(linkOp && linkOp.text != null ? linkOp.text : it.text)}">
+          <label>Destination</label><input type="text" id="fHref" value="${esc(linkOp && linkOp.href != null ? linkOp.href : it.href)}">`;
+  }
+  if (it.type === 'image') {
+    const op = opFor(it.sel, 'img'), src = op ? base + op.src : it.src;
+    h += `<label>Aperçu</label><img class="pv" src="${esc(src)}" alt=""><div class="acts"><button class="btn primary" id="fImg">Remplacer l'image</button>${op ? '<button class="btn" id="fImgReset">Image d\'origine</button>' : ''}</div>`;
+  }
+  if (it.type === 'video') {
+    h += `<div class="acts"><button class="btn primary" id="fVid">Remplacer la vidéo (.mp4, .webm)</button></div>`;
+  }
+  if (it.type === 'embed') {
+    const op = opFor(it.sel, 'src');
+    h += `<label>Adresse de l'intégration</label><input type="text" id="fSrc" value="${esc(op ? op.src : it.src)}"><div class="acts"><button class="btn primary" id="fSrcApply">Appliquer</button></div>`;
+  }
+  if (it.type === '3d') {
+    const models = (tree && tree.models) || [];
+    h += `<div class="note">Cet élément est dessiné par le code du site. Deux façons de le remplacer :<br>
+      <b>1. Remplacer le modèle</b> que la scène charge : le site continue de fonctionner, mais la caméra et l'éclairage ont été réglés pour l'ancien modèle.<br>
+      <b>2. Remplacer l'élément</b> par une intégration (Spline, Sketchfab…), une vidéo ou une image : fiable, mais les animations du site liées à cette scène sont perdues.</div>`;
+    h += `<label>Modèles 3D chargés par la page</label>` + (models.length ? models.map((u, i) => `<div class="model"><code>${esc(u.replace(base, ''))}</code>
+        <button class="btn" data-model="${i}">Remplacer ce modèle</button> <button class="btn" data-restore="${i}">Restaurer l'original</button></div>`).join('')
+      : `<div class="note">Aucun fichier de modèle (.glb, .gltf…) détecté : la scène est construite directement dans le code. Utilisez le remplacement de l'élément.</div>`);
+    const emb = opFor(it.sel, 'embed');
+    h += `<label>Remplacer l'élément par une intégration (adresse d'une scène Spline, Sketchfab, YouTube…)</label>
+      <input type="text" id="fEmbed" placeholder="https://my.spline.design/…" value="">
+      <div class="acts"><button class="btn primary" id="fEmbedApply">Remplacer</button><button class="btn" id="fEmbedVideo">…par une vidéo</button><button class="btn" id="fEmbedImg">…par une image</button>${emb ? '<button class="btn" id="fEmbedReset">Rétablir la 3D d\'origine</button>' : ''}</div>`;
+  }
+  const hidden = !!opFor(it.sel, 'hide'), dup = !!opFor(it.sel, 'dup');
+  h += `<div class="acts" style="margin-top:16px;border-top:1px solid var(--border);padding-top:12px">
+    <button class="btn" id="fHide">${hidden ? '👁 Réafficher' : '🚫 Masquer'}</button>
+    ${['block', 'image', 'button', 'link', 'heading', 'text'].includes(it.type) ? `<button class="btn" id="fDup">${dup ? 'Retirer le doublon' : '⧉ Dupliquer'}</button>` : ''}
+    ${editedSel(it.sel) ? '<button class="btn danger" id="fReset">Tout annuler sur cet élément</button>' : ''}</div>`;
+  P.innerHTML = h;
+
+  let tmr = null;
+  const on = (id, ev, fn) => { const el = $(id); if (el) el.addEventListener(ev, fn); };
+  on('fText', 'input', e => { clearTimeout(tmr); const v = e.target.value; tmr = setTimeout(() => setOp({act: 'text', sel: it.sel, value: v}), 250); });
+  const linkUpd = () => { clearTimeout(tmr); tmr = setTimeout(() => setOp({act: 'link', sel: it.sel, href: $('fHref').value, text: $('fLinkText').value}), 300); };
+  on('fHref', 'input', linkUpd); on('fLinkText', 'input', linkUpd);
+  on('fImg', 'click', async () => { const f = await pickFile('image/*'); if (!f) return; const d = await upload('img', f); if (d) { setOp({act: 'img', sel: it.sel, src: d.src}); renderProps(); } });
+  on('fImgReset', 'click', () => { setOp({act: 'img', sel: it.sel}, {remove: true, reload: true}); renderProps(); });
+  on('fVid', 'click', async () => { const f = await pickFile('video/mp4,video/webm,video/quicktime'); if (!f) return; const d = await upload('video', f); if (d) setOp({act: 'video', sel: it.sel, src: d.src}); });
+  on('fSrcApply', 'click', () => setOp({act: 'src', sel: it.sel, src: $('fSrc').value.trim()}));
+  document.querySelectorAll('[data-model]').forEach(b => b.onclick = async () => {
+    const url = tree.models[+b.dataset.model]; const f = await pickFile('.glb,.gltf,.usdz,.fbx,.obj'); if (!f) return;
+    const d = await upload('model', f, url); if (d) { toast('Modèle remplacé dans le clone : rechargement…'); reloadFrame(); }
+  });
+  document.querySelectorAll('[data-restore]').forEach(b => b.onclick = async () => {
+    const r = await fetch(`${API}/model-restore`, {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({target: tree.models[+b.dataset.restore]})});
+    const d = await r.json(); toast(r.ok ? 'Modèle d\'origine restauré' : (d.error || 'Impossible')); if (r.ok) reloadFrame();
+  });
+  const iframeHtml = u => `<iframe src="${esc(u)}" style="position:absolute;inset:0;width:100%;height:100%;border:0" allow="autoplay; fullscreen; xr-spatial-tracking" allowfullscreen loading="lazy"></iframe>`;
+  on('fEmbedApply', 'click', () => { const u = $('fEmbed').value.trim(); if (!/^https:\/\//.test(u)) { toast('Indiquez une adresse https://'); return; } setOp({act: 'embed', sel: it.sel, html: iframeHtml(u)}, {reload: !!opFor(it.sel, 'embed')}); renderProps(); });
+  on('fEmbedVideo', 'click', async () => { const f = await pickFile('video/mp4,video/webm'); if (!f) return; const d = await upload('video', f);
+    if (d) { setOp({act: 'embed', sel: it.sel, html: `<video src="${d.src}" autoplay muted loop playsinline style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover"></video>`}); renderProps(); } });
+  on('fEmbedImg', 'click', async () => { const f = await pickFile('image/*'); if (!f) return; const d = await upload('img', f);
+    if (d) { setOp({act: 'embed', sel: it.sel, html: `<img src="${d.src}" alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover">`}); renderProps(); } });
+  on('fEmbedReset', 'click', () => { setOp({act: 'embed', sel: it.sel}, {remove: true, reload: true}); renderProps(); });
+  on('fHide', 'click', () => { setOp({act: 'hide', sel: it.sel}, {remove: hidden, reload: hidden}); renderProps(); });
+  on('fDup', 'click', () => { setOp({act: 'dup', sel: it.sel}, {remove: dup, reload: dup, rebuild: !dup}); renderProps(); });
+  on('fReset', 'click', () => { undoStack.push(JSON.stringify(ops)); ops = ops.filter(o => o.sel !== it.sel); refreshStatus(); reloadFrame(); renderProps(); });
+}
+
+// ---------- toolbar ----------
+$('device').querySelectorAll('button').forEach(b => b.onclick = () => {
+  $('device').querySelectorAll('button').forEach(x => x.classList.remove('on')); b.classList.add('on');
+  $('frame').style.width = b.dataset.w; setTimeout(() => send({type: 'rebuild'}), 500);
+});
+$('mode').querySelectorAll('button').forEach(b => b.onclick = () => {
+  $('mode').querySelectorAll('button').forEach(x => x.classList.remove('on')); b.classList.add('on');
+  send({type: 'mode', select: b.dataset.m === 'select'});
+});
+$('frame').style.width = '100%';
+addEventListener('beforeunload', e => { if (dirty()) { e.preventDefault(); e.returnValue = ''; } });
+openPage(KEY);
+</script>
+</body>
+</html>

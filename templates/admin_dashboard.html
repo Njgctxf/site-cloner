@@ -4,305 +4,518 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="robots" content="noindex">
-  <title>Admin - Tableau de bord</title>
+  <title>Admin · SiteCloner</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/__sc/static/ui.css">
   <style>
-    :root { --bg:#090a0f; --card:#121420; --border:#1e2238; --accent:#6366f1; --text:#f8fafc; --muted:#94a3b8; --ok:#10b981; --danger:#ef4444; --warn:#f59e0b; }
-    [hidden] { display:none !important; }
-    * { box-sizing:border-box; margin:0; padding:0; font-family:Inter,system-ui,sans-serif; }
-    body { background:var(--bg); color:var(--text); min-height:100vh; }
-    header { display:flex; justify-content:space-between; align-items:center; gap:12px; padding:16px 24px; border-bottom:1px solid var(--border); flex-wrap:wrap; }
-    header h1 { font-size:1.1rem; }
-    nav { display:flex; gap:8px; flex-wrap:wrap; }
-    nav button, .btn { background:var(--card); color:var(--text); border:1px solid var(--border); border-radius:8px; padding:7px 12px; font-size:.85rem; cursor:pointer; text-decoration:none; display:inline-block; }
-    nav button.active { background:var(--accent); border-color:var(--accent); }
-    .btn.danger { color:var(--danger); }
-    .btn:hover, nav button:hover { filter:brightness(1.2); }
-    main { max-width:1100px; margin:0 auto; padding:24px 16px 48px; }
-    section { display:none; }
-    section.active { display:block; }
-    .stats { display:grid; grid-template-columns:repeat(auto-fit,minmax(170px,1fr)); gap:12px; margin-bottom:8px; }
-    .stat { background:var(--card); border:1px solid var(--border); border-radius:12px; padding:16px; }
-    .stat .v { font-size:1.6rem; font-weight:700; }
-    .stat .l { color:var(--muted); font-size:.8rem; margin-top:4px; }
-    .table-wrap { background:var(--card); border:1px solid var(--border); border-radius:12px; overflow-x:auto; }
-    table { width:100%; border-collapse:collapse; font-size:.88rem; }
-    th, td { text-align:left; padding:10px 14px; border-bottom:1px solid var(--border); vertical-align:middle; }
-    th { color:var(--muted); font-weight:500; font-size:.78rem; text-transform:uppercase; letter-spacing:.04em; }
-    tr:last-child td { border-bottom:0; }
-    td .actions { display:flex; gap:6px; flex-wrap:wrap; }
-    .badge { padding:2px 8px; border-radius:999px; font-size:.75rem; }
-    .badge.completed { background:rgba(16,185,129,.15); color:var(--ok); }
-    .badge.running { background:rgba(245,158,11,.15); color:var(--warn); }
-    .badge.failed { background:rgba(239,68,68,.15); color:var(--danger); }
-    .empty { color:var(--muted); padding:24px; text-align:center; }
-    form.pw { max-width:380px; display:flex; flex-direction:column; gap:12px; background:var(--card); border:1px solid var(--border); border-radius:12px; padding:20px; }
-    form.pw label { font-size:.8rem; color:var(--muted); display:flex; flex-direction:column; gap:6px; }
-    input { background:#0b0d16; border:1px solid var(--border); color:var(--text); border-radius:8px; padding:9px 11px; font-size:.9rem; }
-    h2 { font-size:1rem; margin:20px 0 12px; }
-    #toast { position:fixed; bottom:16px; right:16px; background:var(--card); border:1px solid var(--border); padding:10px 16px; border-radius:10px; font-size:.85rem; display:none; }
-    form.pw.wide { max-width:560px; margin-bottom:16px; }
-    textarea { background:#0b0d16; border:1px solid var(--border); color:var(--text); border-radius:8px; padding:9px 11px; font-size:.9rem; resize:vertical; }
-    .warn { background:rgba(245,158,11,.12); border:1px solid var(--warn); color:var(--warn); border-radius:10px; padding:10px 14px; font-size:.85rem; margin-bottom:12px; }
-    .mono { font-family:'JetBrains Mono',monospace; font-size:.8rem; }
-    .trunc { max-width:280px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    [hidden] { display: none !important; }
+    .shell { display: grid; grid-template-columns: 250px minmax(0, 1fr); min-height: 100vh; }
+    .side { position: sticky; top: 0; height: 100vh; padding: 20px 14px; border-right: 1px solid var(--line); background: rgba(7, 8, 13, .55); backdrop-filter: blur(16px); display: flex; flex-direction: column; gap: 4px; }
+    .side .ui-brand { padding: 4px 10px 20px; }
+    .side button, .side a.link {
+      display: flex; align-items: center; gap: 12px; width: 100%; padding: 11px 12px; border: 0; border-radius: 12px; background: transparent; color: var(--muted);
+      font: 500 .92rem var(--font); cursor: pointer; text-align: left; text-decoration: none; position: relative; transition: color .2s, background .2s;
+    }
+    .side button:hover, .side a.link:hover { color: var(--text); background: rgba(255, 255, 255, .04); }
+    .side button.on { color: var(--text); background: var(--grad-soft); box-shadow: inset 0 0 0 1px var(--line-strong); }
+    .side button.on::before { content: ""; position: absolute; left: -14px; top: 10px; bottom: 10px; width: 3px; border-radius: 3px; background: var(--grad); }
+    .side .ic { width: 22px; text-align: center; }
+    .side .n:empty { display: none; }
+    .side .n { margin-left: auto; font-size: .72rem; padding: 2px 7px; border-radius: 999px; background: rgba(255, 255, 255, .06); }
+    .side .bottom { margin-top: auto; padding-top: 14px; border-top: 1px solid var(--line); display: flex; flex-direction: column; gap: 4px; }
+    .main { padding: 28px clamp(16px, 3vw, 40px) 80px; min-width: 0; }
+    .top { display: flex; align-items: center; gap: 12px; margin-bottom: 26px; flex-wrap: wrap; }
+    .top h1 { margin: 0; font-size: 1.7rem; letter-spacing: -.03em; }
+    .top .sub { color: var(--muted); font-size: .9rem; }
+    .top .actions { margin-left: auto; display: flex; gap: 8px; flex-wrap: wrap; }
+    section.tab { display: none; }
+    section.tab.on { display: block; animation: tab-in .5s var(--ease); }
+    @keyframes tab-in { from { opacity: 0; transform: translateY(10px); } }
+    .cols { display: grid; grid-template-columns: 1.3fr 1fr; gap: 18px; margin-top: 18px; }
+    @media (max-width: 1000px) { .cols { grid-template-columns: 1fr; } }
+    .panel { padding: 20px; }
+    .bars { display: flex; flex-direction: column; gap: 12px; }
+    .bar .l { display: flex; justify-content: space-between; font-size: .85rem; margin-bottom: 6px; }
+    .bar .t { height: 8px; border-radius: 99px; background: rgba(255, 255, 255, .05); overflow: hidden; }
+    .bar .t i { display: block; height: 100%; border-radius: inherit; background: var(--grad); width: 0; transition: width 1.2s var(--ease); }
+    .list-row { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--line); font-size: .88rem; }
+    .list-row:last-child { border: 0; }
+    .site-grid, .prod-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(290px, 1fr)); gap: 16px; }
+    .site-card, .prod-card { overflow: hidden; display: flex; flex-direction: column; }
+    .site-card .thumb, .prod-card .thumb { aspect-ratio: 16/9; background: linear-gradient(135deg, #191d33, #2a1b3f); position: relative; overflow: hidden; display: grid; place-items: center; font-size: 2rem; }
+    .site-card .thumb img, .prod-card .thumb img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: top; transition: transform 1.2s var(--ease); }
+    .site-card:hover .thumb img, .prod-card:hover .thumb img { transform: scale(1.05); }
+    .site-card .thumb .badges, .prod-card .thumb .badges { position: absolute; left: 10px; top: 10px; display: flex; gap: 6px; z-index: 1; }
+    .site-card .thumb .badges .ui-badge, .prod-card .thumb .badges .ui-badge { backdrop-filter: blur(8px); }
+    .card-body { padding: 14px 16px 16px; display: flex; flex-direction: column; gap: 8px; flex: 1; }
+    .card-body h3 { margin: 0; font-size: 1rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .card-body .meta { display: flex; gap: 12px; color: var(--dim); font-size: .78rem; flex-wrap: wrap; }
+    .card-body .acts { display: flex; gap: 6px; flex-wrap: wrap; margin-top: auto; padding-top: 6px; }
+    .filters { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 18px; align-items: center; }
+    .filters .ui-input { max-width: 280px; padding: 9px 12px; }
+    .mono { font-family: var(--mono); font-size: .78rem; }
+    .trunc { max-width: 320px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .warn-box { padding: 12px 16px; border-radius: 12px; background: rgba(255, 194, 75, .08); border: 1px solid rgba(255, 194, 75, .35); color: #ffd98a; font-size: .86rem; margin-bottom: 16px; }
+    /* editor drawer */
+    .drawer { position: fixed; inset: 0; z-index: 150; pointer-events: none; }
+    .drawer .bg { position: absolute; inset: 0; background: rgba(3, 4, 8, .6); backdrop-filter: blur(6px); opacity: 0; transition: opacity .35s; }
+    .drawer .panel-d { position: absolute; top: 0; right: 0; bottom: 0; width: min(760px, 100%); background: var(--bg-2); border-left: 1px solid var(--line-strong); transform: translateX(100%); transition: transform .5s var(--ease); display: flex; flex-direction: column; }
+    .drawer.open { pointer-events: auto; }
+    .drawer.open .bg { opacity: 1; }
+    .drawer.open .panel-d { transform: none; }
+    .d-head { display: flex; align-items: center; gap: 10px; padding: 18px 22px; border-bottom: 1px solid var(--line); }
+    .d-head h2 { margin: 0; font-size: 1.15rem; }
+    .d-body { flex: 1; overflow: auto; padding: 22px; }
+    .d-foot { display: flex; gap: 10px; padding: 14px 22px; border-top: 1px solid var(--line); align-items: center; }
+    .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    @media (max-width: 600px) { .grid2 { grid-template-columns: 1fr; } }
+    .drop {
+      border: 1.5px dashed var(--line-strong); border-radius: 14px; padding: 22px; text-align: center; color: var(--muted); cursor: pointer; transition: all .25s;
+      background: rgba(255, 255, 255, .02); font-size: .9rem;
+    }
+    .drop:hover, .drop.over { border-color: var(--accent-2); background: rgba(196, 92, 255, .06); color: var(--text); }
+    .drop .big { font-size: 1.6rem; display: block; margin-bottom: 6px; }
+    .media-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 10px; margin-top: 12px; }
+    .media-item { position: relative; aspect-ratio: 4/3; border-radius: 12px; overflow: hidden; background: #111; border: 1px solid var(--line); animation: tab-in .4s var(--ease); }
+    .media-item img, .media-item video { width: 100%; height: 100%; object-fit: cover; }
+    .media-item .ops { position: absolute; inset: auto 6px 6px 6px; display: flex; gap: 4px; justify-content: center; opacity: 0; transition: opacity .2s; }
+    .media-item:hover .ops { opacity: 1; }
+    .media-item .ops button { flex: 1; border: 0; border-radius: 8px; background: rgba(7, 8, 13, .8); color: #fff; padding: 5px; cursor: pointer; font-size: .8rem; }
+    .media-item .ops button.del:hover { background: var(--danger); }
+    .media-item .tag { position: absolute; left: 6px; top: 6px; }
+    .media-item.pending { opacity: .7; outline: 2px dashed var(--accent); }
+    .file-pill { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-radius: 12px; background: rgba(46, 230, 166, .07); border: 1px solid rgba(46, 230, 166, .25); font-size: .86rem; margin-bottom: 8px; }
+    .price-row { display: flex; gap: 12px; align-items: flex-end; }
+    .switch { position: relative; display: inline-flex; align-items: center; gap: 10px; cursor: pointer; font-size: .9rem; user-select: none; }
+    .switch input { display: none; }
+    .switch .s { width: 40px; height: 22px; border-radius: 99px; background: #262b41; position: relative; transition: background .25s; flex: 0 0 auto; }
+    .switch .s::after { content: ""; position: absolute; left: 3px; top: 3px; width: 16px; height: 16px; border-radius: 50%; background: #fff; transition: transform .3s var(--ease); }
+    .switch input:checked + .s { background: var(--accent); box-shadow: 0 0 14px -2px rgba(124, 108, 255, .8); }
+    .switch input:checked + .s::after { transform: translateX(18px); }
+    @media (max-width: 860px) {
+      .shell { grid-template-columns: 1fr; }
+      .side { position: sticky; z-index: 50; height: auto; flex-direction: row; overflow-x: auto; padding: 10px; border-right: 0; border-bottom: 1px solid var(--line); }
+      .side .ui-brand, .side .bottom, .side .n { display: none; }
+      .side button { width: auto; white-space: nowrap; }
+      .side button.on::before { display: none; }
+    }
   </style>
 </head>
-<body>
-  <header>
-    <h1>⚡ SiteCloner Admin</h1>
-    <nav id="tabs">
-      <button data-tab="overview" class="active">Vue d'ensemble</button>
-      <button data-tab="sites">Sites clonés</button>
-      <button data-tab="jobs">Jobs</button>
-      <button data-tab="products">Boutique</button>
-      <button data-tab="orders">Commandes</button>
-      <button data-tab="settings">Compte</button>
-      <a class="btn" href="/__sc/" target="_blank" rel="noopener">App ↗</a>
-    </nav>
-    <form method="post" action="/admin/logout">
-      <input type="hidden" name="csrf" value="{{ csrf }}">
-      <span style="color:var(--muted);font-size:.85rem;margin-right:8px">{{ username }}</span>
-      <button class="btn" type="submit">Déconnexion</button>
-    </form>
-  </header>
+<body class="ui">
+<div class="shell">
+  <aside class="side" id="tabs">
+    <a class="ui-brand" href="/admin"><span class="ui-logo">⚡</span> SiteCloner</a>
+    <button data-tab="overview" class="on"><span class="ic">📊</span> Vue d'ensemble</button>
+    <button data-tab="sites"><span class="ic">🌐</span> Sites clonés <span class="n" id="n-sites"></span></button>
+    <button data-tab="jobs"><span class="ic">⚙️</span> Jobs <span class="n" id="n-jobs"></span></button>
+    <button data-tab="products"><span class="ic">🛍️</span> Marketplace <span class="n" id="n-products"></span></button>
+    <button data-tab="orders"><span class="ic">💳</span> Commandes</button>
+    <button data-tab="settings"><span class="ic">🔐</span> Compte</button>
+    <div class="bottom">
+      <a class="link" href="/__sc/" target="_blank" rel="noopener"><span class="ic">🧬</span> Ouvrir le cloneur ↗</a>
+      <a class="link" href="/shop/" target="_blank" rel="noopener"><span class="ic">🏪</span> Voir la marketplace ↗</a>
+      <form method="post" action="/admin/logout" style="margin:0">
+        <input type="hidden" name="csrf" value="{{ csrf }}">
+        <button type="submit"><span class="ic">↩</span> Déconnexion <span class="n">{{ username }}</span></button>
+      </form>
+    </div>
+  </aside>
 
-  <main>
-    <section id="tab-overview" class="active">
-      <div class="stats" id="stats"></div>
+  <div class="main">
+    <!-- ===== overview ===== -->
+    <section class="tab on" id="tab-overview">
+      <div class="top"><div><h1>Bonjour {{ username }} 👋</h1><div class="sub">Tout ce qui se passe sur la plateforme, en un coup d'œil.</div></div>
+        <div class="actions"><button class="ui-btn primary" data-goto="products" data-new>+ Nouveau produit</button></div></div>
+      <div class="ui-stats" id="stats" data-stagger></div>
+      <div class="cols">
+        <div class="ui-card panel" data-reveal><h2 class="ui-h2">Produits les plus vus</h2><div id="top-products"></div></div>
+        <div class="ui-card panel" data-reveal style="--d:.08s"><h2 class="ui-h2">Catalogue par catégorie</h2><div class="bars" id="cat-bars"></div></div>
+      </div>
+      <div class="cols">
+        <div class="ui-card panel" data-reveal><h2 class="ui-h2">Derniers sites clonés</h2><div id="recent-sites"></div></div>
+        <div class="ui-card panel" data-reveal style="--d:.08s"><h2 class="ui-h2">Système</h2><div id="system"></div></div>
+      </div>
     </section>
 
-    <section id="tab-sites">
-      <div class="table-wrap"><table>
-        <thead><tr><th>Site</th><th>Source</th><th>Date</th><th>Pages</th><th>Taille</th><th>Aperçu</th><th></th></tr></thead>
-        <tbody id="sites-body"></tbody>
-      </table></div>
+    <!-- ===== sites ===== -->
+    <section class="tab" id="tab-sites">
+      <div class="top"><div><h1>Sites clonés</h1><div class="sub">Ouvre, modifie dans le Studio, exporte ou supprime tes clones.</div></div>
+        <div class="actions"><a class="ui-btn primary" href="/__sc/" target="_blank" rel="noopener">🧬 Cloner un site</a></div></div>
+      <div class="filters"><input class="ui-input" id="site-q" placeholder="Filtrer par nom ou URL…"></div>
+      <div class="site-grid" id="sites-grid"></div>
     </section>
 
-    <section id="tab-jobs">
-      <div class="table-wrap"><table>
+    <!-- ===== jobs ===== -->
+    <section class="tab" id="tab-jobs">
+      <div class="top"><div><h1>Jobs</h1><div class="sub">Clonages lancés depuis le démarrage du serveur (actualisation automatique).</div></div></div>
+      <div class="ui-card" style="overflow-x:auto"><table class="ui-table">
         <thead><tr><th>Job</th><th>URL</th><th>Statut</th><th>Détail</th><th></th></tr></thead>
         <tbody id="jobs-body"></tbody>
       </table></div>
     </section>
 
-    <section id="tab-products">
-      <div id="stripe-warn" class="warn" hidden></div>
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
-        <span style="color:var(--muted);font-size:.85rem">Visible publiquement sur <a href="/shop/" target="_blank" rel="noopener" style="color:var(--accent)">/shop/</a></span>
-        <button class="btn" id="new-product">+ Nouveau projet</button>
+    <!-- ===== marketplace ===== -->
+    <section class="tab" id="tab-products">
+      <div class="top"><div><h1>Marketplace</h1><div class="sub">Designs, prompts, skills, logiciels… Gratuits ou payants.</div></div>
+        <div class="actions"><a class="ui-btn" href="/shop/" target="_blank" rel="noopener">👁 Voir</a><button class="ui-btn primary" id="new-product">+ Nouveau produit</button></div></div>
+      <div id="stripe-warn" class="warn-box" hidden></div>
+      <div class="filters">
+        <input class="ui-input" id="prod-q" placeholder="Rechercher un produit…">
+        <select class="ui-select" id="prod-cat" style="width:auto"><option value="">Toutes catégories</option></select>
+        <select class="ui-select" id="prod-status" style="width:auto"><option value="">Tous statuts</option><option value="pub">Publiés</option><option value="draft">Brouillons</option><option value="free">Gratuits</option><option value="paid">Payants</option></select>
       </div>
-      <form id="product-form" class="pw wide" hidden enctype="multipart/form-data">
-        <h2 id="pf-title" style="margin:0">Nouveau projet</h2>
-        <label>Titre<input name="title" required maxlength="200"></label>
-        <label>Description<textarea name="description" rows="5" maxlength="5000"></textarea></label>
-        <label>Prix (<span id="cur">€</span>)<input name="price" type="number" step="0.01" min="0.5" required></label>
-        <label>URL de démo (optionnel)<input name="demo_url" type="url" placeholder="https://..."></label>
-        <label>Image de couverture (png, jpg, webp)<input name="cover" type="file" accept=".png,.jpg,.jpeg,.webp"></label>
-        <label>Fichier à livrer (zip, pdf, apk, exe…) <small id="pf-file" style="color:var(--ok)"></small><input name="file" type="file"></label>
-        <label style="flex-direction:row;align-items:center;gap:8px"><input name="published" type="checkbox" value="1" style="width:auto"> Publié (visible dans la boutique)</label>
-        <div style="display:flex;gap:8px"><button class="btn" type="submit">Enregistrer</button><button class="btn" type="button" id="pf-cancel">Annuler</button></div>
-      </form>
-      <div class="table-wrap"><table>
-        <thead><tr><th>Projet</th><th>Prix</th><th>Fichier</th><th>Statut</th><th></th></tr></thead>
-        <tbody id="products-body"></tbody>
-      </table></div>
+      <div class="prod-grid" id="products-grid"></div>
     </section>
 
-    <section id="tab-orders">
-      <div class="stats" id="order-stats"></div>
-      <div class="table-wrap" style="margin-top:12px"><table>
-        <thead><tr><th>Date</th><th>Projet</th><th>E-mail</th><th>Montant</th><th>Statut</th><th>Téléch.</th></tr></thead>
+    <!-- ===== orders ===== -->
+    <section class="tab" id="tab-orders">
+      <div class="top"><div><h1>Commandes</h1><div class="sub">Ventes Stripe et liens de téléchargement.</div></div></div>
+      <div class="ui-stats" id="order-stats" data-stagger></div>
+      <div class="ui-card" style="overflow-x:auto;margin-top:18px"><table class="ui-table">
+        <thead><tr><th>Date</th><th>Produit</th><th>E-mail</th><th>Montant</th><th>Statut</th><th>Téléch.</th></tr></thead>
         <tbody id="orders-body"></tbody>
       </table></div>
     </section>
 
-    <section id="tab-settings">
-      <h2>Changer le mot de passe</h2>
-      <form class="pw" id="pw-form">
-        <label>Mot de passe actuel<input type="password" id="pw-current" autocomplete="current-password" required></label>
-        <label>Nouveau mot de passe (10 caractères min.)<input type="password" id="pw-new" autocomplete="new-password" minlength="10" required></label>
-        <button class="btn" type="submit">Mettre à jour</button>
+    <!-- ===== settings ===== -->
+    <section class="tab" id="tab-settings">
+      <div class="top"><div><h1>Compte</h1><div class="sub">Sécurité de l'accès administrateur.</div></div></div>
+      <form class="ui-card panel" id="pw-form" style="max-width:440px">
+        <h2 class="ui-h2">Changer le mot de passe</h2>
+        <div class="ui-field"><label class="ui-label">Mot de passe actuel</label><input class="ui-input" type="password" id="pw-current" autocomplete="current-password" required></div>
+        <div class="ui-field"><label class="ui-label">Nouveau mot de passe (10 caractères min.)</label><input class="ui-input" type="password" id="pw-new" autocomplete="new-password" minlength="10" required></div>
+        <button class="ui-btn primary" type="submit">Mettre à jour</button>
       </form>
     </section>
-  </main>
-  <div id="toast" role="status"></div>
+  </div>
+</div>
 
+<!-- ===== product editor ===== -->
+<div class="drawer" id="drawer">
+  <div class="bg" data-dclose></div>
+  <form class="panel-d" id="product-form" enctype="multipart/form-data">
+    <div class="d-head"><h2 id="pf-title">Nouveau produit</h2><span style="flex:1"></span><a class="ui-btn sm ghost" id="pf-view" target="_blank" rel="noopener" hidden>👁 Voir la page</a><button type="button" class="ui-btn icon ghost" data-dclose>✕</button></div>
+    <div class="d-body">
+      <div class="ui-field"><label class="ui-label">Nom du produit *</label><input class="ui-input" name="title" required maxlength="200" placeholder="Ex. Template SaaS « Nova »"></div>
+      <div class="ui-field"><label class="ui-label">Accroche (une phrase)</label><input class="ui-input" name="tagline" maxlength="160" placeholder="Ce que ça apporte, en quelques mots"></div>
+      <div class="grid2">
+        <div class="ui-field"><label class="ui-label">Catégorie</label><select class="ui-select" name="category" id="pf-cat"></select></div>
+        <div class="ui-field"><label class="ui-label">Tags (séparés par des virgules)</label><input class="ui-input" name="tags" placeholder="saas, dark, landing"></div>
+      </div>
+      <div class="ui-field"><label class="ui-label">Description</label><textarea class="ui-textarea" name="description" rows="6" maxlength="8000" placeholder="Ce qui est inclus, comment l'utiliser, la licence…"></textarea></div>
+      <div class="ui-field"><label class="ui-label">Aperçu texte (prompt, extrait de code, README…) — affiché avec un bouton Copier</label><textarea class="ui-textarea" name="preview_text" rows="4" maxlength="6000" style="font-family:var(--mono);font-size:.85rem"></textarea></div>
+
+      <hr class="ui-sep">
+      <h3 class="ui-h2" style="font-size:1rem">💶 Prix</h3>
+      <div class="price-row">
+        <label class="switch"><input type="checkbox" name="free" value="1" id="pf-free"><span class="s"></span> Gratuit</label>
+        <div style="flex:1" id="pf-price-wrap"><label class="ui-label">Prix (€)</label><input class="ui-input" name="price" type="number" step="0.01" min="0.5" placeholder="19,00"></div>
+      </div>
+
+      <hr class="ui-sep">
+      <h3 class="ui-h2" style="font-size:1rem">🖼️ Images & vidéos</h3>
+      <p class="ui-muted" style="font-size:.85rem;margin:-6px 0 12px">La première image sert de couverture. Survole un média pour le déplacer ou le supprimer.</p>
+      <label class="drop" id="media-drop"><span class="big">⬆</span>Glisse tes images / vidéos ici ou clique pour choisir<br><small>png, jpg, webp, gif, avif · mp4, webm, mov — plusieurs fichiers possibles</small>
+        <input type="file" id="media-input" multiple accept=".png,.jpg,.jpeg,.webp,.gif,.avif,.mp4,.webm,.mov" hidden></label>
+      <div class="media-list" id="media-list"></div>
+
+      <hr class="ui-sep">
+      <h3 class="ui-h2" style="font-size:1rem">📦 Fichier du produit</h3>
+      <div id="pf-file"></div>
+      <label class="drop" id="file-drop"><span class="big">📁</span><span id="file-label">Choisir le fichier à livrer (zip, pdf, exe, fig, glb, md…)</span>
+        <input type="file" name="file" id="file-input" hidden></label>
+      <div class="ui-field" style="margin-top:14px"><label class="ui-label">URL de démo / prévisualisation (optionnel)</label><input class="ui-input" name="demo_url" placeholder="https://… ou /preview/mon-site/"></div>
+
+      <hr class="ui-sep">
+      <div style="display:flex;gap:24px;flex-wrap:wrap">
+        <label class="switch"><input type="checkbox" name="published" value="1"><span class="s"></span> Publié</label>
+        <label class="switch"><input type="checkbox" name="featured" value="1"><span class="s"></span> À la une</label>
+      </div>
+    </div>
+    <div class="d-foot">
+      <button class="ui-btn danger" type="button" id="pf-delete" hidden>Supprimer</button>
+      <span style="flex:1"></span>
+      <button class="ui-btn ghost" type="button" data-dclose>Annuler</button>
+      <button class="ui-btn primary" type="submit" id="pf-save">Enregistrer</button>
+    </div>
+  </form>
+</div>
+
+<script src="/__sc/static/ui.js"></script>
 <script>
 const CSRF = {{ csrf|tojson }};
-const $ = (s) => document.querySelector(s);
-
-function esc(v) {
-  const d = document.createElement('div');
-  d.textContent = v == null ? '' : String(v);
-  return d.innerHTML;
-}
+const $ = s => document.querySelector(s), esc = UI.esc, toast = (m, k) => UI.toast(m, k);
+const ICONS = {design: "🎨", template: "🧩", prompt: "💬", skill: "🤖", software: "💻", asset: "🧊", other: "📦"};
 function fmtSize(b) {
   if (!b) return '0 o';
-  const u = ['o','Ko','Mo','Go','To']; let i = 0;
+  const u = ['o', 'Ko', 'Mo', 'Go', 'To']; let i = 0;
   while (b >= 1024 && i < u.length - 1) { b /= 1024; i++; }
   return b.toFixed(i ? 1 : 0) + ' ' + u[i];
 }
-function toast(msg) {
-  const t = $('#toast'); t.textContent = msg; t.style.display = 'block';
-  clearTimeout(toast._t); toast._t = setTimeout(() => t.style.display = 'none', 3000);
-}
 async function api(path, method = 'GET', body) {
+  const isForm = body instanceof FormData;
   const r = await fetch('/admin/api' + path, {
     method, credentials: 'same-origin',
-    headers: { 'X-CSRF-Token': CSRF, ...(body ? { 'Content-Type': 'application/json' } : {}) },
-    body: body ? JSON.stringify(body) : undefined,
+    headers: {'X-CSRF-Token': CSRF, ...(body && !isForm ? {'Content-Type': 'application/json'} : {})},
+    body: body ? (isForm ? body : JSON.stringify(body)) : undefined,
   });
   if (r.status === 401) { location.href = '/admin/login'; return {}; }
   const data = await r.json().catch(() => ({}));
   if (!r.ok) throw new Error(data.error || ('Erreur ' + r.status));
   return data;
 }
+const stat = (ic, v, k, raw) => `<div class="ui-card ui-stat ui-spot"><span class="ic">${ic}</span><div class="k">${esc(k)}</div><div class="v" ${raw != null ? `data-count="${raw}"` : ''}>${esc(v)}</div></div>`;
+const empty = (big, msg) => `<div class="ui-empty"><div class="big">${big}</div><p>${msg}</p></div>`;
 
+// ---------- overview ----------
 async function loadOverview() {
-  const o = await api('/overview');
-  const cards = [
-    [o.sites, 'Sites clonés'], [o.total_pages, 'Pages au total'], [fmtSize(o.total_size), 'Taille des clones'],
-    [o.jobs_running, 'Jobs en cours'], [o.jobs_completed, 'Jobs réussis'], [o.jobs_failed, 'Jobs en échec'],
-    [o.active_previews, 'Aperçus actifs'], [fmtSize(o.disk_free) + ' / ' + fmtSize(o.disk_total), 'Disque libre'],
-  ];
-  $('#stats').innerHTML = cards.map(([v, l]) => `<div class="stat"><div class="v">${esc(v)}</div><div class="l">${esc(l)}</div></div>`).join('');
+  const [o, m, s] = await Promise.all([api('/overview'), api('/shop/stats'), api('/sites')]);
+  $('#n-sites').textContent = o.sites || '';
+  $('#n-products').textContent = m.products || '';
+  $('#n-jobs').textContent = o.jobs_running || '';
+  $('#stats').innerHTML = [
+    stat('🌐', o.sites, 'Sites clonés', o.sites), stat('📄', o.total_pages, 'Pages clonées', o.total_pages),
+    stat('🛍️', `${m.published}/${m.products}`, 'Produits publiés'), stat('💶', m.revenue, "Chiffre d'affaires"),
+    stat('👁', m.views, 'Vues produits', m.views), stat('⬇', m.free_downloads, 'Téléch. gratuits', m.free_downloads),
+    stat('⚙️', o.jobs_running, 'Jobs en cours', o.jobs_running), stat('💳', m.sales, 'Ventes', m.sales),
+  ].join('');
+  UI.reveal($('#stats').parentNode); UI.count($('#stats'));
+  $('#top-products').innerHTML = m.top.length ? m.top.map((p, i) => `<div class="list-row"><span class="ui-badge ${i ? '' : 'grad'}">#${i + 1}</span>
+    <a href="/shop/p/${esc(p.slug)}" target="_blank" rel="noopener" style="text-decoration:none;flex:1" class="trunc">${esc(p.title)}</a>
+    <span class="ui-muted">👁 ${p.views}</span><span class="ui-muted">⬇ ${p.free_downloads}</span></div>`).join('') : empty('🛍️', 'Aucun produit pour le moment.');
+  const cats = Object.entries(m.by_category), max = Math.max(1, ...cats.map(c => c[1]));
+  $('#cat-bars').innerHTML = cats.length ? cats.map(([k, v]) => `<div class="bar"><div class="l"><span>${esc(k)}</span><b>${v}</b></div><div class="t"><i data-w="${v / max * 100}"></i></div></div>`).join('') : empty('📊', 'Les catégories apparaîtront ici.');
+  requestAnimationFrame(() => document.querySelectorAll('#cat-bars i').forEach(i => i.style.width = i.dataset.w + '%'));
+  $('#recent-sites').innerHTML = s.sites.length ? s.sites.slice(0, 5).map(x => `<div class="list-row"><span>🌐</span>
+    <div style="flex:1;min-width:0"><div class="trunc"><b>${esc(x.title || x.id)}</b></div><div class="mono ui-muted trunc">${esc(x.url)}</div></div>
+    <a class="ui-btn sm" href="/__sc/studio/${encodeURIComponent(x.id)}" target="_blank" rel="noopener">Studio</a></div>`).join('') : empty('🧬', 'Aucun site cloné.');
+  const used = o.disk_total ? (1 - o.disk_free / o.disk_total) * 100 : 0;
+  $('#system').innerHTML = `<div class="bars">
+    <div class="bar"><div class="l"><span>Disque utilisé</span><b>${fmtSize(o.disk_total - o.disk_free)} / ${fmtSize(o.disk_total)}</b></div><div class="t"><i data-w="${used}"></i></div></div></div>
+    <div class="list-row" style="margin-top:10px"><span>💾</span><span style="flex:1">Taille des clones</span><b>${fmtSize(o.total_size)}</b></div>
+    <div class="list-row"><span>🖥</span><span style="flex:1">Aperçus actifs</span><b>${o.active_previews}</b></div>
+    <div class="list-row"><span>✅</span><span style="flex:1">Jobs réussis / échoués</span><b>${o.jobs_completed} / ${o.jobs_failed}</b></div>`;
+  requestAnimationFrame(() => document.querySelectorAll('#system i').forEach(i => i.style.width = i.dataset.w + '%'));
 }
 
-async function loadSites() {
-  const { sites } = await api('/sites');
-  $('#sites-body').innerHTML = sites.length ? sites.map(s => `
-    <tr>
-      <td><strong>${esc(s.title)}</strong><div class="mono" style="color:var(--muted)">${esc(s.id)}</div></td>
-      <td class="trunc">${esc(s.url)}</td>
-      <td>${esc(s.date)}</td>
-      <td>${esc(s.total_pages)}</td>
-      <td>${esc(fmtSize(s.total_size))}</td>
-      <td>${s.active_port ? 'port ' + esc(s.active_port) : '—'}</td>
-      <td><div class="actions">
-        <a class="btn" href="/preview/${encodeURIComponent(s.id)}/" target="_blank" rel="noopener">Ouvrir</a>
-        <a class="btn" href="/__sc/api/sites/${encodeURIComponent(s.id)}/download">ZIP</a>
-        ${s.active_port ? `<button class="btn" data-stop="${esc(s.id)}">Arrêter</button>` : ''}
-        <button class="btn danger" data-del="${esc(s.id)}">Supprimer</button>
-      </div></td>
-    </tr>`).join('') : '<tr><td colspan="7" class="empty">Aucun site cloné.</td></tr>';
+// ---------- sites ----------
+let sites = [];
+async function loadSites() { sites = (await api('/sites')).sites; renderSites(); }
+function renderSites() {
+  const q = $('#site-q').value.toLowerCase();
+  const list = sites.filter(s => !q || (s.title + ' ' + s.url + ' ' + s.id).toLowerCase().includes(q));
+  $('#sites-grid').innerHTML = list.length ? list.map((s, i) => `
+    <div class="ui-card hover ui-spot site-card" data-reveal style="--d:${Math.min(i, 8) * .04}s">
+      <div class="thumb">🌐<img src="/__sc/studio/${encodeURIComponent(s.id)}/cover.jpg" alt="" loading="lazy" onerror="this.remove()">
+        <div class="badges">${s.active_port ? `<span class="ui-badge ok">● port ${esc(s.active_port)}</span>` : ''}</div></div>
+      <div class="card-body">
+        <h3 title="${esc(s.title)}">${esc(s.title || s.id)}</h3>
+        <div class="mono ui-muted trunc">${esc(s.url)}</div>
+        <div class="meta"><span>📄 ${esc(s.total_pages)} pages</span><span>💾 ${esc(fmtSize(s.total_size))}</span><span>📅 ${esc(s.date)}</span></div>
+        <div class="acts">
+          <a class="ui-btn sm primary" href="/__sc/studio/${encodeURIComponent(s.id)}" target="_blank" rel="noopener">🎨 Studio</a>
+          <a class="ui-btn sm" href="/__sc/studio/${encodeURIComponent(s.id)}/inspect" target="_blank" rel="noopener">✏️ Modifier</a>
+          <a class="ui-btn sm" href="/preview/${encodeURIComponent(s.id)}/" target="_blank" rel="noopener">↗</a>
+          <a class="ui-btn sm" href="/__sc/api/sites/${encodeURIComponent(s.id)}/download" title="Télécharger le ZIP">⬇</a>
+          ${s.active_port ? `<button class="ui-btn sm" data-stop="${esc(s.id)}">■</button>` : ''}
+          <button class="ui-btn sm danger" data-del="${esc(s.id)}" title="Supprimer">🗑</button>
+        </div>
+      </div>
+    </div>`).join('') : empty('🧬', sites.length ? 'Aucun site ne correspond.' : 'Aucun site cloné pour le moment.');
+  UI.reveal($('#sites-grid'));
 }
+$('#site-q').oninput = renderSites;
 
+// ---------- jobs ----------
 async function loadJobs() {
-  const { jobs } = await api('/jobs');
+  const {jobs} = await api('/jobs');
+  $('#n-jobs').textContent = jobs.filter(j => j.status === 'running').length || '';
+  const cls = {completed: 'ok', running: 'warn', failed: 'danger'};
+  const lbl = {completed: 'terminé', running: 'en cours', failed: 'échec'};
   $('#jobs-body').innerHTML = jobs.length ? jobs.map(j => `
-    <tr>
-      <td class="mono">${esc(j.job_id)}</td>
-      <td class="trunc">${esc(j.url)}</td>
-      <td><span class="badge ${esc(j.status)}">${esc(j.status)}</span></td>
+    <tr><td class="mono">${esc(j.job_id)}</td><td class="trunc">${esc(j.url)}</td>
+      <td><span class="ui-badge ${cls[j.status] || ''}">${j.status === 'running' ? '<span class="ui-spinner" style="width:10px;height:10px;border-width:2px"></span>' : ''} ${esc(lbl[j.status] || j.status)}</span></td>
       <td class="trunc">${esc(j.error || j.message)}</td>
-      <td>${j.status !== 'running' ? `<button class="btn" data-clear="${esc(j.job_id)}">Effacer</button>` : ''}</td>
-    </tr>`).join('') : '<tr><td colspan="5" class="empty">Aucun job depuis le démarrage du serveur.</td></tr>';
+      <td>${j.status !== 'running' ? `<button class="ui-btn sm ghost" data-clear="${esc(j.job_id)}">Effacer</button>` : ''}</td></tr>`).join('')
+    : `<tr><td colspan="5">${empty('⚙️', 'Aucun job depuis le démarrage du serveur.')}</td></tr>`;
 }
 
-let products = [];
+// ---------- marketplace ----------
+let products = [], categories = {};
 async function loadProducts() {
   const r = await api('/shop/products');
-  products = r.products;
+  products = r.products; categories = r.categories;
+  $('#n-products').textContent = products.length || '';
+  if ($('#prod-cat').options.length === 1) {
+    $('#prod-cat').insertAdjacentHTML('beforeend', Object.entries(categories).map(([k, v]) => `<option value="${k}">${ICONS[k]} ${esc(v)}</option>`).join(''));
+    $('#pf-cat').innerHTML = Object.entries(categories).map(([k, v]) => `<option value="${k}">${ICONS[k]} ${esc(v)}</option>`).join('');
+  }
   const missing = [];
   if (!r.stripe_ready) missing.push('STRIPE_SECRET_KEY');
   if (!r.webhook_ready) missing.push('STRIPE_WEBHOOK_SECRET');
-  const w = $('#stripe-warn');
-  w.hidden = !missing.length;
-  w.textContent = missing.length ? 'Paiement non configuré : variable(s) manquante(s) → ' + missing.join(', ') + '. Les achats sont désactivés tant que STRIPE_SECRET_KEY est absente.' : '';
-  $('#products-body').innerHTML = products.length ? products.map(p => `
-    <tr>
-      <td><strong>${esc(p.title)}</strong><div class="mono" style="color:var(--muted)">/shop/p/${esc(p.slug)}</div></td>
-      <td>${esc(p.price)}</td>
-      <td>${p.has_file ? esc(p.file) : '<span style="color:var(--warn)">aucun</span>'}</td>
-      <td><span class="badge ${p.published ? 'completed' : 'running'}">${p.published ? 'publié' : 'brouillon'}</span></td>
-      <td><div class="actions">
-        <button class="btn" data-edit="${p.id}">Modifier</button>
-        <button class="btn" data-toggle="${p.id}">${p.published ? 'Dépublier' : 'Publier'}</button>
-        <button class="btn danger" data-delp="${p.id}">Supprimer</button>
-      </div></td>
-    </tr>`).join('') : '<tr><td colspan="5" class="empty">Aucun projet. Clique sur « Nouveau projet ».</td></tr>';
+  $('#stripe-warn').hidden = !missing.length;
+  $('#stripe-warn').textContent = missing.length ? `⚠️ Paiement non configuré (${missing.join(', ')}). Les produits gratuits fonctionnent ; les achats payants sont désactivés tant que STRIPE_SECRET_KEY est absente.` : '';
+  renderProducts();
 }
-
-async function loadOrders() {
-  const r = await api('/shop/orders');
-  $('#order-stats').innerHTML = [[r.revenue, 'Chiffre d\'affaires'], [r.paid_count, 'Commandes payées'], [r.orders.length, 'Commandes (total)']]
-    .map(([v, l]) => `<div class="stat"><div class="v">${esc(v)}</div><div class="l">${esc(l)}</div></div>`).join('');
-  const fmt = (t) => t ? new Date(t * 1000).toLocaleString('fr-FR') : '—';
-  $('#orders-body').innerHTML = r.orders.length ? r.orders.map(o => `
-    <tr><td>${esc(fmt(o.paid_at || o.created_at))}</td><td>${esc(o.title || '(supprimé)')}</td><td>${esc(o.email)}</td>
-    <td>${esc(o.amount)}</td><td><span class="badge ${o.status === 'paid' ? 'completed' : 'running'}">${esc(o.status === 'paid' ? 'payée' : 'en attente')}</span></td>
-    <td>${esc(o.downloads)}</td></tr>`).join('') : '<tr><td colspan="6" class="empty">Aucune commande.</td></tr>';
+function renderProducts() {
+  const q = $('#prod-q').value.toLowerCase(), cat = $('#prod-cat').value, st = $('#prod-status').value;
+  const list = products.filter(p => (!q || (p.title + ' ' + p.tags + ' ' + p.tagline).toLowerCase().includes(q)) && (!cat || p.category === cat) &&
+    (!st || (st === 'pub' && p.published) || (st === 'draft' && !p.published) || (st === 'free' && !p.price_cents) || (st === 'paid' && p.price_cents)));
+  $('#products-grid').innerHTML = list.length ? list.map((p, i) => {
+    const img = p.media.find(m => m.kind === 'image');
+    const cover = img ? img.url : (p.cover ? `/shop/cover/${p.id}` : '');
+    return `<div class="ui-card hover ui-spot prod-card" data-reveal style="--d:${Math.min(i, 8) * .04}s">
+      <div class="thumb">${ICONS[p.category] || '📦'}${cover ? `<img src="${cover}" alt="" loading="lazy">` : ''}
+        <div class="badges"><span class="ui-badge ${p.published ? 'ok' : 'warn'}">${p.published ? '● publié' : '○ brouillon'}</span>${p.featured ? '<span class="ui-badge grad">★</span>' : ''}${p.media.some(m => m.kind === 'video') ? '<span class="ui-badge">▶</span>' : ''}</div></div>
+      <div class="card-body">
+        <div style="display:flex;justify-content:space-between;gap:8px;align-items:center"><span class="ui-badge accent">${ICONS[p.category] || ''} ${esc(p.category_label)}</span><b>${esc(p.price)}</b></div>
+        <h3>${esc(p.title)}</h3>
+        <div class="meta"><span>👁 ${p.views}</span><span>⬇ ${p.free_downloads}</span><span>💳 ${p.sales} · ${esc(p.revenue)}</span><span>🖼 ${p.media.length}</span><span style="color:${p.has_file ? 'var(--ok)' : 'var(--warn)'}">${p.has_file ? '📦 fichier' : '⚠ pas de fichier'}</span></div>
+        <div class="acts">
+          <button class="ui-btn sm primary" data-edit="${p.id}">✏️ Modifier</button>
+          <button class="ui-btn sm" data-toggle="${p.id}" data-field="published">${p.published ? 'Dépublier' : 'Publier'}</button>
+          <button class="ui-btn sm" data-toggle="${p.id}" data-field="featured" title="À la une">${p.featured ? '★' : '☆'}</button>
+          <a class="ui-btn sm" href="/shop/p/${esc(p.slug)}" target="_blank" rel="noopener" title="Voir">↗</a>
+        </div>
+      </div></div>`;
+  }).join('') : empty('🛍️', products.length ? 'Aucun produit ne correspond.' : 'Aucun produit. Clique sur « Nouveau produit » pour commencer.');
+  UI.reveal($('#products-grid'));
 }
+['#prod-q', '#prod-cat', '#prod-status'].forEach(s => $(s).addEventListener('input', renderProducts));
 
-async function shopApi(path, method, formData) {
-  const r = await fetch('/admin/api/shop' + path, { method, credentials: 'same-origin', headers: { 'X-CSRF-Token': CSRF }, body: formData });
-  const data = await r.json().catch(() => ({}));
-  if (!r.ok) throw new Error(data.error || ('Erreur ' + r.status));
-  return data;
-}
-
-const pf = $('#product-form');
-let editingId = null;
-function openForm(p) {
-  editingId = p ? p.id : null;
+// ---------- editor ----------
+const pf = $('#product-form'), drawer = $('#drawer');
+let editing = null, pendingMedia = [];
+function openEditor(p) {
+  editing = p || null; pendingMedia = [];
   pf.reset();
-  $('#pf-title').textContent = p ? 'Modifier le projet' : 'Nouveau projet';
-  $('#pf-file').textContent = p && p.has_file ? '(actuel : ' + p.file + ' — laisse vide pour garder)' : '';
+  $('#pf-title').textContent = p ? 'Modifier le produit' : 'Nouveau produit';
+  $('#pf-delete').hidden = !p;
+  $('#pf-view').hidden = !p; if (p) $('#pf-view').href = '/shop/p/' + p.slug;
+  $('#file-label').textContent = 'Choisir le fichier à livrer (zip, pdf, exe, fig, glb, md…)';
+  $('#pf-file').innerHTML = p && p.has_file ? `<div class="file-pill">📦 <b>${esc(p.file)}</b><span class="ui-muted" style="margin-left:auto">actuel — choisis-en un autre pour le remplacer</span></div>` : '';
   if (p) {
-    pf.title.value = p.title; pf.description.value = p.description;
-    pf.price.value = (p.price_cents / 100).toFixed(2); pf.demo_url.value = p.demo_url;
-    pf.published.checked = !!p.published;
-  }
-  pf.hidden = false; pf.scrollIntoView({ behavior: 'smooth' });
+    for (const k of ['title', 'tagline', 'description', 'preview_text', 'demo_url', 'tags']) pf[k].value = p[k] || '';
+    pf.category.value = p.category;
+    pf.free.checked = !p.price_cents;
+    pf.price.value = p.price_cents ? (p.price_cents / 100).toFixed(2) : '';
+    pf.published.checked = !!p.published; pf.featured.checked = !!p.featured;
+  } else { pf.published.checked = true; }
+  syncPrice(); renderMedia();
+  drawer.classList.add('open');
+  setTimeout(() => pf.title.focus(), 350);
 }
-$('#new-product').addEventListener('click', () => openForm(null));
-$('#pf-cancel').addEventListener('click', () => pf.hidden = true);
+function closeEditor() { drawer.classList.remove('open'); pendingMedia.forEach(m => URL.revokeObjectURL(m.url)); pendingMedia = []; }
+drawer.addEventListener('click', e => { if (e.target.closest('[data-dclose]')) closeEditor(); });
+addEventListener('keydown', e => { if (e.key === 'Escape' && drawer.classList.contains('open')) closeEditor(); });
+function syncPrice() { $('#pf-price-wrap').style.opacity = pf.free.checked ? .35 : 1; pf.price.disabled = pf.free.checked; pf.price.required = !pf.free.checked; }
+pf.free.addEventListener('change', syncPrice);
+
+function renderMedia() {
+  const saved = editing ? editing.media : [];
+  const item = (m, i, pending) => `<div class="media-item ${pending ? 'pending' : ''}">
+    ${m.kind === 'video' ? `<video src="${m.url}" muted loop playsinline onmouseenter="this.play()" onmouseleave="this.pause()"></video>` : `<img src="${m.url}" alt="">`}
+    <span class="tag ui-badge ${i === 0 && m.kind === 'image' ? 'grad' : ''}">${pending ? 'à envoyer' : (i === 0 && m.kind === 'image' ? 'couverture' : m.kind === 'video' ? '▶ vidéo' : 'image')}</span>
+    <div class="ops">${pending ? `<button type="button" class="del" data-unpend="${i}">✕</button>` :
+      `<button type="button" data-mmove="${m.id}" data-dir="up">←</button><button type="button" data-mmove="${m.id}" data-dir="down">→</button><button type="button" class="del" data-mdel="${m.id}">🗑</button>`}</div></div>`;
+  $('#media-list').innerHTML = saved.map((m, i) => item(m, i, false)).join('') + pendingMedia.map((m, i) => item(m, saved.length + i, true)).join('');
+  $('#media-list').querySelectorAll('[data-unpend]').forEach(b => b.onclick = () => {
+    const i = +b.dataset.unpend - saved.length; URL.revokeObjectURL(pendingMedia[i].url); pendingMedia.splice(i, 1); renderMedia();
+  });
+}
+const OK_MEDIA = /\.(png|jpe?g|webp|gif|avif|mp4|webm|mov)$/i;
+function addMedia(files) {
+  const bad = [];
+  for (const f of files) {
+    if (!OK_MEDIA.test(f.name)) { bad.push(f.name); continue; }
+    pendingMedia.push({file: f, url: URL.createObjectURL(f), kind: /\.(mp4|webm|mov)$/i.test(f.name) ? 'video' : 'image'});
+  }
+  if (bad.length) toast('Ignoré (format non pris en charge) : ' + bad.join(', '), 'err');
+  renderMedia();
+}
+const drop = $('#media-drop');
+$('#media-input').onchange = e => { addMedia(e.target.files); e.target.value = ''; };
+['dragenter', 'dragover'].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.add('over'); }));
+['dragleave', 'drop'].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.remove('over'); }));
+drop.addEventListener('drop', e => addMedia(e.dataTransfer.files));
+const fdrop = $('#file-drop');
+$('#file-input').onchange = e => { const f = e.target.files[0]; $('#file-label').textContent = f ? `✅ ${f.name} (${fmtSize(f.size)})` : 'Choisir le fichier à livrer'; };
+['dragenter', 'dragover'].forEach(ev => fdrop.addEventListener(ev, e => { e.preventDefault(); fdrop.classList.add('over'); }));
+['dragleave', 'drop'].forEach(ev => fdrop.addEventListener(ev, e => { e.preventDefault(); fdrop.classList.remove('over'); }));
+fdrop.addEventListener('drop', e => { if (e.dataTransfer.files[0]) { $('#file-input').files = e.dataTransfer.files; $('#file-input').onchange({target: $('#file-input')}); } });
+
 pf.addEventListener('submit', async e => {
   e.preventDefault();
+  const fd = new FormData(pf);
+  fd.delete('media');
+  pendingMedia.forEach(m => fd.append('media', m.file));
+  const btn = $('#pf-save'); btn.disabled = true; btn.innerHTML = '<span class="ui-spinner"></span> Envoi…';
   try {
-    await shopApi(editingId ? '/products/' + editingId : '/products', 'POST', new FormData(pf));
-    pf.hidden = true; toast('Projet enregistré'); loadProducts();
-  } catch (err) { toast(err.message); }
+    await api(editing ? '/shop/products/' + editing.id : '/shop/products', 'POST', fd);
+    toast(editing ? 'Produit mis à jour' : 'Produit créé', 'ok');
+    closeEditor(); await loadProducts();
+  } catch (err) { toast(err.message, 'err'); }
+  finally { btn.disabled = false; btn.textContent = 'Enregistrer'; }
 });
+$('#pf-delete').onclick = async () => {
+  if (!editing || !confirm(`Supprimer « ${editing.title} » et tous ses fichiers ?`)) return;
+  try { await api('/shop/products/' + editing.id, 'DELETE'); toast('Produit supprimé', 'ok'); closeEditor(); loadProducts(); }
+  catch (err) { toast(err.message, 'err'); }
+};
+async function refreshEditing() {
+  await loadProducts();
+  if (editing) { editing = products.find(p => p.id === editing.id) || null; renderMedia(); }
+}
+$('#new-product').onclick = () => openEditor(null);
 
-const loaders = { overview: loadOverview, sites: loadSites, jobs: loadJobs, products: loadProducts, orders: loadOrders, settings: async () => {} };
+// ---------- orders ----------
+async function loadOrders() {
+  const r = await api('/shop/orders');
+  $('#order-stats').innerHTML = [stat('💶', r.revenue, "Chiffre d'affaires"), stat('✅', r.paid_count, 'Commandes payées', r.paid_count), stat('🧾', r.orders.length, 'Commandes (total)', r.orders.length)].join('');
+  UI.reveal($('#order-stats').parentNode); UI.count($('#order-stats'));
+  const fmt = t => t ? new Date(t * 1000).toLocaleString('fr-FR') : '—';
+  $('#orders-body').innerHTML = r.orders.length ? r.orders.map(o => `
+    <tr><td>${esc(fmt(o.paid_at || o.created_at))}</td><td>${esc(o.title || '(supprimé)')}</td><td>${esc(o.email)}</td>
+    <td><b>${esc(o.amount)}</b></td><td><span class="ui-badge ${o.status === 'paid' ? 'ok' : 'warn'}">${o.status === 'paid' ? 'payée' : 'en attente'}</span></td>
+    <td>${esc(o.downloads)}</td></tr>`).join('') : `<tr><td colspan="6">${empty('💳', 'Aucune commande pour le moment.')}</td></tr>`;
+}
+
+// ---------- tabs & actions ----------
+const loaders = {overview: loadOverview, sites: loadSites, jobs: loadJobs, products: loadProducts, orders: loadOrders, settings: async () => {}};
 let current = 'overview';
 function show(tab) {
   current = tab;
-  document.querySelectorAll('#tabs button').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
-  document.querySelectorAll('main section').forEach(s => s.classList.toggle('active', s.id === 'tab-' + tab));
-  loaders[tab]().catch(e => toast(e.message));
+  document.querySelectorAll('#tabs button[data-tab]').forEach(b => b.classList.toggle('on', b.dataset.tab === tab));
+  document.querySelectorAll('section.tab').forEach(s => s.classList.toggle('on', s.id === 'tab-' + tab));
+  history.replaceState(null, '', '#' + tab);
+  return loaders[tab]().catch(e => toast(e.message, 'err'));
 }
-$('#tabs').addEventListener('click', e => { const t = e.target.dataset && e.target.dataset.tab; if (t) show(t); });
+$('#tabs').addEventListener('click', e => { const b = e.target.closest('[data-tab]'); if (b) show(b.dataset.tab); });
 
 document.addEventListener('click', async e => {
-  const d = e.target.dataset || {};
+  const el = e.target.closest('[data-del],[data-stop],[data-edit],[data-toggle],[data-clear],[data-mdel],[data-mmove],[data-goto]');
+  if (!el) return;
+  const d = el.dataset;
   try {
-    if (d.del && confirm('Supprimer définitivement ce site cloné ?')) { await api('/sites/' + encodeURIComponent(d.del), 'DELETE'); toast('Site supprimé'); loadSites(); }
-    if (d.stop) { await api('/sites/' + encodeURIComponent(d.stop) + '/stop', 'POST'); toast('Aperçu arrêté'); loadSites(); }
-    if (d.edit) openForm(products.find(p => String(p.id) === d.edit));
-    if (d.toggle) {
-      const p = products.find(x => String(x.id) === d.toggle);
-      const fd = new FormData();
-      fd.set('title', p.title); fd.set('description', p.description); fd.set('price', (p.price_cents / 100).toFixed(2));
-      fd.set('demo_url', p.demo_url); if (!p.published) fd.set('published', '1');
-      await shopApi('/products/' + p.id, 'POST', fd); loadProducts();
-    }
-    if (d.delp && confirm('Supprimer ce projet et ses fichiers ?')) { await shopApi('/products/' + d.delp, 'DELETE'); toast('Projet supprimé'); loadProducts(); }
+    if (d.goto) { await show(d.goto); if ('new' in d) openEditor(null); }
+    if (d.del && confirm('Supprimer définitivement ce site cloné ?')) { await api('/sites/' + encodeURIComponent(d.del), 'DELETE'); toast('Site supprimé', 'ok'); loadSites(); }
+    if (d.stop) { await api('/sites/' + encodeURIComponent(d.stop) + '/stop', 'POST'); toast('Aperçu arrêté', 'ok'); loadSites(); }
+    if (d.edit) openEditor(products.find(p => String(p.id) === d.edit));
+    if (d.toggle) { await api(`/shop/products/${d.toggle}/toggle`, 'POST', {field: d.field}); await loadProducts(); }
     if (d.clear) { await api('/jobs/' + encodeURIComponent(d.clear), 'DELETE'); loadJobs(); }
-  } catch (err) { toast(err.message); }
+    if (d.mdel && confirm('Supprimer ce média ?')) { await api('/shop/media/' + d.mdel, 'DELETE'); await refreshEditing(); }
+    if (d.mmove) { await api(`/shop/media/${d.mmove}/move`, 'POST', {dir: d.dir}); await refreshEditing(); }
+  } catch (err) { toast(err.message, 'err'); }
 });
 
 $('#pw-form').addEventListener('submit', async e => {
   e.preventDefault();
-  try {
-    await api('/password', 'POST', { current: $('#pw-current').value, new: $('#pw-new').value });
-    e.target.reset(); toast('Mot de passe mis à jour');
-  } catch (err) { toast(err.message); }
+  try { await api('/password', 'POST', {current: $('#pw-current').value, new: $('#pw-new').value}); e.target.reset(); toast('Mot de passe mis à jour', 'ok'); }
+  catch (err) { toast(err.message, 'err'); }
 });
 
-show('overview');
-setInterval(() => { if (current === 'overview' || current === 'jobs') loaders[current]().catch(() => {}); }, 5000);
+show(loaders[location.hash.slice(1)] ? location.hash.slice(1) : 'overview');
+setInterval(() => { if (current === 'jobs') loadJobs().catch(() => {}); }, 5000);
 </script>
 </body>
 </html>

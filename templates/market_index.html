@@ -1,0 +1,192 @@
+{% extends "market_base.html" %}
+{% block title %}Marketplace{% endblock %}
+{% block head %}
+<style>
+  .hero { text-align: center; padding: clamp(30px, 6vw, 70px) 0 10px; }
+  .hero .ui-lead { margin: 0 auto; }
+  .search {
+    margin: 30px auto 0; max-width: 640px; display: flex; align-items: center; gap: 10px; padding: 8px 8px 8px 18px; border-radius: 18px;
+  }
+  .search input { flex: 1; background: transparent; border: 0; outline: none; color: var(--text); font: 500 1rem var(--font); min-width: 0; }
+  .search kbd { font: 600 .72rem var(--mono); color: var(--dim); border: 1px solid var(--line-strong); border-radius: 6px; padding: 3px 7px; }
+  .cats { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin: 26px 0 8px; }
+  .toolbar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin: 30px 0 18px; }
+  .toolbar .count { color: var(--muted); font-size: .9rem; margin-right: auto; }
+  .toolbar .ui-select { width: auto; padding: 9px 12px; font-size: .88rem; }
+  .seg { display: inline-flex; padding: 3px; border-radius: 12px; background: rgba(255, 255, 255, .04); border: 1px solid var(--line); }
+  .seg button { background: transparent; border: 0; color: var(--muted); font: 600 .82rem var(--font); padding: 7px 12px; border-radius: 9px; cursor: pointer; transition: all .2s; }
+  .seg button.on { background: var(--surface-2); color: var(--text); box-shadow: 0 2px 10px rgba(0, 0, 0, .4); }
+  .featured { display: grid; grid-template-columns: 1.4fr 1fr; gap: 0; overflow: hidden; margin-top: 34px; text-decoration: none; }
+  .featured .m-media { aspect-ratio: auto; min-height: 300px; }
+  .featured .info { padding: clamp(20px, 3vw, 36px); display: flex; flex-direction: column; gap: 12px; justify-content: center; }
+  .featured h2 { font-size: clamp(1.4rem, 2.6vw, 2rem); margin: 0; letter-spacing: -.03em; }
+  @media (max-width: 760px) { .featured { grid-template-columns: 1fr; } .featured .m-media { min-height: 200px; } }
+  /* quick view */
+  .qv { display: grid; grid-template-columns: 1.3fr 1fr; }
+  .qv .stage { position: relative; background: #05060a; aspect-ratio: 16/10; }
+  .qv .stage img, .qv .stage video { width: 100%; height: 100%; object-fit: contain; display: block; }
+  .qv .thumbs { display: flex; gap: 8px; padding: 10px; overflow-x: auto; background: rgba(0, 0, 0, .3); }
+  .qv .thumbs button { flex: 0 0 72px; height: 48px; border-radius: 8px; overflow: hidden; border: 2px solid transparent; padding: 0; cursor: pointer; background: #111; position: relative; }
+  .qv .thumbs button.on { border-color: var(--accent-2); }
+  .qv .thumbs img, .qv .thumbs video { width: 100%; height: 100%; object-fit: cover; }
+  .qv .thumbs .play { position: absolute; inset: 0; display: grid; place-items: center; color: #fff; font-size: .9rem; background: rgba(0, 0, 0, .35); }
+  .qv .side { padding: 26px; display: flex; flex-direction: column; gap: 12px; }
+  .qv .side h2 { margin: 0; font-size: 1.4rem; letter-spacing: -.02em; }
+  .qv .desc { color: var(--muted); font-size: .92rem; line-height: 1.55; white-space: pre-line; max-height: 180px; overflow: auto; }
+  @media (max-width: 760px) { .qv { grid-template-columns: 1fr; } }
+</style>
+{% endblock %}
+{% block content %}
+<main class="ui-wrap">
+  <section class="hero">
+    <span class="ui-eyebrow" data-reveal><span class="dot"></span> Designs · Prompts · Skills · Logiciels</span>
+    <h1 class="ui-title" data-reveal style="--d:.08s">La marketplace des <span class="ui-grad-text">créateurs du web</span></h1>
+    <p class="ui-lead" data-reveal style="--d:.16s">Designs de site, templates, prompts, skills d'agents IA, logiciels et assets 3D. Prévisualise, mets en favori, télécharge en un clic.</p>
+    <label class="search ui-card ui-border-glow" data-reveal style="--d:.24s">
+      <span>🔎</span>
+      <input id="q" placeholder="Rechercher un design, un prompt, un logiciel…" autocomplete="off">
+      <kbd>/</kbd>
+    </label>
+    <div class="cats" id="cats" data-reveal style="--d:.32s">
+      <button class="ui-chip on" data-cat="">✨ Tout</button>
+      {% set icons = {"design":"🎨","template":"🧩","prompt":"💬","skill":"🤖","software":"💻","asset":"🧊","other":"📦"} %}
+      {% for key, label in categories.items() %}
+      <button class="ui-chip" data-cat="{{ key }}">{{ icons[key] }} {{ label }}</button>
+      {% endfor %}
+    </div>
+  </section>
+
+  <div id="featured"></div>
+
+  <div class="toolbar">
+    <span class="count" id="count"></span>
+    <div class="seg" id="priceSeg">
+      <button class="on" data-p="">Tous</button><button data-p="free">Gratuits</button><button data-p="paid">Payants</button>
+    </div>
+    <button class="ui-btn sm ghost" id="favBtn">♡ Favoris</button>
+    <select class="ui-select" id="sort">
+      <option value="new">Plus récents</option>
+      <option value="pop">Populaires</option>
+      <option value="asc">Prix croissant</option>
+      <option value="desc">Prix décroissant</option>
+    </select>
+  </div>
+
+  <div class="m-grid" id="grid"></div>
+  <div class="ui-empty" id="empty" hidden><div class="big">🛸</div><p id="emptyMsg">Aucun produit ne correspond.</p></div>
+</main>
+
+<div class="ui-modal" id="qvModal">
+  <div class="box ui-card" style="padding:0;position:relative">
+    <button class="ui-btn icon ghost x" data-close>✕</button>
+    <div class="qv" id="qv"></div>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+  const ITEMS = {{ items|tojson }};
+  const ICONS = {design: "🎨", template: "🧩", prompt: "💬", skill: "🤖", software: "💻", asset: "🧊", other: "📦"};
+  const st = {q: "", cat: new URLSearchParams(location.search).get("cat") || "", price: "", favs: location.hash === "#favoris", sort: "new"};
+  const $ = s => document.querySelector(s), esc = UI.esc;
+
+  function card(p, i) {
+    const vid = p.media.find(m => m.kind === "video");
+    const fav = Favs.has(p.id);
+    return `<a class="m-card ui-card hover ui-spot" href="/shop/p/${p.slug}" data-reveal style="--d:${Math.min(i, 8) * .05}s">
+      <div class="m-media">
+        ${p.cover ? `<img src="${p.cover}" alt="" loading="lazy">` : `<div class="ph">${ICONS[p.category] || "📦"}</div>`}
+        ${vid ? `<video muted loop playsinline preload="none" data-src="${vid.url}"></video>` : ""}
+        <div class="m-top">
+          ${p.featured ? `<span class="ui-badge grad">★ À la une</span>` : ""}
+          ${vid ? `<span class="ui-badge">▶ Vidéo</span>` : ""}
+          <span class="m-fav ${fav ? "on" : ""}" data-fav="${p.id}" title="Favori">${fav ? "♥" : "♡"}</span>
+        </div>
+        <span class="m-quick ui-btn sm" data-qv="${p.id}">👁 Aperçu rapide</span>
+      </div>
+      <div class="m-body">
+        <span class="ui-badge accent" style="align-self:flex-start">${ICONS[p.category] || ""} ${esc(p.category_label)}</span>
+        <h3>${esc(p.title)}</h3>
+        <p>${esc(p.tagline || p.description)}</p>
+        <div class="m-foot">
+          <span class="m-price ${p.free ? "free" : ""}">${esc(p.price)}</span>
+          <span class="m-meta"><span>👁 ${p.views}</span>${p.free ? `<span>⬇ ${p.downloads}</span>` : ""}</span>
+        </div>
+      </div>
+    </a>`;
+  }
+
+  function render() {
+    const q = st.q.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
+    const norm = s => (s || "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
+    const favs = Favs.all();
+    let list = ITEMS.filter(p =>
+      (!st.cat || p.category === st.cat) &&
+      (!st.price || (st.price === "free" ? p.free : !p.free)) &&
+      (!st.favs || favs.includes(p.id)) &&
+      (!q || norm([p.title, p.tagline, p.description, p.category_label, p.tags.join(" ")].join(" ")).includes(q)));
+    const by = {new: (a, b) => b.created_at - a.created_at, pop: (a, b) => (b.views + b.downloads * 3) - (a.views + a.downloads * 3),
+                asc: (a, b) => a.price_cents - b.price_cents, desc: (a, b) => b.price_cents - a.price_cents};
+    list.sort(by[st.sort]);
+    $("#grid").innerHTML = list.map(card).join("");
+    $("#count").textContent = `${list.length} produit${list.length > 1 ? "s" : ""}`;
+    $("#empty").hidden = list.length > 0;
+    $("#emptyMsg").textContent = st.favs ? "Tu n'as encore aucun favori. Clique sur ♡ pour en ajouter." : ITEMS.length ? "Aucun produit ne correspond à ta recherche." : "La marketplace ouvre bientôt : les premiers produits arrivent.";
+    $("#favBtn").classList.toggle("primary", st.favs);
+    $("#favBtn").textContent = st.favs ? "♥ Favoris" : "♡ Favoris";
+    const f = !st.q && !st.cat && !st.price && !st.favs && ITEMS.find(p => p.featured);
+    $("#featured").innerHTML = f ? `<a class="featured ui-card hover ui-spot m-card" href="/shop/p/${f.slug}" data-reveal="zoom">
+      <div class="m-media">${f.cover ? `<img src="${f.cover}" alt="">` : `<div class="ph">${ICONS[f.category]}</div>`}
+        ${f.media.find(m => m.kind === "video") ? `<video muted loop playsinline preload="none" data-src="${f.media.find(m => m.kind === "video").url}"></video>` : ""}</div>
+      <div class="info"><span class="ui-badge grad" style="align-self:flex-start">★ À la une</span><h2>${esc(f.title)}</h2>
+        <p class="ui-muted" style="margin:0;line-height:1.55">${esc(f.tagline || f.description).slice(0, 220)}</p>
+        <div style="display:flex;gap:10px;align-items:center;margin-top:6px"><span class="m-price ${f.free ? "free" : ""}" style="font-size:1.4rem">${esc(f.price)}</span>
+        <span class="ui-btn primary sm" style="margin-left:auto">Découvrir →</span></div></div></a>` : "";
+    UI.reveal();
+  }
+
+  function quick(id) {
+    const p = ITEMS.find(x => x.id === id); if (!p) return;
+    const media = p.media.length ? p.media : (p.cover ? [{kind: "image", url: p.cover}] : []);
+    const show = m => m ? (m.kind === "video" ? `<video src="${m.url}" controls autoplay muted playsinline></video>` : `<img src="${m.url}" alt="">`) : `<div class="m-media" style="height:100%"><div class="ph">${ICONS[p.category]}</div></div>`;
+    $("#qv").innerHTML = `<div><div class="stage" id="qvStage">${show(media[0])}</div>
+      ${media.length > 1 ? `<div class="thumbs">${media.map((m, i) => `<button class="${i ? "" : "on"}" data-i="${i}">${m.kind === "video" ? `<video src="${m.url}#t=0.5" muted preload="metadata"></video><span class="play">▶</span>` : `<img src="${m.url}" alt="">`}</button>`).join("")}</div>` : ""}</div>
+      <div class="side"><span class="ui-badge accent" style="align-self:flex-start">${ICONS[p.category]} ${esc(p.category_label)}</span>
+        <h2>${esc(p.title)}</h2>${p.tagline ? `<p class="ui-muted" style="margin:0">${esc(p.tagline)}</p>` : ""}
+        <div class="desc">${esc(p.description)}</div>
+        ${p.tags.length ? `<div style="display:flex;gap:6px;flex-wrap:wrap">${p.tags.map(t => `<span class="m-tag">#${esc(t)}</span>`).join("")}</div>` : ""}
+        <div class="m-price ${p.free ? "free" : ""}" style="font-size:1.6rem">${esc(p.price)}</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:auto">
+          <a class="ui-btn primary" href="/shop/p/${p.slug}">${p.free ? "⬇ Voir et télécharger" : "Voir le produit →"}</a>
+          ${p.demo_url ? `<a class="ui-btn" href="${esc(p.demo_url)}" target="_blank" rel="noopener">↗ Démo</a>` : ""}
+          <button class="ui-btn icon m-fav-btn ${Favs.has(p.id) ? "on" : ""}" data-fav="${p.id}">${Favs.has(p.id) ? "♥" : "♡"}</button>
+        </div></div>`;
+    $("#qv").querySelectorAll(".thumbs button").forEach(b => b.onclick = () => {
+      $("#qv").querySelectorAll(".thumbs button").forEach(x => x.classList.toggle("on", x === b));
+      $("#qvStage").innerHTML = show(media[+b.dataset.i]);
+    });
+    UI.open("qvModal");
+  }
+
+  document.addEventListener("click", e => {
+    const q = e.target.closest("[data-qv]");
+    if (q) { e.preventDefault(); e.stopPropagation(); quick(+q.dataset.qv); }
+  });
+  $("#cats").addEventListener("click", e => {
+    const b = e.target.closest("[data-cat]"); if (!b) return;
+    st.cat = b.dataset.cat; $("#cats").querySelectorAll(".ui-chip").forEach(x => x.classList.toggle("on", x === b)); render();
+  });
+  $("#priceSeg").addEventListener("click", e => {
+    const b = e.target.closest("button"); if (!b) return;
+    st.price = b.dataset.p; $("#priceSeg").querySelectorAll("button").forEach(x => x.classList.toggle("on", x === b)); render();
+  });
+  $("#favBtn").onclick = () => { st.favs = !st.favs; history.replaceState(null, "", st.favs ? "#favoris" : location.pathname); render(); };
+  $("#sort").onchange = e => { st.sort = e.target.value; render(); };
+  let t; $("#q").oninput = e => { clearTimeout(t); t = setTimeout(() => { st.q = e.target.value.trim(); render(); }, 120); };
+  addEventListener("keydown", e => { if (e.key === "/" && document.activeElement.tagName !== "INPUT") { e.preventDefault(); $("#q").focus(); } });
+  addEventListener("hashchange", () => { st.favs = location.hash === "#favoris"; render(); });
+  document.addEventListener("favs", () => { if (st.favs) render(); });
+  if (st.cat) $("#cats").querySelectorAll(".ui-chip").forEach(x => x.classList.toggle("on", x.dataset.cat === st.cat));
+  render();
+</script>
+{% endblock %}

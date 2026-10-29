@@ -14,6 +14,10 @@ d'analyse, pas de copie à revendre : on ne vend sur la plateforme que des créa
 - [x] Détection des sections d'une page (en-tête, hero, grilles, pied de page) et export d'une section
 - [x] Export en code propre d'une page ou d'une section : HTML indenté, CSS réduit aux règles utilisées, composant React (JSX), tokens Tailwind
 - [ ] Code propre : conversion des styles en classes utilitaires Tailwind, projet Next.js prêt à lancer, découpage en composants
+- [x] Inspecteur de composants : arbre de la page (en-tête, hero, sections, titres, textes, images, vidéos, 3D, liens,
+      boutons, formulaires), sélection dans l'arbre ou dans la page, modification en direct (textes, liens, images, vidéos,
+      intégrations), masquer / dupliquer, remplacement d'un modèle 3D ou d'un élément 3D, enregistrement avec historique
+- [ ] Inspecteur : couleurs et typographies par élément, déplacement de blocs, bibliothèque de sections à insérer
 - [ ] Personnalisation par IA (textes, palette, images) pour transformer la base en création
 - [ ] Éditeur visuel et code (voir V3)
 - [ ] Déploiement en un clic (Hostinger, Vercel, Netlify, sous-domaine de la plateforme)
@@ -41,6 +45,10 @@ d'analyse, pas de copie à revendre : on ne vend sur la plateforme que des créa
   - [x] Page publique : catalogue + page détail + achat sans compte
   - [x] Paiement Stripe Checkout + lien de téléchargement sécurisé (7 jours, 5 téléchargements)
   - [x] Suivi des commandes et du chiffre d'affaires dans l'admin
+  - [x] Marketplace : designs, templates, prompts, skills, logiciels, assets 3D ; produits gratuits ou payants,
+        plusieurs images et vidéos, aperçu texte copiable, tags, mise en avant, recherche, filtres, favoris, aperçu rapide, démo
+  - [x] Admin : vue d'ensemble (sites, pages, ventes, vues, téléchargements), éditeur de produit avec médias (glisser-déposer, ordre)
+  - [x] Design system animé commun (cloneur, Studio, inspecteur, marketplace, admin) et miniatures des sites
   - [ ] Tester un vrai paiement Stripe (mode test) une fois les clés configurées
   - [ ] Configurer l'envoi d'e-mails (SMTP) pour envoyer le lien à l'acheteur
 

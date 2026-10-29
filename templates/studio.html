@@ -85,6 +85,8 @@
     .shadowbox { height: 46px; border-radius: 10px; background: var(--card); margin-bottom: 8px; display: flex; align-items: center;
                  padding: 0 10px; font-size: 10.5px; font-family: 'JetBrains Mono', monospace; color: var(--muted); }
   </style>
+  <link rel="stylesheet" href="/__sc/static/ui.css">
+  <link rel="stylesheet" href="/__sc/static/tool.css">
 </head>
 <body>
   <div class="top">
@@ -128,12 +130,14 @@ function cols() { return Math.max(1, Math.min(6, Math.ceil(Math.sqrt(pages.lengt
 
 function render() {
   const w = $('world'); w.innerHTML = '';
+  if (!render.done) { render.done = true; w.classList.add('first'); setTimeout(() => w.classList.remove('first'), 2000); }
   const c = cols();
   pages.forEach((p, i) => {
     const el = document.createElement('div');
     el.className = 'card' + (selected.has(p.key) ? ' sel' : '');
     el.style.left = (i % c) * (CARD_W + GAP) + 'px';
     el.style.top = Math.floor(i / c) * (CARD_H + GAP) + 'px';
+    el.style.setProperty('--i', Math.min(i, 24));
     el.innerHTML = `<div class="tick">${selected.has(p.key) ? '✓' : ''}</div>
       <div class="shot">${p.thumb ? `<img loading="lazy" src="/__sc/studio/${SITE}/thumb/${p.id}.jpg?t=${thumbStamp}" alt="">` : 'Miniature en préparation…'}</div>
       <div class="meta"><div class="t">${esc(p.title || p.key)}</div><div class="k">${esc(p.key)}</div></div>`;
@@ -220,10 +224,11 @@ $('pClose').onclick = () => $('panel').classList.remove('open');
 
 async function openPage(p) {
   panel(p.title || p.key, `<div class="row">
+      <a class="btn primary" href="/__sc/studio/${SITE}/inspect?key=${encodeURIComponent(p.key)}" title="Arbre des composants de la page, modification en direct">🔍 Inspecter et modifier</a>
       <button class="btn" id="pOpen">↗ Ouvrir la page</button>
       <button class="btn" id="pExport">⬇ Exporter cette page</button>
       <button class="btn" id="pClean" title="HTML et CSS lisibles, composant React, tokens Tailwind">&lt;/&gt; Code propre</button>
-      <button class="btn primary" id="pSections">✂ Détecter les sections</button></div>
+      <button class="btn" id="pSections">✂ Détecter les sections</button></div>
     <div class="k empty" style="font-family:'JetBrains Mono';margin-bottom:10px">${esc(p.key)}</div>
     <div id="secList"><p class="empty">Chargement des sections…</p></div>`);
   $('pOpen').onclick = () => openLive(p);
