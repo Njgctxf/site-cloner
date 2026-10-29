@@ -53,6 +53,16 @@ def _safe(root: Path, rel: str):
     return p if p.is_file() else None
 
 
+def _start_page(root: Path):
+    """Path of the URL the clone was started from ("Source : https://site/path" in _clone-report.txt)."""
+    try:
+        head = (root / "_clone-report.txt").read_text(encoding="utf-8", errors="ignore")[:2000]
+    except OSError:
+        return None
+    m = re.search(r"Source\s*:\s*(\S+)", head)
+    return urllib.parse.urlsplit(m.group(1)).path or "/" if m else None
+
+
 def resolve(root, raw_path: str):
     """Returns ("redirect", location) | ("file", Path, content_type) | None."""
     root = Path(root)
@@ -70,6 +80,10 @@ def resolve(root, raw_path: str):
         if e is None:
             continue
         if "r" in e:
+            if path == "/":  # the site's own root redirect: prefer the page the clone was started from
+                start = _start_page(root)
+                if start and start != "/" and any(k in data for k in (start, start.rstrip("/"), start + "/")):
+                    return ("redirect", start)
             return ("redirect", e["r"])
         f = _safe(root, e["f"])
         if f:
@@ -92,8 +106,12 @@ def resolve(root, raw_path: str):
         if f:
             return ("file", f, mimetypes.guess_type(str(f))[0] or "application/octet-stream")
 
-    # Clones whose start page isn't "/" (e.g. a site that begins at /en): send the root to the shallowest page
+    # Clones whose start page isn't "/" (a site that begins at /en, or a clone started from a deep page):
+    # send the root to the page the clone was started from, else to the shallowest page
     if path == "/":
+        start = _start_page(root)
+        if start and (start in data or start.rstrip("/") in data or start + "/" in data):
+            return ("redirect", start)
         pages = sorted((k for k, e in data.items() if "html" in e.get("t", "") and "?" not in k
                         and not k.startswith(("POST ", "/_ext/"))), key=lambda k: (k.rstrip("/").count("/"), k))
         if pages:
