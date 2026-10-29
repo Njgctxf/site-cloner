@@ -30,6 +30,7 @@ from cloner import clone_site
 from site_server import resolve, resolve_post, make_server
 from admin import init_admin
 from shop import init_shop
+from studio import init_studio
 
 app = Flask(__name__, template_folder="templates")
 
@@ -403,6 +404,7 @@ def publish_github(site_id):
 init_admin(app, load_manifest=load_manifest, jobs=jobs, active_servers=active_servers,
            CLONED_DIR=CLONED_DIR, delete_site=delete_site, stop_serve=stop_serve)
 init_shop(app)
+init_studio(app, CLONED_DIR=CLONED_DIR, find_free_port=find_free_port)
 if ONLINE:
     app.config["SESSION_COOKIE_SECURE"] = True
 

@@ -71,9 +71,9 @@ CSP = ("<meta http-equiv=\"Content-Security-Policy\" content=\"default-src * dat
 
 SHIM = """<script>(function(){var M=%(ext)s,O=%(orig)s;
 var B=/googletagmanager|google-analytics|googleadservices|doubleclick|facebook\\.net|hotjar|clarity\\.ms|sentry\\.io|mixpanel/i;
-function fix(u){if(u instanceof URL)u=u.href;if(typeof u!=='string')return u;if(B.test(u)&&/^(?:https?:)?\\/\\//i.test(u))return 'data:text/javascript,';u=u.replace(/^https?:\\/*(?=_ext\\/)/i,'/');var m=u.match(/^(?:https?:)?\\/\\/([^\\/:?#]+)(?::\\d+)?([\\/?#][\\s\\S]*)?$/i);
+function fix(u){if(u instanceof URL)u=u.href;if(typeof u!=='string')return u;if(B.test(u)&&/^(?:https?:)?\\/\\//i.test(u))return 'data:text/javascript,';u=u.replace(/^https?:\\/*(?=_ext\\/)/i,location.origin+'/');var m=u.match(/^(?:https?:)?\\/\\/([^\\/:?#]+)(?::\\d+)?([\\/?#][\\s\\S]*)?$/i);
 if(!m)return u;var h=m[1].toLowerCase();if(h===location.hostname)return u;var r=m[2]||'/';if(r.charAt(0)!=='/')r='/'+r;
-if(O[h])return r;if(M[h])return M[h]+r;return u;}
+if(O[h])return location.origin+r;if(M[h])return location.origin+M[h]+r;return u;}
 try{var f=window.fetch;if(f)window.fetch=function(a,b){if(typeof a==='string'||a instanceof URL)a=fix(a);else if(a&&a.url){var n=fix(a.url);if(n!==a.url)a=new Request(n,a);}return f.call(this,a,b);};}catch(e){}
 try{var xo=XMLHttpRequest.prototype.open;XMLHttpRequest.prototype.open=function(m,u){arguments[1]=fix(String(u));return xo.apply(this,arguments);};}catch(e){}
 try{var sa=Element.prototype.setAttribute;Element.prototype.setAttribute=function(n,v){var k=typeof n==='string'?n.toLowerCase():n;if((k==='srcset'||k==='imagesrcset')&&typeof v==='string')v=fixSet(v);else if((k==='src'||k==='href'||k==='poster'||k==='data')&&typeof v==='string'&&this.tagName!=='A'&&this.tagName!=='AREA')v=fix(v);return sa.call(this,n,v);};}catch(e){}
@@ -84,6 +84,9 @@ try{['HTMLImageElement','HTMLSourceElement'].forEach(function(n){var C=window[n]
 P(HTMLImageElement,'src');P(HTMLScriptElement,'src');P(HTMLLinkElement,'href');P(HTMLMediaElement,'src');
 P(HTMLSourceElement,'src');P(HTMLIFrameElement,'src');P(HTMLVideoElement,'poster');
 try{var W=window.Worker;if(W)window.Worker=function(u,o){return new W(fix(String(u)),o);};window.Worker.prototype=W.prototype;}catch(e){}
+function abs(d,n){if(typeof d==='string')return d.indexOf('/_ext/')===0?location.origin+d:d;if(n>4||!d||typeof d!=='object')return d;
+if(Array.isArray(d))return d.map(function(x){return abs(x,n+1);});if(Object.getPrototypeOf(d)!==Object.prototype)return d;var o={};for(var k in d)o[k]=abs(d[k],n+1);return o;}
+try{var wp=Worker.prototype.postMessage;Worker.prototype.postMessage=function(d){arguments[0]=abs(d,0);return wp.apply(this,arguments);};}catch(e){}
 try{navigator.sendBeacon=function(){return true;};}catch(e){}
 })();</script>"""
 
@@ -639,8 +642,11 @@ class Cloner:
             "ext": json.dumps({h.split(":")[0]: "/_ext/" + safe_segment(h) for h in ext_hosts}),
             "orig": json.dumps({self.origin: 1, "www." + self.origin: 1}),
         }
+        # only the tracker loaders themselves: a script that merely mentions dataLayer/gtag can also hold the site's
+        # config (e.g. Salesforce Commerce's window.SFRA.Constants) and the runtime shim blocks tracker requests anyway
         sc_inline = re.compile(
-            r"<script\b(?![^>]*\bsrc=)[^>]*>(?:(?!</script>).)*?(?:googletagmanager|gtag\(|fbq\(|clarity|hotjar|_hsq|dataLayer)"
+            r"<script\b(?![^>]*\bsrc=)[^>]*>(?:(?!</script>).)*?"
+            r"(?:googletagmanager\.com|connect\.facebook\.net|fbq\(\s*['\"]init|clarity\.ms|static\.hotjar\.com|js\.hs-scripts\.com)"
             r"(?:(?!</script>).)*</script>", re.I | re.S)
         sc_src = re.compile(r"<script\b[^>]*\bsrc=[\"'][^\"']*(?:" + BLOCKED.pattern + r")[^\"']*[\"'][^>]*>\s*</script>", re.I)
         link_blocked = re.compile(r"<link\b[^>]*\bhref=[\"'][^\"']*(?:" + BLOCKED.pattern + r")[^\"']*[\"'][^>]*>", re.I)
@@ -674,7 +680,7 @@ class Cloner:
                 new = sc_src.sub("", new)
                 # Next.js flight data (self.__next_f.push) carries the layout tree, GTM tags included: dropping one
                 # chunk breaks the whole stream ("This page couldn't load"); the runtime shim blocks the tracker itself
-                new = sc_inline.sub(lambda m: m.group(0) if "__next_f" in m.group(0)[:160] else "", new)
+                new = sc_inline.sub(lambda m: m.group(0) if "__next_f" in m.group(0)[:160] or len(m.group(0)) > 3000 else "", new)
                 new = noscript_iframe.sub("", new)
                 new = link_blocked.sub("", new)
                 new = re.sub(r"\s+integrity=(\"[^\"]*\"|'[^']*')", "", new, flags=re.I)
@@ -848,6 +854,131 @@ class Cloner:
                     got += 1
         return got
 
+    ASSET_REF = re.compile(
+        r"(?<![\w.:/])(/(?!/)[^\s\"'<>()\\,]+?\.(?:css|js|mjs|woff2?|ttf|otf|png|jpe?g|webp|avif|gif|svg|ico|mp4|webm)"
+        r"(?:\?[^\s\"'<>()\\,]*)?)(?=[\s\"'<>()\\,]|$)", re.I)
+    CSS_URL = re.compile(r"url\(\s*['\"]?([^'\")]+?)['\"]?\s*\)", re.I)
+    # assets named in scripts, often built at runtime (`${base}glb/model.glb`): a quoted or template-literal path
+    JS_REF = re.compile(
+        r"(?:[\"'`]|\})((?:\./|/)?[\w@%+~-]+(?:/[\w@%+~.-]+)*\."
+        r"(?:glb|gltf|bin|hdr|exr|ktx2|basis|wasm|drc|mp3|m4a|ogg|wav|mp4|webm|png|jpe?g|webp|avif|gif|svg|woff2?))(?=[\"'`?#])", re.I)
+    # three.js decoders: only the folder is in the code, the loader appends its standard file names
+    DECODER_PATH = re.compile(r"set(Decoder|Transcoder)Path\(\s*[\"'`]([^\"'`]+)[\"'`]")
+    DECODER_FILES = {"Decoder": ("draco_decoder.js", "draco_decoder.wasm", "draco_wasm_wrapper.js"),
+                     "Transcoder": ("basis_transcoder.js", "basis_transcoder.wasm")}
+
+    def fetch_missing_assets(self, rounds=3, limit=4000):
+        """Stylesheets, scripts, fonts and images that the pages (or the saved stylesheets) reference but that never
+        reached the clone, e.g. a page discovered late in the crawl whose sub-resources the browser never loaded, or
+        requests a bot manager answered with a challenge. They are plain static files: fetch them directly."""
+        sp = urllib.parse.urlparse(self.start_url)
+        root = f"{sp.scheme}://{sp.netloc}"
+        by_rel = {rel: url for url, rel in self.captured.items()}
+        tried, got = set(), 0
+        for _ in range(rounds):
+            want = []
+            for rel in sorted({v["f"] for v in self.map.values() if "f" in v}):
+                low = rel.lower()
+                is_js = low.endswith((".js", ".mjs"))
+                if not (low.endswith((".html", ".htm", ".css")) or is_js):
+                    continue
+                try:
+                    text = (self.dest / rel).read_text(encoding="utf-8", errors="ignore")
+                except OSError:
+                    continue
+                refs = [m.group(1) for m in self.ASSET_REF.finditer(text)]
+                if is_js:  # relative names are resolved from the site root, where such bundles point their base
+                    refs += ["/" + m.group(1).lstrip("./") if not m.group(1).startswith("/") else m.group(1)
+                             for m in self.JS_REF.finditer(text) if "/" in m.group(1).lstrip("./")]
+                    for m in self.DECODER_PATH.finditer(text):
+                        folder = m.group(2) if m.group(2).endswith("/") else m.group(2) + "/"
+                        if folder.startswith(("http://", "https://", "/")):
+                            refs += [folder + f for f in self.DECODER_FILES[m.group(1)]]
+                        else:
+                            refs += ["/" + folder.lstrip("./") + f for f in self.DECODER_FILES[m.group(1)]]
+                if low.endswith(".css") and rel in by_rel:  # url(...) relative to the stylesheet's own address
+                    refs += [urllib.parse.urljoin(by_rel[rel], u) for u in self.CSS_URL.findall(text)
+                             if not u.startswith(("data:", "#"))]
+                for r in refs:
+                    if r.startswith("/_ext/"):
+                        host, _, rest = r[6:].partition("/")
+                        url = f"https://{host}/{rest}"
+                    elif r.startswith("/"):
+                        url = root + r
+                    elif r.startswith(("http://", "https://")):
+                        url = r
+                    else:
+                        continue
+                    url = urllib.parse.urldefrag(url)[0]  # font#iefix and the like: save() stores it without
+                    if url in tried or url in self.captured or self.key_of(url) in self.map:
+                        continue
+                    tried.add(url)
+                    want.append(url)
+            # what breaks a page first: stylesheets, scripts and fonts, then images
+            order = (".css", ".js", ".mjs", ".woff2", ".woff", ".ttf", ".otf")
+            want.sort(key=lambda u: next((i for i, e in enumerate(order) if urllib.parse.urlparse(u).path.lower().endswith(e)), len(order)))
+            want = want[:max(0, limit - got)]
+            if not want:
+                break
+
+            def get(url):
+                try:
+                    video = urllib.parse.urlparse(url).path.lower().endswith((".mp4", ".webm"))
+                    r = self.session.get(url, timeout=180 if video else 30)
+                    ctype = r.headers.get("content-type", "")
+                    if r.status_code == 200 and r.content and "text/html" not in ctype:
+                        return url, ctype, r.content
+                except Exception:
+                    pass
+                return url, None, None
+
+            new = 0
+            with ThreadPoolExecutor(6) as ex:
+                for url, ctype, body in ex.map(get, want):
+                    if body:
+                        self.save(url, ctype, body)
+                        by_rel[self.captured[url]] = url
+                        new += 1
+            got += new
+            if not new:
+                break
+        return got
+
+    def refetch_binary_served_as_text(self):
+        """A server that labels binary files as text/plain (3D models, audio, wasm...) gets them decoded by the browser:
+        the body Playwright hands back is that text re-encoded in UTF-8, so the saved file is corrupt. Download every
+        such file again over plain HTTP, byte for byte."""
+        todo = []
+        for key, e in self.map.items():
+            if "f" not in e or not e.get("t", "").startswith("text/"):
+                continue
+            ext = os.path.splitext(e["f"].split("__")[0] if "__" in e["f"] else e["f"])[1].lower()
+            if ext and ext not in TEXT_EXT and ext not in (".htm", ".csv", ".md", ".vtt", ".srt", ".glsl", ".frag", ".vert"):
+                todo.append(key)
+        sp = urllib.parse.urlparse(self.start_url)
+
+        def get(key):
+            if key.startswith("/_ext/"):
+                host, _, rest = key[6:].partition("/")
+                url = f"https://{host}/{urllib.parse.quote(rest, safe='/?=&%:@+,;~')}"
+            else:
+                url = f"{sp.scheme}://{sp.netloc}{urllib.parse.quote(key, safe='/?=&%:@+,;~')}"
+            try:
+                r = self.session.get(url, timeout=120)
+                if r.status_code == 200 and r.content:
+                    return key, r.content
+            except Exception:
+                pass
+            return key, None
+
+        fixed = 0
+        with ThreadPoolExecutor(6) as ex:
+            for key, body in ex.map(get, todo):
+                if body:
+                    (self.dest / self.map[key]["f"]).write_bytes(body)
+                    fixed += 1
+        return fixed
+
     def framer_cms_static(self):
         """Framer reads its CMS through `file.framercms?range=a-b,c-d` and expects exactly those bytes (status 200). That
         only works with the origin's server. Store the complete files (10-40 KB) at their plain paths and make the CMS
@@ -907,13 +1038,26 @@ class Cloner:
         return got
 
     def complete(self):
-        """Last passes of a clone: images the crawl viewport never asked for, then Framer's CMS for static hosting."""
+        """Last passes of a clone: binary files the browser decoded as text, images the crawl viewport never asked for,
+        missing static files, then Framer's CMS for static hosting."""
+        try:
+            n = self.refetch_binary_served_as_text()
+            if n:
+                self.cb(0, 1, f"{n} fichiers binaires réparés")
+        except Exception as e:
+            self.errors.append(f"refetch_binary_served_as_text: {e}")
         try:
             n = self.fetch_missing_images()
             if n:
                 self.cb(0, 1, f"{n} images responsives complétées")
         except Exception as e:
             self.errors.append(f"fetch_missing_images: {e}")
+        try:
+            n = self.fetch_missing_assets()
+            if n:
+                self.cb(0, 1, f"{n} fichiers manquants récupérés")
+        except Exception as e:
+            self.errors.append(f"fetch_missing_assets: {e}")
         try:
             self.framer_cms_static()
         except Exception as e:

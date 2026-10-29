@@ -1,5 +1,35 @@
 # Roadmap SiteCloner SaaS
 
+## Vision — un studio pour codeurs et vibe codeurs
+
+Cloner un site sert de point de départ : on explore ses pages, on récupère des pages ou des sections, on extrait
+son design system, puis on transforme le tout en **son propre** site. Le cloneur est un outil d'inspiration et
+d'analyse, pas de copie à revendre : on ne vend sur la plateforme que des créations originales.
+
+### Studio (en cours)
+- [x] Miniatures de toutes les pages clonées
+- [x] Tableau visuel des pages façon Framer (déplacement, zoom, sélection)
+- [x] Export des pages choisies en archive autonome
+- [x] Extraction du design system (couleurs, typographies, tailles, rayons, ombres) en tokens CSS / Tailwind / JSON
+- [x] Détection des sections d'une page (en-tête, hero, grilles, pied de page) et export d'une section
+- [x] Export en code propre d'une page ou d'une section : HTML indenté, CSS réduit aux règles utilisées, composant React (JSX), tokens Tailwind
+- [ ] Code propre : conversion des styles en classes utilitaires Tailwind, projet Next.js prêt à lancer, découpage en composants
+- [ ] Personnalisation par IA (textes, palette, images) pour transformer la base en création
+- [ ] Éditeur visuel et code (voir V3)
+- [ ] Déploiement en un clic (Hostinger, Vercel, Netlify, sous-domaine de la plateforme)
+- [ ] Historique des versions et retour en arrière
+
+### Communauté et marketplace (quand il y aura des utilisateurs)
+- [ ] Templates et composants originaux à vendre, licences claires (perso, commerciale, revente interdite)
+- [ ] Profils créateurs, portfolio, avis
+- [ ] Vente de compétences (adaptation de template, création de site sur devis)
+- [ ] Paiements Stripe Connect avec commission de la plateforme
+- [ ] Détection de plagiat des templates mis en vente (comparaison avec des sites existants)
+- [ ] Conditions d'utilisation et procédure de retrait des contenus signalés
+
+### Modèle économique
+- Gratuit (quelques clonages, consultation), Pro (export du code, IA, déploiement), Équipe, commission marketplace
+
 ## V2 — à faire maintenant
 
 ### Demandes du propriétaire

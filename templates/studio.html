@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Studio — {{ site_name }}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #090a0f; --panel: #11131c; --card: #161925; --border: #232842; --accent: #6366f1;
+      --accent-soft: rgba(99,102,241,.16); --text: #f1f5f9; --muted: #8b95ab; --ok: #10b981; --danger: #ef4444;
+      --grid: rgba(148,163,184,.07);
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', sans-serif; }
+    html, body { height: 100%; background: var(--bg); color: var(--text); overflow: hidden; }
+    button { cursor: pointer; font: inherit; }
+    .top { position: fixed; inset: 0 0 auto 0; height: 56px; display: flex; align-items: center; gap: 10px;
+           padding: 0 16px; background: rgba(9,10,15,.92); backdrop-filter: blur(10px); border-bottom: 1px solid var(--border); z-index: 20; }
+    .top a.back { color: var(--muted); text-decoration: none; font-size: 13px; }
+    .top a.back:hover { color: var(--text); }
+    .top h1 { font-size: 15px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 32vw; }
+    .top .sp { flex: 1; }
+    .btn { background: var(--card); color: var(--text); border: 1px solid var(--border); border-radius: 8px;
+           padding: 7px 12px; font-size: 13px; display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; text-decoration: none; }
+    @media (max-width: 1000px) { .top h1 { max-width: 18vw; } .top a.back { display: none; } .top .status { display: none; } }
+    .btn:hover { border-color: #3a4170; }
+    .btn.primary { background: var(--accent); border-color: var(--accent); }
+    .btn.primary:hover { filter: brightness(1.1); }
+    .btn:disabled { opacity: .45; cursor: default; }
+    .status { font-size: 12px; color: var(--muted); font-family: 'JetBrains Mono', monospace; }
+    #viewport { position: fixed; inset: 56px 0 0 0; overflow: hidden; cursor: grab;
+                background-image: radial-gradient(var(--grid) 1px, transparent 1px); background-size: 24px 24px; }
+    #viewport.drag { cursor: grabbing; }
+    #world { position: absolute; left: 0; top: 0; transform-origin: 0 0; }
+    .card { position: absolute; width: 360px; background: var(--card); border: 1px solid var(--border); border-radius: 12px;
+            overflow: hidden; cursor: pointer; transition: border-color .15s, box-shadow .15s; user-select: none; }
+    .card:hover { border-color: #3a4170; }
+    .card.sel { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+    .card .shot { width: 100%; aspect-ratio: 16 / 10; background: #0d0f17; display: flex; align-items: center; justify-content: center;
+                  color: var(--muted); font-size: 12px; overflow: hidden; }
+    .card .shot img { width: 100%; height: 100%; object-fit: cover; object-position: top; display: block; pointer-events: none; }
+    .card .meta { padding: 10px 12px; }
+    .card .t { font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .card .k { font-size: 11px; color: var(--muted); font-family: 'JetBrains Mono', monospace; margin-top: 3px;
+               white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .card .tick { position: absolute; top: 10px; left: 10px; width: 22px; height: 22px; border-radius: 6px; background: rgba(9,10,15,.7);
+                  border: 1px solid var(--border); display: flex; align-items: center; justify-content: center; font-size: 13px; }
+    .card.sel .tick { background: var(--accent); border-color: var(--accent); }
+    .zoombar { position: fixed; left: 16px; bottom: 16px; display: flex; gap: 6px; z-index: 15; align-items: center; }
+    .zoombar .status { background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 7px 10px; }
+    .hint { position: fixed; left: 50%; bottom: 16px; transform: translateX(-50%); font-size: 12px; color: var(--muted);
+            background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 7px 12px; z-index: 15; }
+    aside { position: fixed; top: 56px; right: 0; bottom: 0; width: 400px; background: var(--panel); border-left: 1px solid var(--border);
+            z-index: 18; transform: translateX(100%); transition: transform .2s; display: flex; flex-direction: column; }
+    aside.open { transform: none; }
+    aside header { display: flex; align-items: center; gap: 8px; padding: 14px 16px; border-bottom: 1px solid var(--border); }
+    aside header h2 { font-size: 14px; font-weight: 600; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    aside .body { overflow: auto; padding: 14px 16px 30px; flex: 1; }
+    .x { background: none; border: 0; color: var(--muted); font-size: 18px; }
+    .row { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; }
+    .sec { border: 1px solid var(--border); border-radius: 10px; overflow: hidden; margin-bottom: 12px; background: var(--card); }
+    .sec img { width: 100%; display: block; max-height: 260px; object-fit: cover; object-position: top; }
+    .sec .m { display: flex; align-items: center; gap: 8px; padding: 8px 10px; font-size: 12px; }
+    .sec .m b { font-weight: 600; text-transform: capitalize; }
+    .sec .m span { color: var(--muted); flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    h3 { font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin: 18px 0 10px; }
+    .sw { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+    .sw div { border: 1px solid var(--border); border-radius: 8px; overflow: hidden; cursor: pointer; font-size: 10.5px;
+              font-family: 'JetBrains Mono', monospace; }
+    .sw i { display: block; height: 42px; }
+    .sw small { display: block; padding: 5px 6px; color: var(--muted); }
+    .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+    .chip { border: 1px solid var(--border); border-radius: 999px; padding: 4px 10px; font-size: 12px; background: var(--card); cursor: pointer; }
+    pre { background: #0b0d14; border: 1px solid var(--border); border-radius: 8px; padding: 10px; font-family: 'JetBrains Mono', monospace;
+          font-size: 11px; color: #c7d2fe; overflow: auto; max-height: 260px; white-space: pre; }
+    .tabs { display: flex; gap: 6px; margin-bottom: 8px; }
+    .tabs button { background: none; border: 1px solid var(--border); color: var(--muted); border-radius: 6px; padding: 4px 9px; font-size: 12px; }
+    .tabs button.on { color: var(--text); border-color: var(--accent); background: var(--accent-soft); }
+    .empty { color: var(--muted); font-size: 13px; line-height: 1.5; }
+    .toast { position: fixed; top: 68px; left: 50%; transform: translateX(-50%); background: var(--panel); border: 1px solid var(--border);
+             border-radius: 8px; padding: 8px 14px; font-size: 13px; z-index: 40; opacity: 0; transition: opacity .2s; pointer-events: none; }
+    .toast.on { opacity: 1; }
+    .shadowbox { height: 46px; border-radius: 10px; background: var(--card); margin-bottom: 8px; display: flex; align-items: center;
+                 padding: 0 10px; font-size: 10.5px; font-family: 'JetBrains Mono', monospace; color: var(--muted); }
+  </style>
+</head>
+<body>
+  <div class="top">
+    <a class="back" href="/__sc/">← Tableau de bord</a>
+    <h1 id="title">Studio · {{ site_name }}</h1>
+    <span class="status" id="status"></span>
+    <span class="sp"></span>
+    <button class="btn" id="btnThumbs" title="Refaire toutes les miniatures">↻ Miniatures</button>
+    <button class="btn" id="btnDesign">🎨 Design system</button>
+    <button class="btn" id="btnAll">Tout sélectionner</button>
+    <button class="btn primary" id="btnExport" disabled>⬇ Exporter la sélection</button>
+  </div>
+
+  <div id="viewport"><div id="world"></div></div>
+
+  <div class="zoombar">
+    <button class="btn" id="zOut">−</button>
+    <span class="status" id="zoomPct">100%</span>
+    <button class="btn" id="zIn">+</button>
+    <button class="btn" id="zFit">Ajuster</button>
+  </div>
+  <div class="hint">Glisser pour se déplacer · molette pour zoomer · clic pour sélectionner · double-clic pour ouvrir la page</div>
+
+  <aside id="panel">
+    <header><h2 id="pTitle"></h2><button class="x" id="pClose">✕</button></header>
+    <div class="body" id="pBody"></div>
+  </aside>
+  <div class="toast" id="toast"></div>
+
+<script>
+const SITE = {{ site_id|tojson }};
+const API = `/__sc/api/studio/${SITE}`;
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+let pages = [], selected = new Set(), view = {x: 40, y: 40, k: 1}, servedUrl = null, thumbStamp = Date.now();
+const CARD_W = 360, CARD_H = 286, GAP = 48;
+
+function toast(msg) { const t = $('toast'); t.textContent = msg; t.classList.add('on'); clearTimeout(t._h); t._h = setTimeout(() => t.classList.remove('on'), 2200); }
+function apply() { $('world').style.transform = `translate(${view.x}px, ${view.y}px) scale(${view.k})`; $('zoomPct').textContent = Math.round(view.k * 100) + '%'; }
+function cols() { return Math.max(1, Math.min(6, Math.ceil(Math.sqrt(pages.length * 1.6)))); }
+
+function render() {
+  const w = $('world'); w.innerHTML = '';
+  const c = cols();
+  pages.forEach((p, i) => {
+    const el = document.createElement('div');
+    el.className = 'card' + (selected.has(p.key) ? ' sel' : '');
+    el.style.left = (i % c) * (CARD_W + GAP) + 'px';
+    el.style.top = Math.floor(i / c) * (CARD_H + GAP) + 'px';
+    el.innerHTML = `<div class="tick">${selected.has(p.key) ? '✓' : ''}</div>
+      <div class="shot">${p.thumb ? `<img loading="lazy" src="/__sc/studio/${SITE}/thumb/${p.id}.jpg?t=${thumbStamp}" alt="">` : 'Miniature en préparation…'}</div>
+      <div class="meta"><div class="t">${esc(p.title || p.key)}</div><div class="k">${esc(p.key)}</div></div>`;
+    el.addEventListener('click', e => { e.stopPropagation(); if (moved) return; toggle(p.key); openPage(p); });
+    el.addEventListener('dblclick', e => { e.stopPropagation(); openLive(p); });
+    w.appendChild(el);
+  });
+  $('btnExport').disabled = !selected.size;
+  $('btnExport').textContent = selected.size ? `⬇ Exporter ${selected.size} page${selected.size > 1 ? 's' : ''}` : '⬇ Exporter la sélection';
+  $('btnAll').textContent = selected.size === pages.length && pages.length ? 'Tout désélectionner' : 'Tout sélectionner';
+}
+
+function toggle(key) { selected.has(key) ? selected.delete(key) : selected.add(key); render(); }
+
+function fit() {
+  const vp = $('viewport').getBoundingClientRect(), c = cols(), rows = Math.ceil(pages.length / c);
+  const W = c * (CARD_W + GAP) - GAP, H = rows * (CARD_H + GAP) - GAP;
+  const free = vp.width - ($('panel').classList.contains('open') ? 400 : 0);
+  view.k = Math.max(0.15, Math.min(1.2, Math.min((free - 80) / W, (vp.height - 120) / H)));
+  view.x = (free - W * view.k) / 2; view.y = Math.max(30, (vp.height - H * view.k) / 2 - 20); apply();
+}
+
+// ---- pan & zoom
+let drag = null, moved = false;
+$('viewport').addEventListener('mousedown', e => { drag = {x: e.clientX, y: e.clientY, vx: view.x, vy: view.y}; moved = false; });
+addEventListener('mousemove', e => {
+  if (!drag) return;
+  const dx = e.clientX - drag.x, dy = e.clientY - drag.y;
+  if (Math.abs(dx) + Math.abs(dy) > 4) { moved = true; $('viewport').classList.add('drag'); }
+  view.x = drag.vx + dx; view.y = drag.vy + dy; apply();
+});
+addEventListener('mouseup', () => { drag = null; $('viewport').classList.remove('drag'); setTimeout(() => moved = false, 0); });
+$('viewport').addEventListener('wheel', e => {
+  e.preventDefault();
+  const r = $('viewport').getBoundingClientRect(), mx = e.clientX - r.left, my = e.clientY - r.top;
+  const k = Math.max(0.1, Math.min(2.5, view.k * Math.exp(-e.deltaY * 0.0015)));
+  view.x = mx - (mx - view.x) * k / view.k; view.y = my - (my - view.y) * k / view.k; view.k = k; apply();
+}, {passive: false});
+$('zIn').onclick = () => { view.k = Math.min(2.5, view.k * 1.2); apply(); };
+$('zOut').onclick = () => { view.k = Math.max(0.1, view.k / 1.2); apply(); };
+$('zFit').onclick = fit;
+
+// ---- data
+async function load(first) {
+  const r = await fetch(`${API}/pages`); const d = await r.json();
+  pages = d.pages; render(); if (first) fit();
+  showJob(d.job);
+  if (first && pages.some(p => !p.thumb) && d.job.state !== 'running') startThumbs(false);
+  else if (d.job.state === 'running') poll();
+}
+function showJob(j) {
+  if (j && j.state === 'running') $('status').textContent = `${j.kind === 'thumbs' ? 'Miniatures' : 'Sections'} ${j.done}/${j.total || '…'}`;
+  else if (j && j.state === 'error') $('status').textContent = 'Erreur : ' + j.error;
+  else $('status').textContent = `${pages.length} page${pages.length > 1 ? 's' : ''}`;
+}
+let polling = null;
+function poll(onDone) {
+  clearInterval(polling);
+  polling = setInterval(async () => {
+    const j = await (await fetch(`${API}/job`)).json(); showJob(j);
+    if (j.kind === 'thumbs') { const before = pages.filter(p => p.thumb).length; const d = await (await fetch(`${API}/pages`)).json();
+      if (d.pages.filter(p => p.thumb).length !== before) { pages = d.pages; thumbStamp = Date.now(); render(); } }
+    if (j.state !== 'running') { clearInterval(polling); thumbStamp = Date.now(); await load(false); onDone && onDone(j); }
+  }, 1500);
+}
+async function startThumbs(force) {
+  const r = await fetch(`${API}/thumbs`, {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({force})});
+  if (r.status === 409) toast('Une tâche est déjà en cours'); poll();
+}
+$('btnThumbs').onclick = () => startThumbs(true);
+$('btnAll').onclick = () => { if (selected.size === pages.length) selected.clear(); else pages.forEach(p => selected.add(p.key)); render(); };
+
+// ---- open the live page (the tool's local server for this clone)
+async function serveUrl() {
+  if (servedUrl) return servedUrl;
+  const d = await (await fetch(`/__sc/api/sites/${SITE}/serve`, {method: 'POST'})).json();
+  servedUrl = d.url; return servedUrl;
+}
+async function openLive(p) { const u = await serveUrl(); window.open(u.replace(/\/$/, '') + p.key, '_blank'); }
+
+// ---- side panel: page details + sections
+function panel(title, html) { $('pTitle').textContent = title; $('pBody').innerHTML = html; $('panel').classList.add('open'); }
+$('pClose').onclick = () => $('panel').classList.remove('open');
+
+async function openPage(p) {
+  panel(p.title || p.key, `<div class="row">
+      <button class="btn" id="pOpen">↗ Ouvrir la page</button>
+      <button class="btn" id="pExport">⬇ Exporter cette page</button>
+      <button class="btn" id="pClean" title="HTML et CSS lisibles, composant React, tokens Tailwind">&lt;/&gt; Code propre</button>
+      <button class="btn primary" id="pSections">✂ Détecter les sections</button></div>
+    <div class="k empty" style="font-family:'JetBrains Mono';margin-bottom:10px">${esc(p.key)}</div>
+    <div id="secList"><p class="empty">Chargement des sections…</p></div>`);
+  $('pOpen').onclick = () => openLive(p);
+  $('pExport').onclick = () => exportPages([p.key]);
+  $('pClean').onclick = () => cleanCode(p.key, null, p.title);
+  $('pSections').onclick = () => detectSections(p);
+  showSections(p);
+}
+async function showSections(p) {
+  const d = await (await fetch(`${API}/sections?key=${encodeURIComponent(p.key)}`)).json();
+  const box = $('secList'); if (!box) return;
+  if (!d.sections) { box.innerHTML = `<p class="empty">Les sections de cette page n'ont pas encore été détectées. Le Studio ouvre la page,
+      la découpe en blocs (en-tête, hero, sections, pied de page) et capture chacun d'eux, avec son code.</p>`; return; }
+  if (!d.sections.length) { box.innerHTML = '<p class="empty">Aucune section détectée sur cette page.</p>'; return; }
+  box.innerHTML = d.sections.map(s => `<div class="sec">
+      <img loading="lazy" src="/__sc/studio/${SITE}/section/${d.pid}/${s.n}.jpg?t=${Date.now()}" alt="">
+      <div class="m"><b>${esc(s.kind)}</b><span>${esc(s.label || s.tag)} · ${s.w}×${s.h}</span>
+      ${s.has_html ? `<a class="btn" href="${API}/section/${d.pid}/${s.n}/export" title="Capture fidèle avec les styles d'origine">⬇ Brut</a>
+        <button class="btn" data-clean="${s.n}" data-label="${esc(s.label)}" title="HTML et CSS lisibles, composant React, tokens Tailwind">&lt;/&gt; Propre</button>` : ''}</div></div>`).join('');
+  box.querySelectorAll('[data-clean]').forEach(btn => btn.onclick = () => cleanCode(p.key, +btn.dataset.clean, btn.dataset.label));
+}
+async function detectSections(p) {
+  const r = await fetch(`${API}/sections`, {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({key: p.key})});
+  if (r.status === 409) { toast('Une tâche est déjà en cours'); return; }
+  $('secList').innerHTML = '<p class="empty">Détection en cours : ouverture de la page, défilement, découpe et captures…</p>';
+  poll(() => showSections(p));
+}
+
+// ---- export
+async function download(url, body, waiting) {
+  toast(waiting);
+  const r = await fetch(url, {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(body)});
+  if (!r.ok) { let m = 'Export impossible'; try { m = (await r.json()).error || m; } catch (e) {} toast(m); return; }
+  const blob = await r.blob(), cd = r.headers.get('Content-Disposition') || '';
+  const name = (cd.match(/filename="?([^";]+)/) || [])[1] || `${SITE}.zip`;
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; a.click(); URL.revokeObjectURL(a.href);
+  toast('Archive prête : ' + name);
+}
+const exportPages = keys => download(`${API}/export`, {pages: keys}, 'Préparation de l’archive…');
+const cleanCode = (key, section, label) => download(`${API}/clean`, {key, section, label},
+  'Génération du code propre : rendu de la page, tri des styles utilisés, conversion en React… (10 à 30 s)');
+$('btnExport').onclick = () => exportPages([...selected]);
+
+// ---- design system
+$('btnDesign').onclick = async () => {
+  panel('Design system', '<p class="empty">Analyse des styles…</p>');
+  const t = await (await fetch(`${API}/design`)).json();
+  const sw = list => `<div class="sw">${list.map(c => `<div data-copy="${esc(c.value)}" title="Copier"><i style="background:${esc(c.value)}"></i><small>${esc(c.value)}</small></div>`).join('')}</div>`;
+  const chips = list => `<div class="chips">${list.map(v => `<span class="chip" data-copy="${esc(v)}">${esc(v)}</span>`).join('')}</div>`;
+  const measured = t.measured_pages ? `<p class="empty">Mesuré sur ${t.measured_pages} page(s) rendue(s), pondéré par l'usage réel.</p>` :
+    `<p class="empty">Les miniatures ne sont pas encore prêtes : les couleurs et polices mesurées sur les pages apparaîtront après leur génération.</p>`;
+  $('pBody').innerHTML = measured +
+    `<h3>Fonds</h3>${sw(t.colors.background)}<h3>Textes</h3>${sw(t.colors.text)}` +
+    (t.colors.border.length ? `<h3>Bordures</h3>${sw(t.colors.border)}` : '') +
+    `<h3>Polices</h3>${t.fonts.map(f => `<div class="chip" data-copy="${esc(f.value)}" style="display:block;margin-bottom:6px;font-family:'${esc(f.value)}',sans-serif;font-size:15px">${esc(f.value)}</div>`).join('')}` +
+    (t.font_faces.length ? `<h3>Polices embarquées</h3>${chips(t.font_faces)}` : '') +
+    `<h3>Tailles de texte</h3>${chips(t.font_sizes.map(s => s.value))}` +
+    (t.font_weights.length ? `<h3>Graisses</h3>${chips(t.font_weights)}` : '') +
+    (t.radii.length ? `<h3>Arrondis</h3>${chips(t.radii.map(r => r.value))}` : '') +
+    (t.shadows.length ? `<h3>Ombres</h3>${t.shadows.map(s => `<div class="shadowbox" style="box-shadow:${esc(s.value)}" data-copy="${esc(s.value)}">${esc(s.value).slice(0, 60)}</div>`).join('')}` : '') +
+    (t.css_variables.length ? `<h3>Variables CSS du site</h3>${sw(t.css_variables.map(v => ({value: v.value})))}` : '') +
+    `<h3>Code</h3><div class="tabs"><button class="on" data-tab="css">CSS</button><button data-tab="tailwind">Tailwind</button><button data-tab="json">JSON</button>
+      <span style="flex:1"></span><button id="cpCode">Copier</button></div><pre id="code"></pre>`;
+  const codes = {css: t.css, tailwind: t.tailwind, json: JSON.stringify({colors: t.colors, fonts: t.fonts, font_sizes: t.font_sizes, radii: t.radii, shadows: t.shadows}, null, 2)};
+  let cur = 'css'; $('code').textContent = codes.css;
+  $('pBody').querySelectorAll('[data-tab]').forEach(b => b.onclick = () => {
+    $('pBody').querySelectorAll('[data-tab]').forEach(x => x.classList.remove('on')); b.classList.add('on'); cur = b.dataset.tab; $('code').textContent = codes[cur]; });
+  $('cpCode').onclick = () => { navigator.clipboard.writeText(codes[cur]); toast('Code copié'); };
+  $('pBody').querySelectorAll('[data-copy]').forEach(el => el.onclick = () => { navigator.clipboard.writeText(el.dataset.copy); toast('Copié : ' + el.dataset.copy); });
+};
+
+load(true);
+</script>
+</body>
+</html>
