@@ -140,6 +140,7 @@ function render() {
     el.style.top = Math.floor(i / c) * (CARD_H + GAP) + 'px';
     el.style.setProperty('--i', Math.min(i, 24));
     el.innerHTML = `<div class="tick">${selected.has(p.key) ? '✓' : ''}</div>
+      ${p.start ? '<div class="start-badge" title="La page dont vous avez collé l\'adresse dans le cloneur">★ Page clonée</div>' : ''}
       <div class="shot">${p.thumb ? `<img loading="lazy" src="/__sc/studio/${SITE}/thumb/${p.id}.jpg?t=${thumbStamp}" alt="">` : 'Miniature en préparation…'}</div>
       <div class="meta"><div class="t">${esc(p.title || p.key)}</div><div class="k">${esc(p.key)}</div></div>`;
     el.addEventListener('click', e => { e.stopPropagation(); if (moved) return; toggle(p.key); openPage(p); });

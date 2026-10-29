@@ -17,11 +17,12 @@ import time
 import urllib.parse
 import zipfile
 from collections import Counter
+from html import unescape
 from pathlib import Path
 
 from flask import Blueprint, abort, jsonify, render_template, request, send_file
 
-from site_server import make_server, resolve
+from site_server import _start_page, make_server, resolve
 
 bp = Blueprint("studio", __name__)
 _cfg = {}
@@ -79,10 +80,27 @@ def _pages(site_dir):
         except OSError:
             pass
         pid = _pid(key)
-        out.append({"key": key, "file": e["f"], "title": title, "id": pid,
+        out.append({"key": key, "file": e["f"], "title": unescape(title), "id": pid,
                     "thumb": (site_dir / "_studio" / "thumbs" / f"{pid}.jpg").exists()})
-    out.sort(key=lambda p: (p["key"].rstrip("/").count("/"), p["key"]))
+    # a title shared by several pages (e.g. Salesforce's "Sites-CartierUS-Site") names none of them: use the address
+    counts = Counter(p["title"] for p in out)
+    for p in out:
+        if not p["title"] or counts[p["title"]] > 1:
+            p["title"] = _title_from_key(p["key"]) or p["title"]
+    # the page the clone was started from comes first
+    start = _start_page(site_dir)
+    for p in out:
+        p["start"] = bool(start) and p["key"].rstrip("/") == start.rstrip("/")
+    out.sort(key=lambda p: (not p["start"], p["key"].rstrip("/").count("/"), p["key"]))
     return out
+
+
+def _title_from_key(key):
+    """'/en-us/high-jewelry/en-equilibre/' -> 'En equilibre', '/x/thefabulouscartierjourney.html' -> 'Thefabulouscartierjourney'."""
+    seg = urllib.parse.unquote(key.rstrip("/").rsplit("/", 1)[-1])
+    seg = re.sub(r"\.html?$", "", seg, flags=re.I)
+    seg = " ".join(re.split(r"[-_]+", seg)).strip()
+    return seg[:1].upper() + seg[1:] if seg else "Accueil"
 
 
 def _job(site_id):
