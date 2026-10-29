@@ -179,7 +179,9 @@
           card.setAttribute('data-reveal', '');
           card.style.setProperty('--d', `${Math.min(idx, 8) * 0.05}s`);
           const esc = UI.esc, sid = encodeURIComponent(site.id);
-          const liveBadge = site.active_port ? `<div class="live-status"><span class="live-dot"></span> Port ${site.active_port}</div>` : '';
+          const liveBadge = site.incomplete
+            ? `<div class="live-status" style="color:var(--warn);border-color:rgba(255,194,75,.45)" title="Le clonage a été interrompu : supprime-le et relance-le">⚠ Incomplet</div>`
+            : site.active_port ? `<div class="live-status"><span class="live-dot"></span> Port ${site.active_port}</div>` : '';
           card.innerHTML = `
             <div class="site-thumb">🌐<img src="/__sc/studio/${sid}/cover.jpg" alt="" loading="lazy" onerror="this.remove()">${liveBadge}</div>
             <div class="site-body">

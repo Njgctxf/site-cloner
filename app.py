@@ -240,9 +240,12 @@ def get_status(job_id):
 def list_sites():
     manifest = load_manifest()
     sites = [m for m in manifest.values() if (CLONED_DIR / m.get("id", "")).is_dir()]
+    running = {j["site_id"] for j in jobs.values() if j.get("status") == "running"}
     # Add active server port if running
     for s in sites:
         sid = s.get("id")
+        # the cloner writes _map.json last: a clone without it was interrupted (server stopped, crash...)
+        s["incomplete"] = sid not in running and not (CLONED_DIR / sid / "_map.json").exists()
         if sid in active_servers:
             s["active_port"] = active_servers[sid]["port"]
         else:

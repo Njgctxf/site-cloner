@@ -249,6 +249,44 @@ def safe_segment(seg):
     return seg or "_"
 
 
+# Next.js App Router: the React flight stream is inlined as <script>self.__next_f.push([1,"..."])</script>
+FLIGHT_PUSH = re.compile(r'<script\b[^>]*>\s*self\.__next_f\.push\(\[1,"(?:[^"\\]|\\.)*"\]\)\s*</script>', re.S)
+_FLIGHT_STR = re.compile(r'(self\.__next_f\.push\()(\[1,"(?:[^"\\]|\\.)*"\])', re.S)
+_FLIGHT_TEXT_ROW = re.compile(r"([0-9a-fA-F]*):T([0-9a-fA-F]+),")
+
+
+def _rewrite_flight(html, held, sub):
+    """Put back the flight pushes set aside by rewrite(), with their URLs rewritten by `sub`.
+    Text rows ("id:T<hex byte length>,<text>") are length-prefixed: rewriting a URL inside one without fixing
+    the prefix desyncs the parser and React aborts the page ("Connection closed", error #412). The rows of all
+    pushes form one stream (a row can span pushes), so it is rewritten as a whole and put in the first push."""
+    stream = "".join(json.loads(_FLIGHT_STR.search(m.group(0)).group(2))[1] for m in held)
+    out, i, n = [], 0, len(stream)
+    while i < n:
+        t = _FLIGHT_TEXT_ROW.match(stream, i)
+        if t:
+            j, size, want = t.end(), 0, int(t.group(2), 16)
+            while j < n and size < want:
+                size += len(stream[j].encode("utf-8"))
+                j += 1
+            body = sub(stream[t.end():j])
+            out.append(f"{t.group(1)}:T{len(body.encode('utf-8')):x},{body}")
+            i = j
+        else:
+            k = stream.find("\n", i)
+            k = n if k < 0 else k + 1
+            out.append(sub(stream[i:k]))
+            i = k
+    payloads = ["".join(out)] + [""] * (len(held) - 1)
+
+    def put(idx):
+        js = json.dumps([1, payloads[idx]], ensure_ascii=False, separators=(",", ":")).replace("<", "\\u003c")
+        src = held[idx].group(0)
+        s = _FLIGHT_STR.search(src)
+        return src[:s.start(2)] + js + src[s.end(2):]
+    return re.sub(r"\x00SCFLIGHT(\d+)\x00", lambda m: put(int(m.group(1))), html)
+
+
 class Cloner:
     def __init__(self, url, dest_dir, max_pages=60, progress_callback=None):
         self.start_url = urllib.parse.urldefrag(url)[0]
@@ -265,6 +303,7 @@ class Cloner:
         self.partial = set()
         self.fresh = set()
         self._lock = threading.Lock()
+        self._hangs, self._hang_lock = {}, threading.Lock()  # host -> consecutive timeouts (see _guess_get)
         self.total_bytes = 0
         self.session = requests.Session(impersonate="chrome124")
         self.session.headers.update({"Referer": self.start_url})
@@ -540,12 +579,34 @@ class Cloner:
         with ThreadPoolExecutor(8) as ex:
             list(ex.map(get, [u for u in self.partial if u not in self.captured]))
 
+    def _guess_get(self, url, timeout=20):
+        """GET for a URL we only guessed (found in code, srcset variants...). Some bot-protected hosts (Akamai on
+        cartier.com) hold every unknown URL open until the timeout, so hundreds of guesses cost hours: a host that
+        times out DEEP_SCAN_MAX_HANGS times in a row is not asked again. Returns the response, or None."""
+        host = urllib.parse.urlparse(url).netloc
+        with self._hang_lock:
+            if self._hangs.get(host, 0) >= self.DEEP_SCAN_MAX_HANGS:
+                return None
+        try:
+            r = self.session.get(url, timeout=timeout)
+        except Exception:
+            with self._hang_lock:
+                self._hangs[host] = self._hangs.get(host, 0) + 1
+            return None
+        with self._hang_lock:
+            self._hangs[host] = 0  # the host answers: only consecutive hangs count
+        return r
+
     def deep_scan(self):
         """Find asset URLs hidden in JS/CSS/JSON strings (3D models, textures, wasm...) that were never requested."""
         origin_root = f"{urllib.parse.urlparse(self.start_url).scheme}://{urllib.parse.urlparse(self.start_url).netloc}/"
+        # candidates are guesses (see _guess_get): bound the whole pass in time as well
+        deadline = time.time() + self.DEEP_SCAN_SECONDS
         # code first: every module that is fetched can reveal more modules/assets, so keep going until nothing new
         # shows up (a fixed 2 passes x 500 candidates silently dropped lazily imported page chunks on big sites)
         for _ in range(8):
+            if time.time() > deadline:
+                break
             cands = {}
             for url, rel in list(self.captured.items()):
                 if os.path.splitext(rel)[1].lower() not in (".js", ".mjs", ".css", ".json", ".html"):
@@ -579,11 +640,13 @@ class Cloner:
 
             def fetch(item):
                 for u in item[1]:
+                    host = urllib.parse.urlparse(u).netloc
                     if u in self.captured:
                         return False
-                    try:
-                        r = self.session.get(u, timeout=30)
-                    except Exception:
+                    if time.time() > deadline:
+                        continue
+                    r = self._guess_get(u)
+                    if r is None:
                         continue
                     ct = r.headers.get("content-type", "")
                     if r.status_code == 200 and "text/html" not in ct and r.content:
@@ -668,7 +731,10 @@ class Cloner:
             if is_js or rel.lower().endswith(".json"):
                 continue  # code/data stay byte-identical; requests are re-routed at runtime (import map + shim)
             elif is_html:
-                new = origin_html.sub("", text)
+                # Next.js flight data is set aside and rewritten length-aware (see _rewrite_flight)
+                held = []
+                text_out = FLIGHT_PUSH.sub(lambda m: held.append(m) or f"\x00SCFLIGHT{len(held) - 1}\x00", text)
+                new = origin_html.sub("", text_out)
                 if ext_html:  # leave <a> tags alone: links to third-party pages stay real links
                     new = "".join(p if p.lower().startswith("<a ") else ext_html.sub(ext_sub, p)
                                   for p in re.split(r"(<a\s[^>]*>)", new, flags=re.I))
@@ -687,6 +753,9 @@ class Cloner:
                 new = re.sub(r"\s+crossorigin(=(\"[^\"]*\"|'[^']*'))?", "", new, flags=re.I)
                 new = re.sub(r"<base\b[^>]*>", "", new, flags=re.I)
                 new = re.sub(r"<link\b[^>]*rel=[\"'](?:canonical|preconnect|dns-prefetch)[\"'][^>]*>", "", new, flags=re.I)
+                if held:
+                    new = _rewrite_flight(new, held, lambda s: ext_html.sub(ext_sub, origin_html.sub("", s))
+                                          if ext_html else origin_html.sub("", s))
                 m = re.search(r"<head[^>]*>", new, re.I)
                 new = (new[:m.end()] + CSP + importmap + shim + hide + new[m.end():]) if m else (CSP + importmap + shim + hide + new)
             if new != text:
@@ -838,12 +907,9 @@ class Cloner:
                     want[f"https://{host}/{path}"] = True
 
         def get(url):
-            try:
-                r = self.session.get(url, timeout=30)
-                if r.status_code == 200 and r.content:
-                    return url, r.headers.get("content-type", ""), r.content
-            except Exception:
-                pass
+            r = self._guess_get(url, timeout=30)
+            if r is not None and r.status_code == 200 and r.content:
+                return url, r.headers.get("content-type", ""), r.content
             return url, None, None
 
         got = 0
@@ -922,14 +988,12 @@ class Cloner:
                 break
 
             def get(url):
-                try:
-                    video = urllib.parse.urlparse(url).path.lower().endswith((".mp4", ".webm"))
-                    r = self.session.get(url, timeout=180 if video else 30)
+                video = urllib.parse.urlparse(url).path.lower().endswith((".mp4", ".webm"))
+                r = self._guess_get(url, timeout=180 if video else 30)
+                if r is not None:
                     ctype = r.headers.get("content-type", "")
                     if r.status_code == 200 and r.content and "text/html" not in ctype:
                         return url, ctype, r.content
-                except Exception:
-                    pass
                 return url, None, None
 
             new = 0
@@ -993,11 +1057,8 @@ class Cloner:
         got = 0
         for b in sorted(bases):
             host, _, rest = b[6:].partition("/")
-            try:
-                r = self.session.get(f"https://{host}/{rest}", timeout=30)
-            except Exception:
-                continue
-            if r.status_code == 200 and r.content:
+            r = self._guess_get(f"https://{host}/{rest}", timeout=30)
+            if r is not None and r.status_code == 200 and r.content:
                 self.save(f"https://{host}/{rest}", "application/octet-stream", r.content)
                 got += 1
         old = set()
@@ -1075,6 +1136,9 @@ class Cloner:
 
     # Global time budget for a full clone (seconds)
     MAX_RUN_SECONDS = 7 * 60
+    # deep_scan: time budget, and consecutive timeouts after which a host stops being asked for guessed URLs
+    DEEP_SCAN_SECONDS = 4 * 60
+    DEEP_SCAN_MAX_HANGS = 8
 
     def run(self):
         import threading as _th
@@ -1085,22 +1149,37 @@ class Cloner:
 
         # Heartbeat thread: updates progress every 3s so the UI is never frozen
         _PHASES = [
-            "Lancement navigateur headless...",
-            "Crawl pages en cours...",
-            "Récupération médias...",
-            "Analyse ressources 3D / wasm...",
-            "Réécriture liens hors-ligne...",
-            "Réparation fichiers manquants...",
-            "Finalisation...",
+            "Crawl des pages",
+            "Crawl des pages",
+            "Récupération médias",
+            "Analyse ressources 3D / wasm",
+            "Réécriture liens hors-ligne",
+            "Réparation fichiers manquants",
+            "Finalisation",
         ]
+        # share of the progress bar for each phase; the crawl moves with the pages actually visited
+        _RANGES = [(2, 60), (2, 60), (60, 65), (65, 78), (78, 84), (84, 92), (92, 99)]
         _phase = [0]
+        outer_cb = self.cb
+        stage = {"msg": "", "frac": 0.0}
+
+        def _record(current, total, message):
+            """Steps report here (e.g. "Page 7 : /about"); the heartbeat turns that into the progress shown."""
+            stage["msg"] = message
+            if _phase[0] <= 1 and total:
+                stage["frac"] = max(stage["frac"], min(1.0, current / total))
+        self.cb = _record
 
         def _heartbeat():
             while not self._run_done:
                 elapsed = int(time.time() - start)
-                label = _PHASES[min(_phase[0], len(_PHASES) - 1)]
-                pct = min(elapsed, self.MAX_RUN_SECONDS - 2)
-                self.cb(pct, self.MAX_RUN_SECONDS, f"{label} ({elapsed}s — {len(self.captured)} fichiers)")
+                ph = min(_phase[0], len(_PHASES) - 1)
+                lo, hi = _RANGES[ph]
+                pct = lo + (hi - lo) * (stage["frac"] if ph <= 1 else 0)
+                # "Page 7 : /about" -> "Page 7/40 : /about"
+                detail = re.sub(r"^Page (\d+)", rf"Page \1/{self.max_pages}", stage["msg"]) if ph <= 1 else ""
+                detail = f" · {detail}" if detail else ""
+                outer_cb(round(pct * 10), 1000, f"{_PHASES[ph]}{detail} ({elapsed}s — {len(self.captured)} fichiers)")
                 time.sleep(3)
 
         _th.Thread(target=_heartbeat, daemon=True).start()
@@ -1134,6 +1213,7 @@ class Cloner:
             (self.dest / "_clone-report.txt").write_text("\n".join(report), encoding="utf-8")
         finally:
             self._run_done = True
+            self.cb = outer_cb
 
         duration = round(time.time() - start, 2)
         self.cb(self.MAX_RUN_SECONDS, self.MAX_RUN_SECONDS,
