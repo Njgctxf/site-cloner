@@ -76,7 +76,8 @@ if(!m)return u;var h=m[1].toLowerCase();if(h===location.hostname)return u;var r=
 if(O[h])return r;if(M[h])return M[h]+r;return u;}
 try{var f=window.fetch;if(f)window.fetch=function(a,b){if(typeof a==='string'||a instanceof URL)a=fix(a);else if(a&&a.url){var n=fix(a.url);if(n!==a.url)a=new Request(n,a);}return f.call(this,a,b);};}catch(e){}
 try{var xo=XMLHttpRequest.prototype.open;XMLHttpRequest.prototype.open=function(m,u){arguments[1]=fix(String(u));return xo.apply(this,arguments);};}catch(e){}
-try{var sa=Element.prototype.setAttribute;Element.prototype.setAttribute=function(n,v){if((n==='srcset'||n==='imagesrcset')&&typeof v==='string')v=fixSet(v);else if((n==='src'||n==='href'||n==='poster'||n==='data')&&typeof v==='string'&&this.tagName!=='A'&&this.tagName!=='AREA')v=fix(v);return sa.call(this,n,v);};}catch(e){}
+try{var sa=Element.prototype.setAttribute;Element.prototype.setAttribute=function(n,v){var k=typeof n==='string'?n.toLowerCase():n;if((k==='srcset'||k==='imagesrcset')&&typeof v==='string')v=fixSet(v);else if((k==='src'||k==='href'||k==='poster'||k==='data')&&typeof v==='string'&&this.tagName!=='A'&&this.tagName!=='AREA')v=fix(v);return sa.call(this,n,v);};}catch(e){}
+try{var sn=Element.prototype.setAttributeNS;Element.prototype.setAttributeNS=function(ns,n,v){var k=typeof n==='string'?n.toLowerCase():n;if((k==='srcset'||k==='imagesrcset')&&typeof v==='string')v=fixSet(v);else if((k==='src'||k==='poster')&&typeof v==='string'&&this.tagName!=='A'&&this.tagName!=='AREA')v=fix(v);return sn.call(this,ns,n,v);};}catch(e){}
 function P(C,p){try{var d=Object.getOwnPropertyDescriptor(C.prototype,p);if(d&&d.set)Object.defineProperty(C.prototype,p,{get:d.get,set:function(v){d.set.call(this,fix(v));},configurable:true,enumerable:d.enumerable});}catch(e){}}
 function fixSet(v){return String(v).split(',').map(function(c){c=c.trim();var i=c.indexOf(' ');return i<0?fix(c):fix(c.slice(0,i))+c.slice(i);}).join(', ');}
 try{['HTMLImageElement','HTMLSourceElement'].forEach(function(n){var C=window[n],d=Object.getOwnPropertyDescriptor(C.prototype,'srcset');if(d&&d.set)Object.defineProperty(C.prototype,'srcset',{get:d.get,set:function(v){d.set.call(this,fixSet(v));},configurable:true});});}catch(e){}
@@ -346,6 +347,11 @@ class Cloner:
                     if self.key_of(url) != dest_key:
                         self.map[self.key_of(url)] = {"r": dest_key}
                 return
+            if status == 404 and req.resource_type == "document" and self.is_origin(urllib.parse.urlparse(url).netloc):
+                # the site's own "not found" page (client routers link to it): keep it, it is part of the site
+                if "html" in resp.headers.get("content-type", ""):
+                    self.save(url, "text/html", resp.body())
+                return
             if status not in (200, 206):
                 return
             if status == 206:
@@ -534,7 +540,9 @@ class Cloner:
     def deep_scan(self):
         """Find asset URLs hidden in JS/CSS/JSON strings (3D models, textures, wasm...) that were never requested."""
         origin_root = f"{urllib.parse.urlparse(self.start_url).scheme}://{urllib.parse.urlparse(self.start_url).netloc}/"
-        for _ in range(2):
+        # code first: every module that is fetched can reveal more modules/assets, so keep going until nothing new
+        # shows up (a fixed 2 passes x 500 candidates silently dropped lazily imported page chunks on big sites)
+        for _ in range(8):
             cands = {}
             for url, rel in list(self.captured.items()):
                 if os.path.splitext(rel)[1].lower() not in (".js", ".mjs", ".css", ".json", ".html"):
@@ -563,7 +571,8 @@ class Cloner:
             todo = [(k, o) for k, o in cands.items() if not any(x in self.captured for x in o)]
             if not todo:
                 break
-            todo = todo[:500]
+            todo.sort(key=lambda kv: 0 if os.path.splitext(urllib.parse.urlparse(kv[0]).path)[1].lower() in (".mjs", ".js", ".json", ".css") else 1)
+            todo = todo[:800]
 
             def fetch(item):
                 for u in item[1]:
@@ -663,7 +672,9 @@ class Cloner:
                     new = ext_html.sub(ext_sub, new)
             if is_html:
                 new = sc_src.sub("", new)
-                new = sc_inline.sub("", new)
+                # Next.js flight data (self.__next_f.push) carries the layout tree, GTM tags included: dropping one
+                # chunk breaks the whole stream ("This page couldn't load"); the runtime shim blocks the tracker itself
+                new = sc_inline.sub(lambda m: m.group(0) if "__next_f" in m.group(0)[:160] else "", new)
                 new = noscript_iframe.sub("", new)
                 new = link_blocked.sub("", new)
                 new = re.sub(r"\s+integrity=(\"[^\"]*\"|'[^']*')", "", new, flags=re.I)
@@ -676,11 +687,41 @@ class Cloner:
                 f.write_text(new, encoding="utf-8")
 
 
+    def _nav_probe(self, p, base, page_url, probed, deadline, max_links=14):
+        """Click internal links like a visitor: client-side routers (Framer, Next.js) then request the page
+        chunks and CMS ranges that a direct load of each page never asks for. `probed` is shared between pages
+        so header/footer links are clicked once; `deadline` keeps the total cost bounded."""
+        pu = urllib.parse.urlparse(page_url)
+        start = base + (pu.path or "/") + (("?" + pu.query) if pu.query else "")
+        try:
+            hrefs = p.evaluate("() => [...new Set([...document.querySelectorAll('a[href]')].map(a => a.href)"
+                               ".map(h => h.split('#')[0]).filter(h => h.startsWith(location.origin) && h !== location.href.split('#')[0]))]")
+        except Exception:
+            return
+        todo = [h for h in hrefs if h not in probed][:max_links]
+        probed.update(todo)
+        for h in todo:
+            if time.time() > deadline:
+                return
+            try:
+                p.goto(start, wait_until="load", timeout=30000)
+                p.wait_for_timeout(300)
+                path = urllib.parse.urlparse(h).path
+                el = p.query_selector("a[href$=\"%s\"]" % path)
+                if not el:
+                    continue
+                el.click(force=True, timeout=3000)
+                p.wait_for_timeout(1200)
+            except Exception:
+                continue
+
     # ---------- self-healing: replay the clone offline and fetch whatever it asks for but does not have ----------
-    def heal(self, rounds=3, max_visit=4):
+    def heal(self, rounds=3, max_visit=6):
         from playwright.sync_api import sync_playwright
         from site_server import make_server
         import threading
+        probed = set()  # links already clicked by the navigation probe
+        nav_deadline = time.time() + 90
         origin_root = f"{urllib.parse.urlparse(self.start_url).scheme}://{urllib.parse.urlparse(self.start_url).netloc}"
         dirty = set()
         with sync_playwright() as pw:
@@ -711,6 +752,8 @@ class Cloner:
                                 # local server answers in ms: a short quiet window is enough to see every miss
                                 interact(p, long=False, calm=0.35)
                                 p.wait_for_timeout(150)
+                                if rnd == 0:
+                                    self._nav_probe(p, base, u, probed, nav_deadline)
                             except Exception:
                                 pass
                             p.close()
@@ -771,8 +814,114 @@ class Cloner:
             c.captured[url] = e["f"]
         return c
 
+    # ---- completion passes (run after heal): what a headless visit at one viewport can never see ----
+    IMG_REF = re.compile(r"/_ext/([A-Za-z0-9.-]+)/([^\s\"'<>(),?]+\.(?:png|jpe?g|webp|avif|gif|svg))(?![?\w])", re.I)
+
+    def fetch_missing_images(self):
+        """Responsive images (srcset widths, high-DPR variants) are referenced by the pages but only the candidate the
+        crawl viewport picked was ever downloaded: fetch the others so every screen size and zoom level is complete."""
+        want = {}
+        for rel in set(self.pages.values()):
+            try:
+                text = (self.dest / rel).read_text(encoding="utf-8", errors="ignore")
+            except OSError:
+                continue
+            for m in self.IMG_REF.finditer(text):
+                host, path = m.group(1), m.group(2)
+                if not (self.dest / "_ext" / host / urllib.parse.unquote(path)).exists():
+                    want[f"https://{host}/{path}"] = True
+
+        def get(url):
+            try:
+                r = self.session.get(url, timeout=30)
+                if r.status_code == 200 and r.content:
+                    return url, r.headers.get("content-type", ""), r.content
+            except Exception:
+                pass
+            return url, None, None
+
+        got = 0
+        with ThreadPoolExecutor(6) as ex:
+            for url, ctype, body in ex.map(get, list(want)):
+                if body:
+                    self.save(url, ctype, body)
+                    got += 1
+        return got
+
+    def framer_cms_static(self):
+        """Framer reads its CMS through `file.framercms?range=a-b,c-d` and expects exactly those bytes (status 200). That
+        only works with the origin's server. Store the complete files (10-40 KB) at their plain paths and make the CMS
+        loader download them whole and cut the ranges itself: the clone then works on any static host."""
+        keys = [k for k in self.map if k.startswith("/_ext/") and ".framercms" in k]
+        if not keys:
+            return 0
+        bases = {k.split("?")[0] for k in keys}
+        for b in list(bases):
+            for kind in ("indexes", "chunk"):
+                bases.add(re.sub(r"-(?:indexes|chunk)-default-0", f"-{kind}-default-0", b))
+        got = 0
+        for b in sorted(bases):
+            host, _, rest = b[6:].partition("/")
+            try:
+                r = self.session.get(f"https://{host}/{rest}", timeout=30)
+            except Exception:
+                continue
+            if r.status_code == 200 and r.content:
+                self.save(f"https://{host}/{rest}", "application/octet-stream", r.content)
+                got += 1
+        old = set()
+        for k in keys:
+            e = self.map.get(k.split("?")[0])
+            if e and "f" in e and k in self.map and self.map[k].get("f") != e["f"]:
+                if "f" in self.map[k]:
+                    old.add(self.map[k]["f"])
+                self.map[k] = dict(e)
+        for rel in old:
+            if rel not in {v.get("f") for v in self.map.values()}:
+                try:
+                    (self.dest / rel).unlink()
+                except OSError:
+                    pass
+        BT, DL = chr(96), chr(36)
+        loader = re.compile(
+            r"let (\w+)=new URL\((\w+)\),(\w+)=(\w+)\.join\(" + BT + "," + BT + r"\);\1\.searchParams\.set\(" + BT + "range" + BT + r",\3\);"
+            r"let (\w+)=await (\w+)\(\1\);if\(\5\.status!==200\)throw Error\(" + BT + r"Request failed: \$\{\5\.status\} \$\{\5\.statusText\}" + BT + r"\);"
+            r"let (\w+)=await \5\.arrayBuffer\(\),(\w+)=new Uint8Array\(\7\);if\(\8\.length!==(\w+)\)throw Error\(" + BT + r"Request failed: Unexpected response length" + BT + r"\);")
+
+        def cut(m):
+            _u, src, _o, _r, s, W, _c, l, total = m.groups()
+            return (f"let {s}=await {W}(new URL({src}+'?v=2'));if({s}.status!==200)throw Error(" + BT + "Request failed: " + DL + "{" + s + ".status} " + DL + "{" + s + ".statusText}" + BT + ");"
+                    f"let _f=new Uint8Array(await {s}.arrayBuffer()),{l}=new Uint8Array({total}),_p=0;"
+                    f"for(let _e of n){{{l}.set(_f.subarray(_e.from,_e.to),_p);_p+=_e.to-_e.from}}")
+
+        for rel in {v["f"] for v in self.map.values() if "f" in v and v["f"].endswith((".mjs", ".js"))}:
+            f = self.dest / rel
+            try:
+                text = f.read_text(encoding="utf-8")
+            except (OSError, UnicodeDecodeError):
+                continue
+            if "Unexpected response length" in text:
+                new, n = loader.subn(cut, text)
+                if n:
+                    f.write_text(new, encoding="utf-8")
+        return got
+
+    def complete(self):
+        """Last passes of a clone: images the crawl viewport never asked for, then Framer's CMS for static hosting."""
+        try:
+            n = self.fetch_missing_images()
+            if n:
+                self.cb(0, 1, f"{n} images responsives complétées")
+        except Exception as e:
+            self.errors.append(f"fetch_missing_images: {e}")
+        try:
+            self.framer_cms_static()
+        except Exception as e:
+            self.errors.append(f"framer_cms_static: {e}")
+
     def heal_existing(self, rounds=12):
         self.heal(rounds=rounds, max_visit=14)
+        self.complete()
         (self.dest / "_map.json").write_text(json.dumps(self.map, ensure_ascii=False), encoding="utf-8")
 
     def _key_for_rel(self, rel):
@@ -833,6 +982,8 @@ class Cloner:
                 _phase[0] = 5
                 self.heal()
 
+            _phase[0] = 6
+            self.complete()
             (self.dest / "_map.json").write_text(json.dumps(self.map, ensure_ascii=False), encoding="utf-8")
             report = [f"Source : {self.start_url}", f"Pages : {len(self.pages)}", f"Fichiers : {len(self.captured)}",
                       f"Hôtes tiers embarqués : {sorted(self.hosts)}", f"Erreurs : {len(self.errors)}"] + self.errors[:50]
