@@ -352,7 +352,8 @@ def delete_site(site_id):
     dest_dir = CLONED_DIR / site_id
     if dest_dir.exists():
         try:
-            shutil.rmtree(dest_dir)
+            # long-path prefix: cloned assets can have paths longer than Windows' 260-char limit
+            shutil.rmtree("\\\\?\\" + str(dest_dir.resolve()) if os.name == "nt" else dest_dir)
         except Exception as e:
             return jsonify({"error": str(e)}), 500
 

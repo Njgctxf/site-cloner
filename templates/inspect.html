@@ -73,6 +73,7 @@
   </style>
   <link rel="stylesheet" href="/__sc/static/ui.css">
   <link rel="stylesheet" href="/__sc/static/tool.css">
+  <script src="/__sc/static/ui.js"></script>
 </head>
 <body>
   <div class="top">
@@ -133,7 +134,7 @@ async function openPage(key) {
   history_push_url(key);
 }
 function history_push_url(key) { const u = new URL(location.href); u.searchParams.set('key', key); window.history.replaceState(null, '', u); }
-$('page').onchange = () => { if (dirty() && !confirm('Des modifications ne sont pas enregistrées. Changer de page quand même ?')) { $('page').value = KEY; return; } openPage($('page').value); };
+$('page').onchange = async () => { if (dirty() && !await UI.confirm('Des modifications ne sont pas enregistrées. Changer de page quand même ?', {ok: 'Changer de page'})) { $('page').value = KEY; return; } openPage($('page').value); };
 function reloadFrame() { frameReady = false; $('loading').style.display = 'flex'; $('view').src = `${base}${KEY}${KEY.includes('?') ? '&' : '?'}__inspect=1&t=${Date.now()}`; }
 
 // ---------- messages from the page ----------
@@ -207,7 +208,7 @@ $('save').onclick = async () => {
   savedOps = JSON.stringify(ops); undoStack = []; refreshStatus(); toast('Modifications enregistrées dans le clone');
 };
 $('undoSave').onclick = async () => {
-  if (!confirm('Revenir à la version enregistrée précédente ? Les modifications non enregistrées seront perdues.')) return;
+  if (!await UI.confirm('Revenir à la version enregistrée précédente ? Les modifications non enregistrées seront perdues.', {ok: 'Revenir'})) return;
   const r = await fetch(`${API}/undo`, {method: 'POST'}); const d = await r.json();
   if (!r.ok) { toast(d.error || 'Impossible'); return; }
   toast('Version précédente restaurée'); openPage(KEY);

@@ -458,7 +458,7 @@ pf.addEventListener('submit', async e => {
   finally { btn.disabled = false; btn.textContent = 'Enregistrer'; }
 });
 $('#pf-delete').onclick = async () => {
-  if (!editing || !confirm(`Supprimer « ${editing.title} » et tous ses fichiers ?`)) return;
+  if (!editing || !await UI.confirm(`Supprimer « ${editing.title} » et tous ses fichiers ?`, {ok: 'Supprimer'})) return;
   try { await api('/shop/products/' + editing.id, 'DELETE'); toast('Produit supprimé', 'ok'); closeEditor(); loadProducts(); }
   catch (err) { toast(err.message, 'err'); }
 };
@@ -498,12 +498,12 @@ document.addEventListener('click', async e => {
   const d = el.dataset;
   try {
     if (d.goto) { await show(d.goto); if ('new' in d) openEditor(null); }
-    if (d.del && confirm('Supprimer définitivement ce site cloné ?')) { await api('/sites/' + encodeURIComponent(d.del), 'DELETE'); toast('Site supprimé', 'ok'); loadSites(); }
+    if (d.del && await UI.confirm('Supprimer définitivement ce site cloné ?', {ok: 'Supprimer'})) { await api('/sites/' + encodeURIComponent(d.del), 'DELETE'); toast('Site supprimé', 'ok'); loadSites(); }
     if (d.stop) { await api('/sites/' + encodeURIComponent(d.stop) + '/stop', 'POST'); toast('Aperçu arrêté', 'ok'); loadSites(); }
     if (d.edit) openEditor(products.find(p => String(p.id) === d.edit));
     if (d.toggle) { await api(`/shop/products/${d.toggle}/toggle`, 'POST', {field: d.field}); await loadProducts(); }
     if (d.clear) { await api('/jobs/' + encodeURIComponent(d.clear), 'DELETE'); loadJobs(); }
-    if (d.mdel && confirm('Supprimer ce média ?')) { await api('/shop/media/' + d.mdel, 'DELETE'); await refreshEditing(); }
+    if (d.mdel && await UI.confirm('Supprimer ce média ?', {ok: 'Supprimer'})) { await api('/shop/media/' + d.mdel, 'DELETE'); await refreshEditing(); }
     if (d.mmove) { await api(`/shop/media/${d.mmove}/move`, 'POST', {dir: d.dir}); await refreshEditing(); }
   } catch (err) { toast(err.message, 'err'); }
 });

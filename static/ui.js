@@ -60,6 +60,26 @@
   });
   document.addEventListener("keydown", e => { if (e.key === "Escape") UI.close(); });
 
+  // In-page confirm dialog (window.confirm is blocked in embedded browsers): await UI.confirm("…") -> true/false
+  UI.confirm = (msg, {ok = "Confirmer", danger = true} = {}) => new Promise(resolve => {
+    const m = document.createElement("div");
+    m.className = "ui-modal";
+    m.innerHTML = `<div class="box ui-card" style="width:min(420px,100%);padding:24px">
+      <p style="margin:0 0 20px;line-height:1.5;font-size:.98rem"></p>
+      <div style="display:flex;gap:10px;justify-content:flex-end">
+        <button class="ui-btn ghost" data-r="0">Annuler</button>
+        <button class="ui-btn ${danger ? "danger" : "primary"}" data-r="1"></button>
+      </div></div>`;
+    m.querySelector("p").textContent = msg;
+    m.querySelector('[data-r="1"]').textContent = ok;
+    const done = v => { m.classList.remove("open"); setTimeout(() => m.remove(), 300); document.removeEventListener("keydown", key, true); resolve(v); };
+    const key = e => { if (e.key === "Escape") { e.stopPropagation(); done(false); } if (e.key === "Enter") { e.preventDefault(); done(true); } };
+    m.addEventListener("click", e => { const b = e.target.closest("[data-r]"); if (b) done(b.dataset.r === "1"); else if (e.target === m) done(false); });
+    document.addEventListener("keydown", key, true);
+    document.body.appendChild(m);
+    requestAnimationFrame(() => { m.classList.add("open"); m.querySelector('[data-r="1"]').focus(); });
+  });
+
   // Animated numbers: <span data-count="1234">
   UI.count = (root = document) => root.querySelectorAll("[data-count]").forEach(el => {
     const raw = el.dataset.count, end = parseFloat(raw);

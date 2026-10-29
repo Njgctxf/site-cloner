@@ -198,6 +198,8 @@ def _thumbs_job(site_id, force=False):
         return
     with _Browser(site_dir) as b:
         def shoot(p):
+            if not (site_dir / "_map.json").exists():  # the site was deleted while the job ran
+                raise RuntimeError("site supprimé")
             b.open(p["key"])
             try:
                 b.page.screenshot(path=str(tdir / f"{p['id']}.jpg"), type="jpeg", quality=72, timeout=20000)

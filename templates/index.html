@@ -374,13 +374,15 @@
     }
 
     async function deleteSite(siteId) {
-      if (!confirm("Voulez-vous vraiment supprimer ce site cloné ?")) return;
+      if (!await UI.confirm("Supprimer définitivement ce site cloné ? Ses fichiers seront effacés.", {ok: "Supprimer"})) return;
       try {
-        await fetch(`/__sc/api/sites/${siteId}`, { method: 'DELETE' });
+        const r = await fetch(`/__sc/api/sites/${encodeURIComponent(siteId)}`, { method: 'DELETE' });
+        const data = await r.json().catch(() => ({}));
+        if (!r.ok) throw new Error(data.error || ('Erreur ' + r.status));
         showToast("Site supprimé");
         loadSites();
       } catch (err) {
-        showToast("Erreur de suppression", "error");
+        showToast("Suppression impossible : " + err.message, "error");
       }
     }
 

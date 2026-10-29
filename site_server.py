@@ -92,6 +92,13 @@ def resolve(root, raw_path: str):
         if f:
             return ("file", f, mimetypes.guess_type(str(f))[0] or "application/octet-stream")
 
+    # Clones whose start page isn't "/" (e.g. a site that begins at /en): send the root to the shallowest page
+    if path == "/":
+        pages = sorted((k for k, e in data.items() if "html" in e.get("t", "") and "?" not in k
+                        and not k.startswith(("POST ", "/_ext/"))), key=lambda k: (k.rstrip("/").count("/"), k))
+        if pages:
+            return ("redirect", pages[0])
+
     # Unknown extension-less route of a client-side app: serve the entry page
     if not os.path.splitext(path)[1]:
         f = _safe(root, "index.html")
