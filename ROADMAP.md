@@ -18,6 +18,9 @@ d'analyse, pas de copie à revendre : on ne vend sur la plateforme que des créa
       boutons, formulaires), sélection dans l'arbre ou dans la page, modification en direct (textes, liens, images, vidéos,
       intégrations), masquer / dupliquer, remplacement d'un modèle 3D ou d'un élément 3D, enregistrement avec historique
 - [ ] Inspecteur : couleurs et typographies par élément, déplacement de blocs, bibliothèque de sections à insérer
+- [x] Module Sécurité (CyberLab, `/__sc/security`) : dashboard SOC, scanner défensif (en-têtes HTTP, cookies, fichiers
+      sensibles) limité aux hôtes autorisés, simulations OWASP avec remédiation, cours, rapports PDF, bouton
+      « Audit de sécurité » sur chaque clone
 - [ ] Personnalisation par IA (textes, palette, images) pour transformer la base en création
 - [ ] Éditeur visuel et code (voir V3)
 - [ ] Déploiement en un clic (Hostinger, Vercel, Netlify, sous-domaine de la plateforme)

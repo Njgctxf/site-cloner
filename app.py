@@ -31,6 +31,7 @@ from site_server import resolve, resolve_post, make_server
 from admin import init_admin
 from shop import init_shop
 from studio import init_studio
+from security import init_security
 
 app = Flask(__name__, template_folder="templates", static_folder="static", static_url_path="/__sc/static")
 
@@ -409,6 +410,7 @@ init_admin(app, load_manifest=load_manifest, jobs=jobs, active_servers=active_se
            CLONED_DIR=CLONED_DIR, delete_site=delete_site, stop_serve=stop_serve)
 init_shop(app)
 init_studio(app, CLONED_DIR=CLONED_DIR, find_free_port=find_free_port)
+init_security(app)
 if ONLINE:
     app.config["SESSION_COOKIE_SECURE"] = True
 

@@ -1,0 +1,757 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CyberLab — Espace Privé Propriétaire</title>
+    
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Styles -->
+    <link rel="stylesheet" href="/__sc/static/security/cyberlab.css">
+    <style>
+        .admin-badge {
+            background: rgba(239, 68, 68, 0.15);
+            border: 1px solid #ef4444;
+            color: #fca5a5;
+            padding: 0.25rem 0.6rem;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            font-weight: 700;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+        }
+        .diff-card {
+            background: #080a10;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 1.25rem;
+        }
+        .diff-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 1.25rem;
+            margin-top: 1rem;
+        }
+        .resolved-item {
+            background: rgba(16, 185, 129, 0.08);
+            border: 1px solid rgba(16, 185, 129, 0.3);
+            border-radius: 6px;
+            padding: 0.75rem;
+            margin-bottom: 0.5rem;
+        }
+        .regression-item {
+            background: rgba(239, 68, 68, 0.08);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            border-radius: 6px;
+            padding: 0.75rem;
+            margin-bottom: 0.5rem;
+        }
+        .persistent-item {
+            background: rgba(245, 158, 11, 0.08);
+            border: 1px solid rgba(245, 158, 11, 0.3);
+            border-radius: 6px;
+            padding: 0.75rem;
+            margin-bottom: 0.5rem;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- SIDEBAR NAVIGATION -->
+    <aside class="sidebar">
+        <div class="sidebar-header">
+            <div class="brand-icon">🛡️</div>
+            <div>
+                <div class="brand-title">CyberLab</div>
+                <div class="brand-subtitle" style="color: #f87171;">Espace Privé Propriétaire</div>
+            </div>
+        </div>
+
+        <ul class="nav-links">
+            <li class="nav-item active" data-tab="admin-domains">
+                <span class="nav-icon">🏢</span>
+                <span>Mes Domaines Privés</span>
+            </li>
+            <li class="nav-item" data-tab="admin-audit">
+                <span class="nav-icon">🔬</span>
+                <span>Audit Approfondi & SQLi</span>
+            </li>
+            <li class="nav-item" data-tab="admin-diff">
+                <span class="nav-icon">⚖️</span>
+                <span>Comparateur Temporel</span>
+            </li>
+            <li class="nav-item" data-tab="admin-history">
+                <span class="nav-icon">📑</span>
+                <span>Historique Privé</span>
+            </li>
+        </ul>
+
+        <div class="sidebar-footer">
+            <a href="/__sc/security" style="display:block;margin-bottom:6px;color:var(--cyan);text-decoration:none;font-weight:600">← SOC Public CyberLab</a>
+            <a href="/admin" style="display:block;margin-bottom:12px;color:var(--text-muted);text-decoration:none;font-size:0.85rem">← Admin SiteCloner</a>
+            <div class="admin-badge">🔐 Admin : {{ admin_user }}</div>
+        </div>
+    </aside>
+
+    <!-- MAIN CONTENT VIEW -->
+    <main class="main-content">
+        <!-- TOP STATUS BAR -->
+        <header class="top-bar">
+            <div class="page-title">
+                <span id="header-section-title">Espace d'Audit Privé du Propriétaire</span>
+                <span class="admin-badge">Périmètre Restreint Propriétaire</span>
+            </div>
+            <div style="display: flex; align-items: center; gap: 0.75rem;">
+                <button class="btn btn-secondary" onclick="window.location.reload()">
+                    <span>🔄 Actualiser</span>
+                </button>
+            </div>
+        </header>
+
+        <!-- TAB 1: MES DOMAINES PRIVÉS -->
+        <section id="tab-admin-domains" class="tab-pane active">
+            <div class="card" style="margin-bottom: 1.5rem;">
+                <h2 style="font-size: 1.25rem; margin-bottom: 0.35rem; color: var(--cyan);">🏢 Gestion Privée de Mes Applications & Domaines</h2>
+                <p style="color: var(--text-secondary); font-size: 0.9rem; margin: 0;">
+                    Enregistrez et validez la propriété de vos propres sites web pour débloquer les diagnostics avancés, l'analyse différentielle SQLi et la comparaison temporelle.
+                </p>
+            </div>
+
+            <!-- ENREGISTRER UN DOMAINE -->
+            <div class="card" style="margin-bottom: 1.5rem;">
+                <h3 style="font-size: 1.05rem; margin-bottom: 1rem;">Ajouter un Domaine Propriétaire</h3>
+                <div style="display: grid; grid-template-columns: 2fr 1.2fr 1fr auto; gap: 1rem; align-items: flex-end;">
+                    <div>
+                        <label style="font-size: 0.8rem; color: var(--text-muted); display: block; margin-bottom: 0.3rem;">Nom de domaine (ex: mon-saas.com)</label>
+                        <input type="text" id="admin-new-domain" class="form-control" placeholder="mon-saas.com" style="width: 100%; background: #080a10; border: 1px solid var(--border-color); color: #fff; padding: 0.55rem 0.75rem; border-radius: 6px;">
+                    </div>
+                    <div>
+                        <label style="font-size: 0.8rem; color: var(--text-muted); display: block; margin-bottom: 0.3rem;">Méthode de validation</label>
+                        <select id="admin-domain-method" class="form-control" style="width: 100%; background: #080a10; border: 1px solid var(--border-color); color: #fff; padding: 0.55rem 0.75rem; border-radius: 6px;">
+                            <option value="dns_txt">Enregistrement DNS TXT</option>
+                            <option value="http_file">Fichier HTTP (/.well-known/)</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label style="font-size: 0.8rem; color: var(--text-muted); display: block; margin-bottom: 0.3rem;">Notes / Projet</label>
+                        <input type="text" id="admin-domain-notes" class="form-control" placeholder="Production / Staging" style="width: 100%; background: #080a10; border: 1px solid var(--border-color); color: #fff; padding: 0.55rem 0.75rem; border-radius: 6px;">
+                    </div>
+                    <button class="btn btn-primary" onclick="submitAdminDomain()">
+                        <span>+ Enregistrer</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- TABLE DES DOMAINES -->
+            <div class="card">
+                <h3 style="font-size: 1.05rem; margin-bottom: 1rem;">Liste de Mes Domaines Enregistrés</h3>
+                <div class="table-container">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Domaine</th>
+                                <th>Méthode</th>
+                                <th>Jeton de Challenge</th>
+                                <th>Statut</th>
+                                <th>Notes</th>
+                                <th style="text-align: right;">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="admin-domains-tbody">
+                            <tr>
+                                <td colspan="6" style="text-align: center; color: var(--text-muted); padding: 2rem;">
+                                    Chargement des domaines privés...
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- TAB 2: AUDIT APPROFONDI & SQLI -->
+        <section id="tab-admin-audit" class="tab-pane">
+            <div class="card" style="margin-bottom: 1.5rem;">
+                <h2 style="font-size: 1.25rem; margin-bottom: 0.35rem; color: var(--cyan);">🔬 Audit Approfondi & Détection SQLi Non-Destructive</h2>
+                <p style="color: var(--text-secondary); font-size: 0.9rem; margin: 0;">
+                    Analyse technique approfondie réservée à l'administrateur. Inclut l'analyse différentielle booléenne et les sondes de syntaxe sans exfiltration de données et sans altération.
+                </p>
+            </div>
+
+            <!-- FORMULAIRE D'AUDIT AVANCÉ -->
+            <div class="card" style="margin-bottom: 1.5rem;">
+                <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 1.25rem; margin-bottom: 1rem;">
+                    <div>
+                        <label style="font-size: 0.8rem; color: var(--text-muted); display: block; margin-bottom: 0.3rem;">URL Cible de Mon Application</label>
+                        <input type="text" id="admin-target-url" class="form-control" placeholder="https://mon-saas.com/login" style="width: 100%; background: #080a10; border: 1px solid var(--border-color); color: #fff; padding: 0.6rem 0.75rem; border-radius: 6px;">
+                    </div>
+                    <div>
+                        <label style="font-size: 0.8rem; color: var(--text-muted); display: block; margin-bottom: 0.3rem;">Choisir un domaine propriétaire vérifié</label>
+                        <select id="admin-preset-domain" class="form-control" style="width: 100%; background: #080a10; border: 1px solid var(--border-color); color: #fff; padding: 0.6rem 0.75rem; border-radius: 6px;" onchange="applyAdminPreset(this.value)">
+                            <option value="">-- Sélectionner un domaine --</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- OPTIONS AVANCÉES -->
+                <div style="background: #06080e; border: 1px solid var(--border-color); border-radius: 8px; padding: 1rem; margin-bottom: 1.25rem;">
+                    <div style="font-weight: 700; font-size: 0.85rem; color: var(--text-primary); margin-bottom: 0.75rem;">⚙️ Paramètres d'Audit Approfondi</div>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 0.75rem;">
+                        <div>
+                            <label style="font-size: 0.75rem; color: var(--text-muted); display: block; margin-bottom: 0.2rem;">Cookie de Session / Authentification (Optionnel)</label>
+                            <input type="text" id="admin-auth-cookie" class="form-control" placeholder="session=abc123xyz; auth_token=..." style="width: 100%; background: #080a10; border: 1px solid var(--border-color); color: #38bdf8; font-family: var(--font-mono); font-size: 0.8rem; padding: 0.45rem 0.6rem; border-radius: 4px;">
+                        </div>
+                        <div>
+                            <label style="font-size: 0.75rem; color: var(--text-muted); display: block; margin-bottom: 0.2rem;">En-tête Authorization (ex: Bearer token JWT)</label>
+                            <input type="text" id="admin-auth-header" class="form-control" placeholder="Bearer eyJhbGciOi..." style="width: 100%; background: #080a10; border: 1px solid var(--border-color); color: #38bdf8; font-family: var(--font-mono); font-size: 0.8rem; padding: 0.45rem 0.6rem; border-radius: 4px;">
+                        </div>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 0.5rem;">
+                        <input type="checkbox" id="admin-check-sqli-diff" checked style="accent-color: var(--cyan);">
+                        <label for="admin-check-sqli-diff" style="font-size: 0.85rem; color: var(--text-secondary); cursor: pointer;">
+                            <strong>Activer la détection différentielle SQL Injection approfondie</strong> (Analyse de divergence booléenne Vrai/Faux, inversion de syntaxe de délimiteurs, et détection multi-SGBD non-destructive).
+                        </label>
+                    </div>
+                </div>
+
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <div style="font-size: 0.8rem; color: var(--text-muted);">
+                        🛡️ <em>Garantie d'intégrité : Aucune exfiltration de base, aucun dump de table, aucune instruction destructive.</em>
+                    </div>
+                    <button class="btn btn-primary" id="btn-run-admin-scan" onclick="triggerAdminScan()">
+                        <span>🚀 Lancer l'Audit Approfondi</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- RESULTATS DE L'AUDIT EN COURS -->
+            <div id="admin-scan-result-card" style="display: none;" class="card">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem;">
+                    <div>
+                        <h3 id="admin-res-title" style="margin: 0; font-size: 1.15rem; color: var(--cyan);">Résultats de l'Audit</h3>
+                        <div id="admin-res-meta" style="font-size: 0.85rem; color: var(--text-muted); margin-top: 0.2rem;"></div>
+                    </div>
+                    <div id="admin-res-score-badge"></div>
+                </div>
+
+                <div id="admin-findings-container"></div>
+            </div>
+        </section>
+
+        <!-- TAB 3: COMPARATEUR TEMPOREL -->
+        <section id="tab-admin-diff" class="tab-pane">
+            <div class="card" style="margin-bottom: 1.5rem;">
+                <h2 style="font-size: 1.25rem; margin-bottom: 0.35rem; color: var(--cyan);">⚖️ Comparateur Temporel d'Audits (Diff de Posture)</h2>
+                <p style="color: var(--text-secondary); font-size: 0.9rem; margin: 0;">
+                    Comparez deux audits successifs sur une même application pour valider que vos correctifs sont effectifs et détecter d'éventuelles régressions de sécurité.
+                </p>
+            </div>
+
+            <!-- SELECTEUR DE SCANS -->
+            <div class="card" style="margin-bottom: 1.5rem;">
+                <div style="display: grid; grid-template-columns: 1fr 1fr auto; gap: 1.25rem; align-items: flex-end;">
+                    <div>
+                        <label style="font-size: 0.8rem; color: var(--text-muted); display: block; margin-bottom: 0.3rem;">Scan A : Audit Initial (Baseline)</label>
+                        <select id="diff-scan-a" class="form-control" style="width: 100%; background: #080a10; border: 1px solid var(--border-color); color: #fff; padding: 0.6rem 0.75rem; border-radius: 6px;">
+                            <option value="">Chargement des audits...</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label style="font-size: 0.8rem; color: var(--text-muted); display: block; margin-bottom: 0.3rem;">Scan B : Audit Récent (Après Correctifs)</label>
+                        <select id="diff-scan-b" class="form-control" style="width: 100%; background: #080a10; border: 1px solid var(--border-color); color: #fff; padding: 0.6rem 0.75rem; border-radius: 6px;">
+                            <option value="">Chargement des audits...</option>
+                        </select>
+                    </div>
+                    <button class="btn btn-primary" onclick="executeScanComparison()">
+                        <span>🔍 Comparer les Deux Audits</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- RESULTATS DE LA COMPARAISON -->
+            <div id="diff-result-box" style="display: none;">
+                <div class="diff-card" style="margin-bottom: 1.5rem;">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <div>
+                            <h3 style="margin: 0; font-size: 1.15rem; color: #fff;">Bilan de Progression de la Posture</h3>
+                            <div id="diff-meta-text" style="font-size: 0.85rem; color: var(--text-muted); margin-top: 0.2rem;"></div>
+                        </div>
+                        <div id="diff-score-delta-badge" style="font-size: 1.2rem; font-weight: 800;"></div>
+                    </div>
+                </div>
+
+                <div class="diff-grid">
+                    <!-- RESOLVED -->
+                    <div class="diff-card">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
+                            <h4 style="margin: 0; color: #10b981; font-size: 0.95rem;">✅ Failles Résolues</h4>
+                            <span id="diff-count-resolved" class="badge-tag badge-safe">0</span>
+                        </div>
+                        <div id="diff-resolved-list"></div>
+                    </div>
+
+                    <!-- NEW REGRESSIONS -->
+                    <div class="diff-card">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
+                            <h4 style="margin: 0; color: #ef4444; font-size: 0.95rem;">🚨 Nouvelles Régressions</h4>
+                            <span id="diff-count-regressions" class="badge-tag badge-crit">0</span>
+                        </div>
+                        <div id="diff-regressions-list"></div>
+                    </div>
+
+                    <!-- PERSISTENT -->
+                    <div class="diff-card">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
+                            <h4 style="margin: 0; color: #f59e0b; font-size: 0.95rem;">⏳ Failles Persistantes</h4>
+                            <span id="diff-count-persistent" class="badge-tag" style="background: rgba(245,158,11,0.15); color: #fbbf24; border: 1px solid #f59e0b;">0</span>
+                        </div>
+                        <div id="diff-persistent-list"></div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- TAB 4: HISTORIQUE PRIVE -->
+        <section id="tab-admin-history" class="tab-pane">
+            <div class="card" style="margin-bottom: 1.5rem;">
+                <h2 style="font-size: 1.25rem; margin-bottom: 0.35rem; color: var(--cyan);">📑 Historique de Mes Audits Privés</h2>
+                <p style="color: var(--text-secondary); font-size: 0.9rem; margin: 0;">
+                    Consultez l'historique complet des analyses de sécurité effectuées sur vos propres applications.
+                </p>
+            </div>
+
+            <div class="card">
+                <div class="table-container">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Cible</th>
+                                <th>Date & Heure</th>
+                                <th>Score</th>
+                                <th>Grade</th>
+                                <th>Critiques</th>
+                                <th>Hautes</th>
+                                <th>Moyennes</th>
+                                <th style="text-align: right;">Rapport</th>
+                            </tr>
+                        </thead>
+                        <tbody id="admin-history-tbody">
+                            <tr>
+                                <td colspan="9" style="text-align: center; color: var(--text-muted); padding: 2rem;">
+                                    Chargement de l'historique...
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- TOAST NOTIFICATION -->
+    <div id="toast" style="display: none; position: fixed; bottom: 20px; right: 20px; background: #0b0f19; border: 1px solid var(--border-color); padding: 0.75rem 1.25rem; border-radius: 8px; z-index: 999999; box-shadow: 0 10px 30px rgba(0,0,0,0.8); font-size: 0.85rem;"></div>
+
+    <script>
+        const SEC = "/__sc/security";
+
+        document.addEventListener('DOMContentLoaded', () => {
+            initAdminNav();
+            loadAdminDomains();
+            loadAdminHistory();
+        });
+
+        function showToast(msg, type = 'info') {
+            const t = document.getElementById('toast');
+            if (!t) return;
+            const color = type === 'success' ? '#10b981' : type === 'error' ? '#ef4444' : '#38bdf8';
+            t.innerHTML = `<span style="color: ${color}; font-weight: 700; margin-right: 0.5rem;">●</span> ${msg}`;
+            t.style.display = 'block';
+            setTimeout(() => { t.style.display = 'none'; }, 4000);
+        }
+
+        function initAdminNav() {
+            document.querySelectorAll('.nav-item').forEach(item => {
+                item.addEventListener('click', () => {
+                    const tab = item.getAttribute('data-tab');
+                    document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
+                    document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+                    item.classList.add('active');
+                    const pane = document.getElementById(`tab-${tab}`);
+                    if (pane) pane.classList.add('active');
+
+                    if (tab === 'admin-domains') loadAdminDomains();
+                    if (tab === 'admin-history' || tab === 'admin-diff') loadAdminHistory();
+                });
+            });
+        }
+
+        async function loadAdminDomains() {
+            const tbody = document.getElementById('admin-domains-tbody');
+            const presetSelect = document.getElementById('admin-preset-domain');
+
+            try {
+                const res = await fetch(SEC + '/api/admin/domains');
+                const data = await res.json();
+                const domains = data.domains || [];
+
+                if (presetSelect) {
+                    presetSelect.innerHTML = '<option value="">-- Sélectionner un domaine --</option>';
+                }
+
+                if (domains.length === 0) {
+                    tbody.innerHTML = `
+                        <tr>
+                            <td colspan="6" style="text-align: center; color: var(--text-muted); padding: 2rem;">
+                                Aucun domaine propriétaire enregistré. Ajoutez votre premier domaine ci-dessus.
+                            </td>
+                        </tr>
+                    `;
+                    return;
+                }
+
+                tbody.innerHTML = '';
+                domains.forEach(d => {
+                    const isVerif = d.is_verified === 1;
+                    const statusBadge = isVerif 
+                        ? `<span class="badge-tag badge-safe">✓ Vérifié</span>`
+                        : `<span class="badge-tag badge-crit">⏳ En attente</span>`;
+
+                    if (isVerif && presetSelect) {
+                        const opt = document.createElement('option');
+                        opt.value = `https://${d.domain}`;
+                        opt.textContent = `🏢 ${d.domain}`;
+                        presetSelect.appendChild(opt);
+                    }
+
+                    const tr = document.createElement('tr');
+                    tr.style.borderBottom = '1px solid var(--border-color)';
+                    tr.innerHTML = `
+                        <td style="padding: 0.75rem; font-weight: 600; color: var(--cyan); font-family: var(--font-mono);">${d.domain}</td>
+                        <td style="padding: 0.75rem;"><span class="badge-tag badge-info">${d.verification_method}</span></td>
+                        <td style="padding: 0.75rem; font-family: var(--font-mono); font-size: 0.75rem; color: var(--text-muted);">${d.verification_token}</td>
+                        <td style="padding: 0.75rem;">${statusBadge}</td>
+                        <td style="padding: 0.75rem; font-size: 0.8rem; color: var(--text-muted);">${d.notes || '—'}</td>
+                        <td style="padding: 0.75rem; text-align: right; display: flex; gap: 0.4rem; justify-content: flex-end;">
+                            ${isVerif 
+                                ? `<button class="btn btn-primary" style="padding: 0.25rem 0.6rem; font-size: 0.75rem;" onclick="auditAdminDomain('https://${d.domain}')">Auditer</button>`
+                                : `<button class="btn btn-secondary" style="padding: 0.25rem 0.6rem; font-size: 0.75rem;" onclick="verifyAdminDomainNow(${d.id})">Vérifier</button>`
+                            }
+                            <button class="btn btn-danger" style="padding: 0.25rem 0.5rem; font-size: 0.75rem;" onclick="deleteAdminDomainNow(${d.id})">🗑️</button>
+                        </td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+
+            } catch (e) {
+                console.error("Error loading admin domains:", e);
+            }
+        }
+
+        async function submitAdminDomain() {
+            const domainInput = document.getElementById('admin-new-domain');
+            const methodSelect = document.getElementById('admin-domain-method');
+            const notesInput = document.getElementById('admin-domain-notes');
+
+            const domain = domainInput.value.trim();
+            const method = methodSelect.value;
+            const notes = notesInput.value.trim();
+
+            if (!domain) {
+                showToast("Veuillez saisir un nom de domaine valide", "error");
+                return;
+            }
+
+            try {
+                const res = await fetch(SEC + '/api/admin/domains', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ domain, verification_method: method, notes })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    showToast(`Domaine ${domain} ajouté. Veuillez valider le jeton.`, "success");
+                    domainInput.value = '';
+                    notesInput.value = '';
+                    loadAdminDomains();
+                } else {
+                    showToast(data.error || "Erreur lors de l'ajout", "error");
+                }
+            } catch (e) {
+                showToast("Erreur réseau", "error");
+            }
+        }
+
+        async function verifyAdminDomainNow(id) {
+            try {
+                const res = await fetch(SEC + `/api/admin/domains/${id}/verify`, { method: 'POST' });
+                const data = await res.json();
+                if (data.success) {
+                    showToast(data.message, "success");
+                    loadAdminDomains();
+                } else {
+                    showToast(data.message || "Échec de validation", "error");
+                }
+            } catch (e) {
+                showToast("Erreur lors de la vérification", "error");
+            }
+        }
+
+        async function deleteAdminDomainNow(id) {
+            if (!confirm("Supprimer ce domaine de votre espace privé ?")) return;
+            try {
+                const res = await fetch(SEC + `/api/admin/domains/${id}`, { method: 'DELETE' });
+                const data = await res.json();
+                if (data.success) {
+                    showToast("Domaine supprimé", "info");
+                    loadAdminDomains();
+                }
+            } catch (e) {
+                showToast("Erreur réseau", "error");
+            }
+        }
+
+        function auditAdminDomain(url) {
+            const targetInput = document.getElementById('admin-target-url');
+            if (targetInput) targetInput.value = url;
+            const auditTabBtn = document.querySelector('.nav-item[data-tab="admin-audit"]');
+            if (auditTabBtn) auditTabBtn.click();
+        }
+
+        function applyAdminPreset(val) {
+            const targetInput = document.getElementById('admin-target-url');
+            if (targetInput && val) targetInput.value = val;
+        }
+
+        async function triggerAdminScan() {
+            const targetInput = document.getElementById('admin-target-url');
+            const authCookie = document.getElementById('admin-auth-cookie').value.trim();
+            const authHeader = document.getElementById('admin-auth-header').value.trim();
+            const includeSqli = document.getElementById('admin-check-sqli-diff').checked;
+            const btn = document.getElementById('btn-run-admin-scan');
+            const resultCard = document.getElementById('admin-scan-result-card');
+
+            const targetUrl = targetInput.value.trim();
+            if (!targetUrl) {
+                showToast("Veuillez saisir une URL cible", "error");
+                return;
+            }
+
+            const customHeaders = {};
+            if (authHeader) customHeaders["Authorization"] = authHeader;
+
+            btn.disabled = true;
+            btn.innerHTML = '<span>⏳ Audit Approfondi en cours...</span>';
+            resultCard.style.display = 'block';
+            document.getElementById('admin-findings-container').innerHTML = '<div style="color: var(--cyan); padding: 1.5rem; text-align: center;">🚀 Exécution des diagnostics de sécurité & analyse différentielle SQLi...</div>';
+
+            try {
+                const res = await fetch(SEC + '/api/admin/scan', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        target_url: targetUrl,
+                        custom_headers: customHeaders,
+                        auth_cookie: authCookie,
+                        include_advanced_sqli: includeSqli
+                    })
+                });
+
+                const data = await res.json();
+                if (!res.ok) {
+                    document.getElementById('admin-findings-container').innerHTML = `<div style="color: var(--red); padding: 1rem;">Erreur : ${data.error || 'Échec de l\'audit'}</div>`;
+                    return;
+                }
+
+                // Render Results
+                document.getElementById('admin-res-title').textContent = `Audit Terminé : ${data.target_url}`;
+                document.getElementById('admin-res-meta').textContent = `${data.timestamp} • ${data.findings.length} vulnérabilités identifiées`;
+                
+                const score = data.risk_score;
+                const scoreColor = score >= 80 ? '#10b981' : score >= 60 ? '#f59e0b' : '#ef4444';
+                document.getElementById('admin-res-score-badge').innerHTML = `
+                    <div style="text-align: right;">
+                        <span style="font-size: 1.8rem; font-weight: 800; color: ${scoreColor};">${score}/100</span>
+                        <div style="font-size: 0.75rem; color: var(--text-muted);">Grade ${data.grade}</div>
+                    </div>
+                `;
+
+                const container = document.getElementById('admin-findings-container');
+                container.innerHTML = '';
+
+                data.findings.forEach(f => {
+                    const item = document.createElement('div');
+                    item.style.background = '#06080e';
+                    item.style.border = '1px solid var(--border-color)';
+                    item.style.borderRadius = '8px';
+                    item.style.padding = '1rem';
+                    item.style.marginBottom = '0.75rem';
+
+                    const isCrit = f.severity === 'CRITICAL';
+                    const sevBadge = isCrit
+                        ? '<span class="badge-tag badge-crit">CRITIQUE</span>'
+                        : f.severity === 'HIGH'
+                        ? '<span class="badge-tag badge-crit" style="background: rgba(249,115,22,0.15); color: #fb923c; border-color: #f97316;">HAUTE</span>'
+                        : '<span class="badge-tag badge-info">MOYENNE</span>';
+
+                    item.innerHTML = `
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                            <span style="font-weight: 700; color: #fff;">${f.title}</span>
+                            ${sevBadge}
+                        </div>
+                        <div style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 0.5rem;">${f.description}</div>
+                        <div style="font-family: var(--font-mono); font-size: 0.75rem; background: #030408; padding: 0.5rem; border-radius: 4px; color: #94a3b8; margin-bottom: 0.5rem;">
+                            <strong>Preuve :</strong> ${f.proof}
+                        </div>
+                        <div style="font-size: 0.8rem; color: #10b981;">
+                            <strong>Remédiation :</strong> ${f.remediation}
+                        </div>
+                    `;
+                    container.appendChild(item);
+                });
+
+                showToast("Audit approfondi complété avec succès !", "success");
+                loadAdminHistory();
+
+            } catch (e) {
+                document.getElementById('admin-findings-container').innerHTML = `<div style="color: var(--red);">Erreur : ${e.message}</div>`;
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '<span>🚀 Lancer l\'Audit Approfondi</span>';
+            }
+        }
+
+        async function loadAdminHistory() {
+            const tbody = document.getElementById('admin-history-tbody');
+            const selectA = document.getElementById('diff-scan-a');
+            const selectB = document.getElementById('diff-scan-b');
+
+            try {
+                const res = await fetch(SEC + '/api/admin/scans/history');
+                const data = await res.json();
+                const scans = data.scans || [];
+
+                if (selectA && selectB) {
+                    selectA.innerHTML = '<option value="">-- Choisir le scan Baseline --</option>';
+                    selectB.innerHTML = '<option value="">-- Choisir le scan Récent --</option>';
+                    scans.forEach(s => {
+                        const label = `#${s.id} - ${s.target_url} (Score: ${s.risk_score}/100, ${s.timestamp})`;
+                        const optA = document.createElement('option');
+                        optA.value = s.id;
+                        optA.textContent = label;
+                        selectA.appendChild(optA);
+
+                        const optB = document.createElement('option');
+                        optB.value = s.id;
+                        optB.textContent = label;
+                        selectB.appendChild(optB);
+                    });
+                }
+
+                if (!tbody) return;
+                if (scans.length === 0) {
+                    tbody.innerHTML = `<tr><td colspan="9" style="text-align: center; color: var(--text-muted); padding: 2rem;">Aucun audit historique trouvé.</td></tr>`;
+                    return;
+                }
+
+                tbody.innerHTML = '';
+                scans.forEach(s => {
+                    const tr = document.createElement('tr');
+                    tr.style.borderBottom = '1px solid var(--border-color)';
+                    tr.innerHTML = `
+                        <td style="padding: 0.75rem; font-family: var(--font-mono); color: var(--cyan);">#${s.id}</td>
+                        <td style="padding: 0.75rem; font-weight: 600; color: #fff;">${s.target_url}</td>
+                        <td style="padding: 0.75rem; font-size: 0.8rem; color: var(--text-muted);">${s.timestamp}</td>
+                        <td style="padding: 0.75rem; font-weight: 700;">${s.risk_score}/100</td>
+                        <td style="padding: 0.75rem;"><span class="badge-tag badge-info">Grade ${s.grade}</span></td>
+                        <td style="padding: 0.75rem; color: #ef4444; font-weight: 700;">${s.critical_count}</td>
+                        <td style="padding: 0.75rem; color: #f97316;">${s.high_count}</td>
+                        <td style="padding: 0.75rem; color: #f59e0b;">${s.medium_count}</td>
+                        <td style="padding: 0.75rem; text-align: right;">
+                            <button class="btn btn-secondary" style="padding: 0.25rem 0.5rem; font-size: 0.75rem;" onclick="window.open('${SEC}/api/scans/${s.id}/report', '_blank')">📑 Rapport</button>
+                        </td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+
+            } catch (e) {
+                console.error("Error loading scans history:", e);
+            }
+        }
+
+        async function executeScanComparison() {
+            const scanA = document.getElementById('diff-scan-a').value;
+            const scanB = document.getElementById('diff-scan-b').value;
+            const resultBox = document.getElementById('diff-result-box');
+
+            if (!scanA || !scanB) {
+                showToast("Veuillez sélectionner deux scans à comparer", "error");
+                return;
+            }
+
+            try {
+                const res = await fetch(SEC + `/api/admin/scans/compare?scan_a=${scanA}&scan_b=${scanB}`);
+                const data = await res.json();
+                if (!res.ok) {
+                    showToast(data.error || "Erreur de comparaison", "error");
+                    return;
+                }
+
+                resultBox.style.display = 'block';
+
+                const delta = data.score_delta;
+                const deltaColor = delta > 0 ? '#10b981' : delta < 0 ? '#ef4444' : '#94a3b8';
+                const deltaSign = delta > 0 ? `+${delta}` : `${delta}`;
+
+                document.getElementById('diff-meta-text').textContent = 
+                    `Scan #${data.scan_a.id} (${data.scan_a.risk_score}/100, Grade ${data.scan_a.grade})  ➔  Scan #${data.scan_b.id} (${data.scan_b.risk_score}/100, Grade ${data.scan_b.grade})`;
+                
+                document.getElementById('diff-score-delta-badge').innerHTML = 
+                    `<span style="color: ${deltaColor};">Progression : ${deltaSign} pts</span>`;
+
+                document.getElementById('diff-count-resolved').textContent = data.summary.resolved_count;
+                document.getElementById('diff-count-regressions').textContent = data.summary.new_count;
+                document.getElementById('diff-count-persistent').textContent = data.summary.persistent_count;
+
+                // Lists
+                const resList = document.getElementById('diff-resolved-list');
+                resList.innerHTML = data.resolved_findings.length === 0 ? '<div style="color: var(--text-muted); font-size: 0.8rem;">Aucune faille résolue.</div>' : '';
+                data.resolved_findings.forEach(f => {
+                    const el = document.createElement('div');
+                    el.className = 'resolved-item';
+                    el.innerHTML = `<div style="font-weight: 700; font-size: 0.8rem; color: #10b981;">✓ ${f.title}</div><div style="font-size: 0.75rem; color: var(--text-muted);">${f.category}</div>`;
+                    resList.appendChild(el);
+                });
+
+                const regList = document.getElementById('diff-regressions-list');
+                regList.innerHTML = data.new_regressions.length === 0 ? '<div style="color: var(--text-muted); font-size: 0.8rem;">Aucune nouvelle régression détectée.</div>' : '';
+                data.new_regressions.forEach(f => {
+                    const el = document.createElement('div');
+                    el.className = 'regression-item';
+                    el.innerHTML = `<div style="font-weight: 700; font-size: 0.8rem; color: #ef4444;">🚨 ${f.title}</div><div style="font-size: 0.75rem; color: var(--text-muted);">${f.category}</div>`;
+                    regList.appendChild(el);
+                });
+
+                const persList = document.getElementById('diff-persistent-list');
+                persList.innerHTML = data.persistent_findings.length === 0 ? '<div style="color: var(--text-muted); font-size: 0.8rem;">Aucune faille persistante.</div>' : '';
+                data.persistent_findings.forEach(f => {
+                    const el = document.createElement('div');
+                    el.className = 'persistent-item';
+                    el.innerHTML = `<div style="font-weight: 700; font-size: 0.8rem; color: #f59e0b;">⏳ ${f.title}</div><div style="font-size: 0.75rem; color: var(--text-muted);">${f.category}</div>`;
+                    persList.appendChild(el);
+                });
+
+                showToast("Comparaison des audits effectuée !", "success");
+
+            } catch (e) {
+                showToast("Erreur lors de la comparaison", "error");
+            }
+        }
+    </script>
+</body>
+</html>

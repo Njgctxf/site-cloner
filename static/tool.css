@@ -70,3 +70,35 @@ pre { border-radius: 10px !important; border-color: var(--line) !important; back
 .model, .note { border-radius: 10px !important; border-color: var(--line) !important; }
 .toast { background: rgba(19, 22, 36, .95) !important; border-color: var(--line-strong) !important; border-radius: 12px !important; box-shadow: var(--shadow); backdrop-filter: blur(10px); }
 .loading::before { content: ""; width: 18px; height: 18px; margin-right: 10px; border-radius: 50%; border: 2px solid rgba(255, 255, 255, .2); border-top-color: #c45cff; animation: ui-rot .8s linear infinite; }
+
+/* ============================================================================
+   Polish pass (additive) - Studio board & inspector.
+   ============================================================================ */
+
+/* top bar: faint gradient hairline instead of a flat line */
+.top::after { content: ""; position: absolute; left: 0; right: 0; bottom: -1px; height: 1px; pointer-events: none;
+  background: linear-gradient(90deg, transparent, rgba(124, 108, 255, .55), rgba(255, 92, 157, .4), transparent); opacity: .55; }
+.top { position: relative; }
+
+/* board: soft vignette so cards pop off the grid */
+#viewport::after { content: ""; position: absolute; inset: 0; pointer-events: none; z-index: 0;
+  background: radial-gradient(120% 80% at 50% -5%, transparent 60%, rgba(3, 4, 8, .5)); }
+#world { position: relative; z-index: 1; }
+
+/* board cards: glassy top sheen + deeper hover lift */
+#world .card { background: linear-gradient(180deg, rgba(255, 255, 255, .05), transparent 90px), rgba(20, 23, 38, .9) !important; }
+#world .card:hover { translate: 0 -5px; }
+#world .card .meta { border-top: 1px solid rgba(148, 163, 255, .06); }
+
+/* primary button: inner light edge */
+.btn.primary { box-shadow: 0 6px 24px -8px rgba(196, 92, 255, .8), inset 0 1px 0 rgba(255, 255, 255, .25) !important; }
+
+/* side panel section cards: subtle top sheen */
+.sec { background: linear-gradient(180deg, rgba(255, 255, 255, .035), transparent 60px), var(--card) !important; }
+
+/* inspector stage frame: warmer glow on focus of the previewed site */
+.frame:hover { box-shadow: 0 30px 80px -20px rgba(0, 0, 0, .9), 0 0 0 1px rgba(196, 92, 255, .3) !important; }
+
+/* gradient scrollbar inside panels */
+aside::-webkit-scrollbar, .tree::-webkit-scrollbar, .props::-webkit-scrollbar { width: 9px; }
+aside::-webkit-scrollbar-thumb, .tree::-webkit-scrollbar-thumb, .props::-webkit-scrollbar-thumb { background: linear-gradient(180deg, #3a3560, #2a2b45); border-radius: 9px; }

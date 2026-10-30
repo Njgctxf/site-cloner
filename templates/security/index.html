@@ -1,0 +1,759 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CyberLab — Plateforme SOC & Laboratoire d'Audit de Sécurité</title>
+    
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <!-- Styles -->
+    <link rel="stylesheet" href="/__sc/static/security/cyberlab.css">
+</head>
+<body>
+
+    <!-- SIDEBAR NAVIGATION -->
+    <aside class="sidebar">
+        <div class="sidebar-header">
+            <div class="brand-icon">🛡️</div>
+            <div>
+                <div class="brand-title">CyberLab</div>
+                <div class="brand-subtitle">Security SOC & Lab</div>
+            </div>
+        </div>
+
+        <ul class="nav-links">
+            <li class="nav-item active" data-tab="overview">
+                <span class="nav-icon">📊</span>
+                <span>Overview</span>
+            </li>
+            <li class="nav-item" data-tab="lab">
+                <span class="nav-icon">🧪</span>
+                <span>Lab Environment</span>
+            </li>
+            <li class="nav-item" data-tab="domains">
+                <span class="nav-icon">🏢</span>
+                <span>Domaines Autorisés</span>
+            </li>
+            <li class="nav-item" data-tab="scanner">
+                <span class="nav-icon">🔍</span>
+                <span>Security Scanner</span>
+            </li>
+            <li class="nav-item" data-tab="simulations">
+                <span class="nav-icon">⚡</span>
+                <span>Attack Simulations</span>
+            </li>
+            <li class="nav-item" data-tab="reports">
+                <span class="nav-icon">📑</span>
+                <span>Vulnerability Reports</span>
+            </li>
+            <li class="nav-item" data-tab="network">
+                <span class="nav-icon">📡</span>
+                <span>Network Monitoring</span>
+            </li>
+            <li class="nav-item" data-tab="learning">
+                <span class="nav-icon">🎓</span>
+                <span>Learning Center</span>
+            </li>
+            <li class="nav-item" data-tab="cicd">
+                <span class="nav-icon">🚀</span>
+                <span>CI/CD & API</span>
+            </li>
+            <li class="nav-item" data-tab="settings">
+                <span class="nav-icon">⚙️</span>
+                <span>Settings</span>
+            </li>
+        </ul>
+
+        <div class="sidebar-footer">
+            <a href="/__sc/" style="display:block;margin-bottom:6px;color:var(--cyan);text-decoration:none;font-weight:600">← SiteCloner</a>
+            <a href="/__sc/security/admin-space" style="display:block;margin-bottom:10px;color:#f87171;text-decoration:none;font-weight:600;font-size:0.85rem">🔐 Espace Privé Propriétaire →</a>
+            <div><span class="status-dot"></span>SOC Engine : <strong>Online</strong></div>
+            <div style="margin-top: 4px;">Périmètre : <strong>Scope Vérifié & Anti-SSRF</strong></div>
+        </div>
+    </aside>
+
+    <!-- MAIN CONTENT VIEW -->
+    <main class="main-content">
+        <!-- TOP STATUS BAR -->
+        <header class="top-bar">
+            <div class="page-title">
+                <span id="header-section-title">CyberLab Console</span>
+                <span class="badge-tag badge-info">v2.4 - Academic Release</span>
+            </div>
+            <div style="display: flex; align-items: center; gap: 0.75rem;">
+                <div style="font-size: 0.85rem; color: var(--text-muted);">
+                    Cible active : <span style="font-family: var(--font-mono); color: var(--cyan);">{{ lab_url.split("//")[1] }}</span>
+                </div>
+                <a href="{{ SEC_BASE }}/admin-space" class="btn btn-secondary" style="border-color: rgba(239, 68, 68, 0.5); color: #fca5a5;">
+                    <span>🔐 Espace Privé Admin</span>
+                </a>
+                <button class="btn btn-secondary" onclick="window.open('{{ SEC_BASE }}/lab', '_blank')">
+                    <span>🌐 Ouvrir Cible Lab</span>
+                </button>
+            </div>
+        </header>
+
+        <!-- TAB 1: OVERVIEW -->
+        <section id="tab-overview" class="tab-pane active">
+            <div class="metrics-grid">
+                <div class="card">
+                    <div class="card-title">Audits Réalisés</div>
+                    <div class="card-value" id="metric-scans">0</div>
+                </div>
+                <div class="card">
+                    <div class="card-title">Vulnérabilités Détectées</div>
+                    <div class="card-value" id="metric-vulns" style="color: var(--red);">0</div>
+                </div>
+                <div class="card">
+                    <div class="card-title">Simulations Pédagogiques</div>
+                    <div class="card-value" id="metric-sims" style="color: var(--cyan);">0</div>
+                </div>
+                <div class="card">
+                    <div class="card-title">Niveau de Risque Global</div>
+                    <div class="card-value" id="metric-risk" style="color: var(--green); font-size: 1.5rem;">FAIBLE</div>
+                </div>
+                <div class="card">
+                    <div class="card-title">Score de Posture</div>
+                    <div class="card-value" id="metric-posture" style="color: var(--cyan);">95/100</div>
+                </div>
+            </div>
+
+            <!-- Dashboard Split Layout: Chart + Live Event Stream -->
+            <div style="display: grid; grid-template-columns: 1fr 1.5fr; gap: 1.5rem; margin-bottom: 2rem;">
+                <div class="card">
+                    <h3 style="font-size: 1rem; margin-bottom: 1rem; color: var(--text-primary);">Distribution des Vulnérabilités</h3>
+                    <div style="height: 220px; position: relative;">
+                        <canvas id="vulnChart"></canvas>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
+                        <h3 style="font-size: 1rem; color: var(--text-primary);">État du Laboratoire InnoTech Corp</h3>
+                        <span id="lab-mode-badge" class="badge-tag badge-crit">VULNERABLE</span>
+                    </div>
+                    <p style="color: var(--text-secondary); font-size: 0.88rem; margin-bottom: 1rem;">
+                        Environnement sandbox reproduisant une application web d'entreprise avec des vulnérabilités documentées pour tests pédagogiques.
+                    </p>
+                    <div style="display: flex; gap: 0.75rem;">
+                        <button class="btn btn-primary" onclick="toggleLabProtection()">
+                            <span>🛡️ Basculer Mode Vulnérable / Sécurisé</span>
+                        </button>
+                        <button class="btn btn-secondary" onclick="resetLabDatabase()">
+                            <span>🔄 Réinitialiser Données Lab</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Terminal Audit Log Stream -->
+            <div class="terminal-window">
+                <div class="terminal-header">
+                    <span>📡 JOURNAL D'AUDIT SOC EN TEMPS RÉEL</span>
+                    <span>BUFFER : 50 EVENTS</span>
+                </div>
+                <div class="terminal-body" id="overview-logs">
+                    <!-- Injected via JavaScript -->
+                </div>
+            </div>
+        </section>
+
+        <!-- TAB 2: LAB ENVIRONMENT -->
+        <section id="tab-lab" class="tab-pane">
+            <div class="card" style="margin-bottom: 1.5rem;">
+                <h2 style="font-size: 1.25rem; margin-bottom: 0.5rem;">Environnement Isolé de Démonstration</h2>
+                <p style="color: var(--text-secondary); font-size: 0.9rem;">
+                    Ce laboratoire héberge une maquette d'application d'entreprise intitulée <strong>InnoTech Portal</strong>. 
+                    Elle a été conçue pour reproduire fidèlement les erreurs courantes de développement logiciel sans aucun risque externe.
+                </p>
+            </div>
+
+            <div class="metrics-grid">
+                <div class="card">
+                    <div class="card-title">Cible Autorisée</div>
+                    <div style="font-family: var(--font-mono); font-size: 1.1rem; color: var(--green);">{{ lab_url.split("//")[1] }}</div>
+                    <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.25rem;">Isolation réseau : Loopback Localhost</div>
+                </div>
+                <div class="card">
+                    <div class="card-title">Mode Actuel</div>
+                    <div style="font-family: var(--font-mono); font-size: 1.1rem; color: var(--cyan);" id="lab-tab-mode">Interactif</div>
+                    <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.25rem;">Commutable à chaud</div>
+                </div>
+                <div class="card">
+                    <div class="card-title">Base de Données de Test</div>
+                    <div style="font-family: var(--font-mono); font-size: 1.1rem; color: var(--text-primary);">SQLite (InnoTech DB)</div>
+                    <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.25rem;">Restaurable en 1-clic</div>
+                </div>
+            </div>
+
+            <div class="card">
+                <h3 style="font-size: 1rem; margin-bottom: 1rem;">Endpoints de Démonstration Disponibles</h3>
+                <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 0.9rem;">
+                    <thead>
+                        <tr style="border-bottom: 1px solid var(--border-color); color: var(--text-muted);">
+                            <th style="padding: 0.75rem;">Endpoint</th>
+                            <th style="padding: 0.75rem;">Vulnérabilité Associée</th>
+                            <th style="padding: 0.75rem;">Statut</th>
+                            <th style="padding: 0.75rem;">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr style="border-bottom: 1px solid var(--border-color);">
+                            <td style="padding: 0.75rem; font-family: var(--font-mono); color: var(--cyan);">/lab/login</td>
+                            <td style="padding: 0.75rem;">Injection SQL (Auth Bypass) & Credential Stuffing</td>
+                            <td style="padding: 0.75rem;"><span class="badge-tag badge-crit">Actif</span></td>
+                            <td style="padding: 0.75rem;"><button class="btn btn-secondary" onclick="switchTab('simulations'); document.getElementById('sim-scenario-select').value='sqli'; onScenarioChange();">Tester</button></td>
+                        </tr>
+                        <tr style="border-bottom: 1px solid var(--border-color);">
+                            <td style="padding: 0.75rem; font-family: var(--font-mono); color: var(--cyan);">/lab/search</td>
+                            <td style="padding: 0.75rem;">Cross-Site Scripting (XSS Réfléchi)</td>
+                            <td style="padding: 0.75rem;"><span class="badge-tag badge-crit">Actif</span></td>
+                            <td style="padding: 0.75rem;"><button class="btn btn-secondary" onclick="switchTab('simulations'); document.getElementById('sim-scenario-select').value='xss'; onScenarioChange();">Tester</button></td>
+                        </tr>
+                        <tr style="border-bottom: 1px solid var(--border-color);">
+                            <td style="padding: 0.75rem; font-family: var(--font-mono); color: var(--cyan);">/lab/profile/&lt;id&gt;</td>
+                            <td style="padding: 0.75rem;">Contrôle d'Accès Défaillant (IDOR)</td>
+                            <td style="padding: 0.75rem;"><span class="badge-tag badge-crit">Actif</span></td>
+                            <td style="padding: 0.75rem;"><button class="btn btn-secondary" onclick="switchTab('simulations'); document.getElementById('sim-scenario-select').value='idor'; onScenarioChange();">Tester</button></td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 0.75rem; font-family: var(--font-mono); color: var(--cyan);">/lab/download?file=...</td>
+                            <td style="padding: 0.75rem;">Traversée de Répertoires (Path Traversal / LFI)</td>
+                            <td style="padding: 0.75rem;"><span class="badge-tag badge-crit">Actif</span></td>
+                            <td style="padding: 0.75rem;"><button class="btn btn-secondary" onclick="switchTab('simulations'); document.getElementById('sim-scenario-select').value='path_traversal'; onScenarioChange();">Tester</button></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- TAB: VERIFIED DOMAINS (ENTERPRISE SCOPE) -->
+        <section id="tab-domains" class="tab-pane">
+            <div class="card" style="margin-bottom: 1.5rem;">
+                <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                    <div>
+                        <h2 style="font-size: 1.25rem; margin-bottom: 0.5rem;">🏢 Gestion & Vérification des Domaines d'Entreprise</h2>
+                        <p style="color: var(--text-secondary); font-size: 0.9rem;">
+                            Par conformité éthique et légale, vous devez certifier être propriétaire ou administrateur autorisé de chaque domaine avant de pouvoir déclencher un audit de sécurité.
+                        </p>
+                    </div>
+                    <span class="badge-tag badge-safe">Anti-SSRF & DNS Challenge Actifs</span>
+                </div>
+            </div>
+
+            <!-- Enrollment Card -->
+            <div class="card" style="margin-bottom: 1.5rem;">
+                <h3 style="font-size: 1rem; margin-bottom: 1rem; color: var(--cyan);">Ajouter un Nouveau Domaine à Auditer</h3>
+                <div style="display: grid; grid-template-columns: 2fr 1.5fr auto; gap: 1rem; align-items: flex-end;">
+                    <div>
+                        <label style="font-size: 0.8rem; color: var(--text-muted); display: block; margin-bottom: 0.4rem;">Nom de domaine complet :</label>
+                        <input type="text" id="domain-input" class="input-box" placeholder="ex: app.monentreprise.com" />
+                    </div>
+                    <div>
+                        <label style="font-size: 0.8rem; color: var(--text-muted); display: block; margin-bottom: 0.4rem;">Méthode de validation :</label>
+                        <select id="domain-method-select" class="input-box">
+                            <option value="dns_txt">Enregistrement DNS TXT (_sc-audit)</option>
+                            <option value="http_file">Fichier /.well-known HTTP Challenge</option>
+                        </select>
+                    </div>
+                    <div>
+                        <button class="btn btn-primary" onclick="registerDomain()">
+                            <span>➕ Enregistrer le Domaine</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Challenge Instructions Box (Dynamic) -->
+                <div id="domain-instructions-box" style="display: none; margin-top: 1.25rem; padding: 1.25rem; background: rgba(0, 240, 255, 0.04); border: 1px dashed var(--cyan); border-radius: 8px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
+                        <strong style="color: var(--cyan); font-size: 0.95rem;">📋 Instructions de validation pour <span id="instr-domain-name"></span></strong>
+                        <button class="btn btn-secondary" style="font-size: 0.75rem; padding: 0.3rem 0.6rem;" onclick="copyChallengeToken()">Copier le Jeton</button>
+                    </div>
+                    <div id="instr-details" style="font-size: 0.85rem; color: var(--text-secondary); line-height: 1.6;">
+                        <!-- Injected via JS -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Verified Domains List -->
+            <div class="card">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                    <h3 style="font-size: 1rem; color: var(--text-primary);">Périmètre Autorisé (Scope)</h3>
+                    <button class="btn btn-secondary" onclick="loadDomains()">🔄 Actualiser la liste</button>
+                </div>
+
+                <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 0.9rem;">
+                    <thead>
+                        <tr style="border-bottom: 1px solid var(--border-color); color: var(--text-muted);">
+                            <th style="padding: 0.75rem;">Domaine</th>
+                            <th style="padding: 0.75rem;">Méthode</th>
+                            <th style="padding: 0.75rem;">Jeton de vérification</th>
+                            <th style="padding: 0.75rem;">Statut</th>
+                            <th style="padding: 0.75rem;">Date vérifiée</th>
+                            <th style="padding: 0.75rem; text-align: right;">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="domains-table-body">
+                        <!-- Injected via JS -->
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Scheduled Recurring Audits -->
+            <div class="card" style="margin-top: 1.5rem;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                    <div>
+                        <h3 style="font-size: 1rem; color: var(--text-primary);">⏰ Surveillance Continue (Audits Récurrents Planifiés)</h3>
+                        <p style="color: var(--text-muted); font-size: 0.85rem; margin-top: 0.2rem;">
+                            Planifiez des audits automatiques réguliers pour détecter immédiatement toute nouvelle faille ou régression de sécurité.
+                        </p>
+                    </div>
+                    <button class="btn btn-secondary" onclick="loadSchedules()">🔄 Actualiser</button>
+                </div>
+
+                <div style="display: grid; grid-template-columns: 2fr 1fr auto; gap: 1rem; margin-bottom: 1.25rem; align-items: flex-end; background: rgba(255,255,255,0.02); padding: 1rem; border-radius: 8px; border: 1px solid var(--border-color);">
+                    <div>
+                        <label style="font-size: 0.8rem; color: var(--text-muted); display: block; margin-bottom: 0.4rem;">URL cible (Domaine vérifié) :</label>
+                        <input type="text" id="sched-url-input" class="input-box" placeholder="https://app.monentreprise.com" />
+                    </div>
+                    <div>
+                        <label style="font-size: 0.8rem; color: var(--text-muted); display: block; margin-bottom: 0.4rem;">Fréquence :</label>
+                        <select id="sched-freq-select" class="input-box">
+                            <option value="daily">Quotidienne (Chaque jour)</option>
+                            <option value="weekly" selected>Hebdomadaire (Chaque semaine)</option>
+                            <option value="monthly">Mensuelle (Chaque mois)</option>
+                        </select>
+                    </div>
+                    <div>
+                        <button class="btn btn-primary" onclick="createSchedule()">
+                            <span>⏰ Activer la Surveillance</span>
+                        </button>
+                    </div>
+                </div>
+
+                <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 0.9rem;">
+                    <thead>
+                        <tr style="border-bottom: 1px solid var(--border-color); color: var(--text-muted);">
+                            <th style="padding: 0.75rem;">Cible</th>
+                            <th style="padding: 0.75rem;">Fréquence</th>
+                            <th style="padding: 0.75rem;">Prochain Audit</th>
+                            <th style="padding: 0.75rem;">Statut</th>
+                            <th style="padding: 0.75rem; text-align: right;">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="schedules-table-body">
+                        <!-- Injected via JS -->
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- TAB 3: SECURITY SCANNER -->
+        <section id="tab-scanner" class="tab-pane">
+            <div class="card" style="margin-bottom: 1.5rem;">
+                <h2 style="font-size: 1.25rem; margin-bottom: 0.5rem;">Scanner d'Audit et de Conformité</h2>
+                <p style="color: var(--text-secondary); font-size: 0.9rem; margin-bottom: 1.25rem;">
+                    Analyseur défensif non destructif évaluant la configuration de sécurité, les en-têtes HTTP, la protection des cookies et la divulgation de fichiers sensibles.
+                </p>
+
+                <!-- Quick Domain Selector -->
+                <div style="margin-bottom: 1rem; display: flex; align-items: center; gap: 0.75rem;">
+                    <span style="font-size: 0.85rem; color: var(--text-muted);">Sélection rapide :</span>
+                    <select id="scan-domain-preset" class="input-box" style="max-width: 350px;" onchange="onSelectPresetDomain(this.value)">
+                        <option value="">-- Choisir un domaine autorisé ou le laboratoire --</option>
+                    </select>
+                </div>
+
+                <div style="display: flex; gap: 0.75rem;">
+                    <input type="text" id="scan-target-input" class="input-box" value="{{ target or lab_url }}" placeholder="{{ lab_url }}" />
+                    <button class="btn btn-primary" id="btn-start-scan" onclick="triggerScan()">
+                        <span>🚀 Lancer l'Audit Défensif</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Scan Results Output (Hidden by default) -->
+            <div id="scan-results-container" style="display: none;">
+                <div class="card" style="margin-bottom: 1.5rem; background: rgba(0, 240, 255, 0.03); border-color: rgba(0, 240, 255, 0.2);">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <div>
+                            <div style="font-size: 0.8rem; color: var(--text-muted);">CIBLE ANALYSÉE</div>
+                            <div style="font-family: var(--font-mono); font-size: 1.1rem; color: var(--cyan);" id="scan-res-target">-</div>
+                            <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.2rem;">Date : <span id="scan-res-date">-</span></div>
+                        </div>
+                        <div style="text-align: right;">
+                            <div style="font-size: 0.8rem; color: var(--text-muted);">SCORE DE SÉCURITÉ</div>
+                            <div style="font-size: 2rem; font-weight: 800; font-family: var(--font-mono);" id="scan-res-score">-</div>
+                            <span id="scan-res-grade" class="badge-tag badge-crit">GRADE -</span>
+                            <div style="margin-top: 0.75rem; display: flex; gap: 0.5rem; justify-content: flex-end;">
+                                <button class="btn btn-primary" style="font-size: 0.8rem; padding: 0.4rem 0.8rem;" id="btn-view-patch" onclick="openPatchModal()">
+                                    <span>🔧 Patch & Correctifs</span>
+                                </button>
+                                <button class="btn btn-secondary" style="font-size: 0.8rem; padding: 0.4rem 0.8rem;" id="btn-view-report" onclick="openCurrentReport()">
+                                    <span>📑 Rapport Détaillé</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <h3 style="font-size: 1.1rem; margin-bottom: 1rem;">Constats & Vulnérabilités Identifiées</h3>
+                <div id="scan-findings-list">
+                    <!-- Injected via JS -->
+                </div>
+            </div>
+        </section>
+
+        <!-- TAB 4: ATTACK SIMULATIONS -->
+        <section id="tab-simulations" class="tab-pane">
+            <div class="card" style="margin-bottom: 1.5rem;">
+                <h2 style="font-size: 1.25rem; margin-bottom: 0.5rem;">Laboratoire de Démonstration d'Attaques & Remédiations</h2>
+                <p style="color: var(--text-secondary); font-size: 0.9rem;">
+                    Démonstrations interactives montrant la découverte d'une faille dans le laboratoire, son exploitation contrôlée, sa télémétrie, et la vérification de sa correction logicielle.
+                </p>
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-bottom: 1.5rem;">
+                <div class="card">
+                    <label style="font-size: 0.85rem; font-weight: 600; color: var(--text-secondary); display: block; margin-bottom: 0.5rem;">1. Choisissez le Scénario OWASP :</label>
+                    <select id="sim-scenario-select" class="input-box" onchange="onScenarioChange()" style="margin-bottom: 1rem;">
+                        <!-- Injected via JS -->
+                    </select>
+
+                    <div style="background: rgba(255,255,255,0.03); padding: 0.75rem; border-radius: 6px; font-size: 0.85rem; margin-bottom: 1rem;">
+                        <div style="color: var(--cyan); font-weight: 600; margin-bottom: 0.25rem;" id="sim-cwe">-</div>
+                        <div style="color: #cbd5e1;" id="sim-desc">-</div>
+                    </div>
+
+                    <label style="font-size: 0.85rem; font-weight: 600; color: var(--text-secondary); display: block; margin-bottom: 0.5rem;">2. Choisissez un Payload de Test Pédagogique :</label>
+                    <select id="sim-payload-preset" class="input-box" onchange="onPayloadPresetChange()" style="margin-bottom: 0.75rem;">
+                        <!-- Injected via JS -->
+                    </select>
+
+                    <input type="text" id="sim-payload-custom" class="input-box" style="margin-bottom: 1.25rem;" placeholder="Payload de test..." />
+
+                    <div style="display: flex; gap: 0.75rem;">
+                        <button class="btn btn-danger" onclick="executeSimulationTest('VULNERABLE')">
+                            <span>⚡ Déclencher (Mode Vulnérable)</span>
+                        </button>
+                        <button class="btn btn-primary" onclick="executeSimulationTest('SECURED')">
+                            <span>🛡️ Tester Remédiation (Mode Sécurisé)</span>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="terminal-window">
+                    <div class="terminal-header">
+                        <span>🧪 TÉLÉMÉTRIE D'EXÉCUTION DU LABORATOIRE</span>
+                        <span>INTERACTIVE STREAM</span>
+                    </div>
+                    <div class="terminal-body" id="sim-terminal">
+                        <div class="log-line log-info">En attente du lancement d'une simulation...</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Simulation Result & Code Diff Card -->
+            <div id="sim-result-card" class="card" style="display: none; margin-bottom: 2rem;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                    <h3 style="font-size: 1.1rem;">Résultat de la Démonstration</h3>
+                    <span id="sim-outcome-badge" class="badge-tag badge-crit">-</span>
+                </div>
+                <p id="sim-outcome-msg" style="color: var(--text-secondary); font-size: 0.9rem; margin-bottom: 1rem;">-</p>
+
+                <!-- Code Comparison Diff -->
+                <h4 style="font-size: 0.9rem; color: var(--cyan); text-transform: uppercase;">Comparaison de Code : Vulnérabilité vs Correction</h4>
+                <div class="diff-container">
+                    <div class="diff-box vuln">
+                        <div class="diff-label" style="color: var(--red);">❌ Implémentation Vulnérable</div>
+                        <pre id="sim-code-vuln" style="white-space: pre-wrap; color: #fca5a5;"></pre>
+                    </div>
+                    <div class="diff-box sec">
+                        <div class="diff-label" style="color: var(--green);">✅ Implémentation Sécurisée (Remédiation)</div>
+                        <pre id="sim-code-sec" style="white-space: pre-wrap; color: #86efac;"></pre>
+                    </div>
+                </div>
+
+                <div style="margin-top: 1rem;">
+                    <details>
+                        <summary style="font-size: 0.8rem; color: var(--text-muted); cursor: pointer;">Afficher les données brutes extraites / réponse serveur</summary>
+                        <pre id="sim-telemetry-raw" style="background: #05060a; padding: 0.75rem; border-radius: 6px; font-family: var(--font-mono); font-size: 0.75rem; margin-top: 0.5rem; overflow-x: auto; color: var(--cyan);"></pre>
+                    </details>
+                </div>
+            </div>
+        </section>
+
+        <!-- TAB 5: VULNERABILITY REPORTS -->
+        <section id="tab-reports" class="tab-pane">
+            <div class="card" style="margin-bottom: 1.5rem;">
+                <h2 style="font-size: 1.25rem; margin-bottom: 0.5rem;">Rapports d'Audit de Sécurité</h2>
+                <p style="color: var(--text-secondary); font-size: 0.9rem;">
+                    Archives des analyses techniques et rapports détaillés prêts à l'exportation et à la présentation académique.
+                </p>
+            </div>
+
+            <div class="card">
+                <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 0.9rem;">
+                    <thead>
+                        <tr style="border-bottom: 1px solid var(--border-color); color: var(--text-muted);">
+                            <th style="padding: 1rem;">ID</th>
+                            <th style="padding: 1rem;">Cible</th>
+                            <th style="padding: 1rem;">Date de l'Audit</th>
+                            <th style="padding: 1rem;">Évaluation</th>
+                            <th style="padding: 1rem;">Critique / Élevé</th>
+                            <th style="padding: 1rem;">Export</th>
+                        </tr>
+                    </thead>
+                    <tbody id="reports-table-body">
+                        <!-- Injected via JS -->
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- TAB 6: NETWORK MONITORING -->
+        <section id="tab-network" class="tab-pane">
+            <div class="card" style="margin-bottom: 1.5rem;">
+                <h2 style="font-size: 1.25rem; margin-bottom: 0.5rem;">Moniteur d'Activité Réseau</h2>
+                <p style="color: var(--text-secondary); font-size: 0.9rem;">
+                    Inspection des requêtes HTTP et détection des anomalies de navigation sur le laboratoire.
+                </p>
+            </div>
+
+            <div class="card">
+                <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 0.9rem;">
+                    <thead>
+                        <tr style="border-bottom: 1px solid var(--border-color); color: var(--text-muted);">
+                            <th style="padding: 0.8rem;">Timestamp</th>
+                            <th style="padding: 0.8rem;">Source IP</th>
+                            <th style="padding: 0.8rem;">Destination</th>
+                            <th style="padding: 0.8rem;">Protocole</th>
+                            <th style="padding: 0.8rem;">Requête</th>
+                            <th style="padding: 0.8rem;">Status</th>
+                            <th style="padding: 0.8rem;">Observation</th>
+                        </tr>
+                    </thead>
+                    <tbody id="network-traffic-list">
+                        <!-- Injected via JS -->
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- TAB 7: LEARNING CENTER -->
+        <section id="tab-learning" class="tab-pane">
+            <div class="card" style="margin-bottom: 1.5rem;">
+                <h2 style="font-size: 1.25rem; margin-bottom: 0.5rem;">Espace Pédagogique & Référentiel OWASP</h2>
+                <p style="color: var(--text-secondary); font-size: 0.9rem;">
+                    Cours interactifs, fiches réflexes de remédiation et quiz de validation des acquis pour la soutenance.
+                </p>
+            </div>
+
+            <div id="learning-modules-list">
+                <!-- Injected via JS -->
+            </div>
+        </section>
+
+        <!-- TAB: CI/CD & API KEYS -->
+        <section id="tab-cicd" class="tab-pane">
+            <div class="card" style="margin-bottom: 1.5rem;">
+                <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+                    <div>
+                        <h2 style="font-size: 1.25rem; margin-bottom: 0.35rem; color: var(--cyan);">🚀 Intégration CI/CD Pipelines & Clés d'API</h2>
+                        <p style="color: var(--text-secondary); font-size: 0.9rem; margin: 0;">
+                            Automatisez l'analyse de sécurité dans vos pipelines (GitHub Actions, GitLab CI, scripts de déploiement) pour bloquer les livraisons en cas de failles critiques.
+                        </p>
+                    </div>
+                    <button class="btn btn-primary" onclick="openCreateApiKeyModal()">
+                        <span>+ Générer une Clé d'API</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- NEW KEY CREATED NOTIFICATION ALERT -->
+            <div id="new-key-alert" style="display: none; background: rgba(16, 185, 129, 0.1); border: 1px solid #10b981; border-radius: 8px; padding: 1.25rem; margin-bottom: 1.5rem;">
+                <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                    <div>
+                        <div style="font-weight: 700; color: #10b981; margin-bottom: 0.3rem;">✅ Nouvelle Clé d'API Générée avec Succès</div>
+                        <div style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0.75rem;">Copiez ce jeton maintenant. Par sécurité, la clé secrète complète ne sera plus jamais affichée.</div>
+                        <div style="display: flex; align-items: center; gap: 0.5rem; background: #06080e; padding: 0.6rem 1rem; border-radius: 6px; border: 1px solid var(--border-color);">
+                            <code id="new-api-key-value" style="font-family: var(--font-mono); color: #38bdf8; font-size: 0.9rem; font-weight: 600;"></code>
+                            <button class="btn btn-secondary" style="padding: 0.3rem 0.6rem; font-size: 0.75rem;" onclick="copyNewApiKey()">📋 Copier</button>
+                        </div>
+                    </div>
+                    <button class="btn btn-secondary" style="padding: 0.2rem 0.5rem; font-size: 0.75rem;" onclick="document.getElementById('new-key-alert').style.display='none'">✕</button>
+                </div>
+            </div>
+
+            <!-- GRID: KEYS LIST + PIPELINE INTEGRATION GENERATOR -->
+            <div style="display: grid; grid-template-columns: 1fr 1.2fr; gap: 1.5rem; margin-bottom: 1.5rem;">
+                
+                <!-- COLUMN 1: API KEYS LIST -->
+                <div class="card">
+                    <h3 style="font-size: 1.05rem; margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem;">
+                        <span>🔑</span>
+                        <span>Clés d'API Actives</span>
+                    </h3>
+                    <div class="table-container" style="max-height: 420px; overflow-y: auto;">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Nom</th>
+                                    <th>Préfixe</th>
+                                    <th>Créée le</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody id="api-keys-table-body">
+                                <tr>
+                                    <td colspan="4" style="text-align: center; color: var(--text-muted); padding: 2rem;">
+                                        Chargement des clés d'API...
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- COLUMN 2: PIPELINE SNIPPET GENERATOR -->
+                <div class="card">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                        <h3 style="font-size: 1.05rem; margin: 0; display: flex; align-items: center; gap: 0.5rem;">
+                            <span>⚙️</span>
+                            <span>Configuration du Pipeline Gate</span>
+                        </h3>
+                        <div style="display: flex; gap: 0.4rem;">
+                            <button class="btn btn-primary ci-tab-btn active" id="btn-ci-github" onclick="switchCiTab('github')">GitHub Actions</button>
+                            <button class="btn btn-secondary ci-tab-btn" id="btn-ci-gitlab" onclick="switchCiTab('gitlab')">GitLab CI</button>
+                            <button class="btn btn-secondary ci-tab-btn" id="btn-ci-curl" onclick="switchCiTab('curl')">cURL / CLI</button>
+                        </div>
+                    </div>
+
+                    <div style="display: flex; gap: 1rem; margin-bottom: 1rem; align-items: flex-end;">
+                        <div style="flex: 2;">
+                            <label style="font-size: 0.8rem; color: var(--text-muted); display: block; margin-bottom: 0.3rem;">Domaine ou URL Cible</label>
+                            <input type="text" id="ci-target-input" class="form-control" placeholder="https://app.monentreprise.com" style="width: 100%; background: #080a10; border: 1px solid var(--border-color); color: #fff; padding: 0.5rem 0.75rem; border-radius: 6px;" oninput="updateCiSnippets()">
+                        </div>
+                        <div style="flex: 1;">
+                            <label style="font-size: 0.8rem; color: var(--text-muted); display: block; margin-bottom: 0.3rem;">Score Min. (Requis)</label>
+                            <input type="number" id="ci-min-score" class="form-control" value="75" min="10" max="100" style="width: 100%; background: #080a10; border: 1px solid var(--border-color); color: #fff; padding: 0.5rem 0.75rem; border-radius: 6px;" oninput="updateCiSnippets()">
+                        </div>
+                    </div>
+
+                    <div style="position: relative;">
+                        <button class="btn btn-secondary" style="position: absolute; top: 8px; right: 8px; font-size: 0.75rem; padding: 0.3rem 0.6rem; z-index: 10;" onclick="copyCurrentCiSnippet()">
+                            📋 Copier
+                        </button>
+                        <pre id="ci-snippet-code" style="background: #06080e; padding: 1.25rem; border-radius: 8px; border: 1px solid var(--border-color); font-family: var(--font-mono); font-size: 0.78rem; color: #cbd5e1; overflow-x: auto; max-height: 290px; white-space: pre; margin: 0;"></pre>
+                    </div>
+                </div>
+            </div>
+
+            <!-- CARD 3: LIVE CI/CD GATE SIMULATOR -->
+            <div class="card">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
+                    <div>
+                        <h3 style="font-size: 1.05rem; margin: 0; color: var(--text-primary);">🧪 Test du Gate de Sécurité en Direct</h3>
+                        <p style="font-size: 0.82rem; color: var(--text-muted); margin: 0.2rem 0 0 0;">
+                            Simule l'exécution de l'en-tête <code>X-API-Key</code> et vérifie si le build est validé ou rejeté selon la politique configurée.
+                        </p>
+                    </div>
+                    <button class="btn btn-primary" id="btn-trigger-ci-gate" onclick="executeCiGateTest()">
+                        <span>⚡ Tester le Gate CI/CD</span>
+                    </button>
+                </div>
+
+                <div id="ci-gate-test-result" style="display: none; margin-top: 1rem; padding: 1rem; border-radius: 8px; border: 1px solid var(--border-color); background: #080a10;">
+                    <!-- Result filled via JS -->
+                </div>
+            </div>
+        </section>
+
+        <!-- TAB 8: SETTINGS -->
+        <section id="tab-settings" class="tab-pane">
+            <div class="card" style="margin-bottom: 1.5rem;">
+                <h2 style="font-size: 1.25rem; margin-bottom: 0.5rem;">Paramètres & Gouvernance de Sécurité</h2>
+                <p style="color: var(--text-secondary); font-size: 0.9rem;">
+                    Configuration des règles d'engagement et des restrictions de portée (Scope Enforcement).
+                </p>
+            </div>
+
+            <div class="card" style="margin-bottom: 1.5rem;">
+                <h3 style="font-size: 1rem; margin-bottom: 0.75rem;">Liste Blanche des Cibles (Whitelist Scope)</h3>
+                <p style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 1rem;">
+                    Par mesure de sécurité éthique et légale, toute tentative d'analyse sur une adresse non répertoriée ci-dessous est immédiatement interceptée et bloquée.
+                </p>
+                <div style="background: #080a10; padding: 1rem; border-radius: 8px; font-family: var(--font-mono); font-size: 0.85rem; color: var(--cyan); border: 1px solid var(--border-color);">
+                    • localhost<br>
+                    • 127.0.0.1<br>
+                    • 0.0.0.0<br>
+                    • innotech-lab.local<br>
+                    • cyberlab.local
+                </div>
+            </div>
+
+            <div class="card">
+                <h3 style="font-size: 1rem; margin-bottom: 0.75rem; color: var(--red);">Zone de Réinitialisation Globale</h3>
+                <p style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 1rem;">
+                    Permet de remettre à zéro les historiques de tests, journaux et base de données du laboratoire pour une nouvelle démonstration.
+                </p>
+                <button class="btn btn-danger" onclick="resetLabDatabase()">
+                    <span>⚠️ Réinitialiser Tout le Laboratoire</span>
+                </button>
+            </div>
+        </section>
+    </main>
+
+    <!-- REMEDIATION PATCH MODAL -->
+    <div id="patch-modal" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.8); z-index: 99999; backdrop-filter: blur(8px); align-items: center; justify-content: center; padding: 2rem;">
+        <div style="background: #0b0f19; border: 1px solid var(--border-color); border-radius: 12px; width: 100%; max-width: 850px; max-height: 85vh; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 20px 50px rgba(0,0,0,0.8);">
+            <div style="padding: 1.25rem 1.5rem; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center;">
+                <div>
+                    <h3 style="margin: 0; color: var(--cyan); font-size: 1.15rem;">🔧 Patch de Remédiation & Durcissement Immédiat</h3>
+                    <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.2rem;">Configurations et correctifs prêts à copier/déployer</div>
+                </div>
+                <button class="btn btn-secondary" style="padding: 0.3rem 0.6rem;" onclick="closePatchModal()">✕ Fermer</button>
+            </div>
+            
+            <div style="padding: 1rem 1.5rem; display: flex; gap: 0.5rem; border-bottom: 1px solid var(--border-color); background: rgba(255,255,255,0.02);">
+                <button class="btn btn-primary patch-tab-btn active" id="btn-tab-nginx" onclick="switchPatchTab('nginx')">Nginx Config</button>
+                <button class="btn btn-secondary patch-tab-btn" id="btn-tab-apache" onclick="switchPatchTab('apache')">Apache .htaccess</button>
+                <button class="btn btn-secondary patch-tab-btn" id="btn-tab-code" onclick="switchPatchTab('code')">Correctifs de Code</button>
+            </div>
+
+            <div style="padding: 1.5rem; overflow-y: auto; flex: 1;">
+                <div id="patch-content-nginx">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                        <span style="font-size: 0.85rem; color: var(--text-secondary);">Bloc de configuration pour <code>/etc/nginx/sites-available/</code> :</span>
+                        <button class="btn btn-secondary" style="font-size: 0.75rem; padding: 0.3rem 0.6rem;" onclick="copyPatchCode('patch-code-nginx')">📋 Copier la Config</button>
+                    </div>
+                    <pre id="patch-code-nginx" style="background: #06080e; padding: 1rem; border-radius: 8px; border: 1px solid var(--border-color); font-family: var(--font-mono); font-size: 0.8rem; color: #cbd5e1; overflow-x: auto; white-space: pre;"></pre>
+                </div>
+
+                <div id="patch-content-apache" style="display: none;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                        <span style="font-size: 0.85rem; color: var(--text-secondary);">Fichier <code>.htaccess</code> à placer à la racine :</span>
+                        <button class="btn btn-secondary" style="font-size: 0.75rem; padding: 0.3rem 0.6rem;" onclick="copyPatchCode('patch-code-apache')">📋 Copier .htaccess</button>
+                    </div>
+                    <pre id="patch-code-apache" style="background: #06080e; padding: 1rem; border-radius: 8px; border: 1px solid var(--border-color); font-family: var(--font-mono); font-size: 0.8rem; color: #cbd5e1; overflow-x: auto; white-space: pre;"></pre>
+                </div>
+
+                <div id="patch-content-code" style="display: none;">
+                    <div id="patch-code-snippets"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Application Script -->
+    <script>window.SEC_BASE = {{ SEC_BASE|tojson }};</script>
+    <script src="/__sc/static/security/app.js"></script>
+</body>
+</html>

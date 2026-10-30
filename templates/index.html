@@ -67,6 +67,7 @@
     <div class="ui-links">
       <a href="/__sc/" class="on">Cloneur</a>
       <a href="/shop/">Marketplace</a>
+      <a href="/__sc/security/">Sécurité</a>
       <a href="/admin">Admin</a>
     </div>
   </nav>
@@ -198,6 +199,7 @@
                 <button class="ui-btn" onclick="previewSite('${site.id}')">🌐 Aperçu</button>
                 <a href="/__sc/studio/${sid}/inspect" class="ui-btn" title="Modifier les textes, images, vidéos, 3D">✏️ Éditer</a>
                 <button class="ui-btn" onclick="publishSite('${site.id}')" title="Publier sur votre compte GitHub">🚀 GitHub</button>
+                <button class="ui-btn" style="grid-column: span 3" onclick="auditSite('${site.id}')" title="En-têtes HTTP, cookies, fichiers sensibles exposés (module Sécurité)">🛡 Audit de sécurité</button>
                 <div style="display:flex;gap:8px">
                   <a href="/__sc/api/sites/${sid}/download" class="ui-btn" style="flex:1" title="Télécharger l'archive ZIP">📦</a>
                   <button class="ui-btn danger" onclick="deleteSite('${site.id}')" title="Supprimer">🗑️</button>
@@ -316,6 +318,19 @@
           console.warn('Poll error:', e);
         }
       }, 1500);
+    }
+
+    // Security module: audit the clone's local preview (the scanner only accepts local / authorized hosts)
+    async function auditSite(siteId) {
+      try {
+        const res = await fetch(`/__sc/api/sites/${siteId}/serve`, { method: 'POST' });
+        const data = await res.json();
+        if (!data.url) throw new Error(data.error || "Impossible de lancer le serveur");
+        window.open(`/__sc/security/?target=${encodeURIComponent(data.url + '/')}&run=1#scanner`, '_blank');
+        loadSites();
+      } catch (err) {
+        showToast("Audit impossible : " + err.message, "error");
+      }
     }
 
     async function previewSite(siteId) {
