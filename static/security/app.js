@@ -166,26 +166,39 @@ async function resetLabDatabase() {
 }
 
 // --- DEFENSIVE SECURITY SCANNER ---
+function getSelectedScanCategories() {
+    return Array.from(document.querySelectorAll('.scan-category-checkbox:checked')).map(cb => cb.value);
+}
+
+function setScanCategories(checked) {
+    document.querySelectorAll('.scan-category-checkbox').forEach(cb => { cb.checked = checked; });
+}
+
 async function triggerScan() {
     const target = document.getElementById('scan-target-input').value.trim();
     if (!target) {
         showToast("Veuillez saisir une URL de laboratoire", "error");
         return;
     }
+    const categories = getSelectedScanCategories();
+    if (categories.length === 0) {
+        showToast("Sélectionnez au moins une catégorie à analyser", "error");
+        return;
+    }
 
     const btn = document.getElementById('btn-start-scan');
     btn.disabled = true;
-    btn.innerHTML = `<span>⏳ Analyse en cours...</span>`;
+    btn.innerHTML = `<span>Analyse en cours...</span>`;
 
     try {
         const res = await fetch(SEC + '/api/scan', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({ target_url: target })
+            body: JSON.stringify({ target_url: target, categories: categories })
         });
         const data = await res.json();
         btn.disabled = false;
-        btn.innerHTML = `<span>🚀 Lancer l'Audit Défensif</span>`;
+        btn.innerHTML = `<span>Lancer l'Audit Défensif</span>`;
 
         if (!data.success) {
             showToast(data.error || "Échec de l'audit", "error");
@@ -200,7 +213,7 @@ async function triggerScan() {
 
     } catch (e) {
         btn.disabled = false;
-        btn.innerHTML = `<span>🚀 Lancer l'Audit Défensif</span>`;
+        btn.innerHTML = `<span>Lancer l'Audit Défensif</span>`;
         showToast("Erreur lors de la communication avec le scanner", "error");
     }
 }
@@ -222,7 +235,7 @@ function renderScanResults(scan) {
     list.innerHTML = '';
 
     if (scan.findings.length === 0) {
-        list.innerHTML = `<div style="padding: 2rem; text-align: center; color: var(--green);">✅ Aucune vulnérabilité ou anomalie détectée sur la cible !</div>`;
+        list.innerHTML = `<div style="padding: 2rem; text-align: center; color: var(--green);"> Aucune vulnérabilité ou anomalie détectée sur la cible !</div>`;
         return;
     }
 
@@ -247,12 +260,12 @@ function renderScanResults(scan) {
             <p style="color: var(--text-secondary); font-size: 0.88rem; margin: 0.5rem 0;">${escapeHtml(f.description)}</p>
             
             <div style="background: #080a10; padding: 0.75rem; border-radius: 6px; font-family: var(--font-mono); font-size: 0.8rem; margin: 0.5rem 0; border: 1px solid var(--border-color);">
-                <div style="color: var(--cyan); margin-bottom: 0.25rem;">🔍 Preuve d'audit :</div>
+                <div style="color: var(--cyan); margin-bottom: 0.25rem;"> Preuve d'audit :</div>
                 <div style="color: #cbd5e1;">${escapeHtml(f.proof)}</div>
             </div>
 
             <div style="background: rgba(0, 255, 136, 0.05); padding: 0.75rem; border-radius: 6px; font-family: var(--font-mono); font-size: 0.8rem; margin-top: 0.5rem; border-left: 3px solid var(--green);">
-                <div style="color: var(--green); margin-bottom: 0.25rem;">💡 Recommandation de remédiation :</div>
+                <div style="color: var(--green); margin-bottom: 0.25rem;"> Recommandation de remédiation :</div>
                 <div style="color: #e2e8f0;">${escapeHtml(f.remediation)}</div>
             </div>
         `;
@@ -317,7 +330,7 @@ async function executeSimulationTest(forceMode = null) {
     const payload = document.getElementById('sim-payload-custom').value;
 
     const logBox = document.getElementById('sim-terminal');
-    logBox.innerHTML = `<div class="log-line log-info">🚀 Initialisation de la démonstration pédagogique...</div>`;
+    logBox.innerHTML = `<div class="log-line log-info"> Initialisation de la démonstration pédagogique...</div>`;
 
     try {
         const res = await fetch(SEC + '/api/simulations/run', {
@@ -385,7 +398,7 @@ async function loadLearningModules() {
                     <h3 style="font-size: 1.1rem; color: var(--text-primary);">${m.title}</h3>
                     <div>
                         <span class="badge-tag badge-info">${m.difficulty}</span>
-                        <span style="font-size: 0.8rem; color: var(--text-muted); margin-left: 0.5rem;">⏱️ ${m.duration}</span>
+                        <span style="font-size: 0.8rem; color: var(--text-muted); margin-left: 0.5rem;"> ${m.duration}</span>
                     </div>
                 </div>
                 <p style="color: var(--text-secondary); font-size: 0.9rem; margin-bottom: 1rem;">${m.summary}</p>
@@ -397,7 +410,7 @@ async function loadLearningModules() {
                 </div>
 
                 <div style="border-top: 1px solid var(--border-color); padding-top: 1rem;">
-                    <div style="font-weight: 600; font-size: 0.9rem; margin-bottom: 0.5rem;">❓ Quiz de validation : ${m.quiz.question}</div>
+                    <div style="font-weight: 600; font-size: 0.9rem; margin-bottom: 0.5rem;"> Quiz de validation : ${m.quiz.question}</div>
                     <div style="display: flex; flex-direction: column; gap: 0.4rem;">
                         ${m.quiz.options.map((opt, oIdx) => `
                             <button class="btn btn-secondary" style="justify-content: flex-start; text-align: left;" onclick="checkQuizAnswer(this, ${oIdx}, ${m.quiz.answer_index}, '${escapeHtml(m.quiz.explanation)}')">
@@ -426,14 +439,14 @@ function checkQuizAnswer(btn, chosen, correct, explanation) {
         feedback.style.display = 'block';
         feedback.style.background = 'rgba(0, 255, 136, 0.1)';
         feedback.style.color = 'var(--green)';
-        feedback.innerHTML = `✅ <strong>Correct !</strong> ${explanation}`;
+        feedback.innerHTML = ` <strong>Correct !</strong> ${explanation}`;
     } else {
         btn.style.background = 'rgba(255, 51, 102, 0.2)';
         btn.style.borderColor = 'var(--red)';
         feedback.style.display = 'block';
         feedback.style.background = 'rgba(255, 51, 102, 0.1)';
         feedback.style.color = 'var(--red)';
-        feedback.innerHTML = `❌ <strong>Incorrect.</strong> ${explanation}`;
+        feedback.innerHTML = ` <strong>Incorrect.</strong> ${explanation}`;
     }
 }
 
@@ -462,7 +475,7 @@ async function loadReportsList() {
                 <td style="padding: 1rem; font-family: var(--font-mono);"><span style="color: var(--red); font-weight: 700;">${s.critical_count}</span> / <span style="color: var(--orange);">${s.high_count}</span></td>
                 <td style="padding: 1rem;">
                     <a href="${SEC}/api/scans/${s.id}/report" target="_blank" class="btn btn-secondary" style="padding: 0.4rem 0.8rem; font-size: 0.8rem; text-decoration: none;">
-                        <span>📄 Ouvrir Rapport PDF / Print</span>
+                        <span>Ouvrir Rapport PDF / Print</span>
                     </a>
                 </td>
             `;
@@ -518,7 +531,7 @@ function showToast(msg, type = 'success') {
     toast.style.boxShadow = '0 10px 30px rgba(0,0,0,0.5)';
     toast.style.background = type === 'error' ? 'var(--red)' : '#0f766e';
     toast.style.border = type === 'error' ? '1px solid #ff4d4d' : '1px solid #14b8a6';
-    toast.innerHTML = (type === 'error' ? '❌ ' : '🛡️ ') + escapeHtml(msg);
+    toast.innerHTML = (type === 'error' ? ' ' : ' ') + escapeHtml(msg);
 
     document.body.appendChild(toast);
     setTimeout(() => {
@@ -551,7 +564,7 @@ async function loadDomains() {
                     const isVerified = d.is_verified === 1;
                     const statusBadge = isVerified 
                         ? `<span class="badge-tag badge-safe">✓ Vérifié</span>`
-                        : `<span class="badge-tag badge-crit">⏳ En attente</span>`;
+                        : `<span class="badge-tag badge-crit"> En attente</span>`;
 
                     tr.innerHTML = `
                         <td style="padding: 0.75rem; font-weight: 600; font-family: var(--font-mono); color: var(--cyan);">${escapeHtml(d.domain)}</td>
@@ -561,10 +574,10 @@ async function loadDomains() {
                         <td style="padding: 0.75rem; font-size: 0.8rem; color: var(--text-muted);">${d.verified_at || 'Non vérifié'}</td>
                         <td style="padding: 0.75rem; text-align: right; display: flex; gap: 0.5rem; justify-content: flex-end;">
                             ${isVerified 
-                                ? `<button class="btn btn-primary" style="padding: 0.35rem 0.75rem; font-size: 0.8rem;" onclick="auditThisDomain('${escapeHtml(d.domain)}')">🚀 Auditer</button>` 
-                                : `<button class="btn btn-secondary" style="padding: 0.35rem 0.75rem; font-size: 0.8rem;" onclick="verifyDomainNow(${d.id})">🔍 Vérifier</button>`
+                                ? `<button class="btn btn-primary" style="padding: 0.35rem 0.75rem; font-size: 0.8rem;" onclick="auditThisDomain('${escapeHtml(d.domain)}')"> Auditer</button>` 
+                                : `<button class="btn btn-secondary" style="padding: 0.35rem 0.75rem; font-size: 0.8rem;" onclick="verifyDomainNow(${d.id})"> Vérifier</button>`
                             }
-                            <button class="btn btn-danger" style="padding: 0.35rem 0.6rem; font-size: 0.8rem;" onclick="deleteDomain(${d.id})">🗑️</button>
+                            <button class="btn btn-danger" style="padding: 0.35rem 0.6rem; font-size: 0.8rem;" onclick="deleteDomain(${d.id})"></button>
                         </td>
                     `;
                     tbody.appendChild(tr);
@@ -580,7 +593,7 @@ async function loadDomains() {
             // Add lab default
             const labOpt = document.createElement('option');
             labOpt.value = window.location.origin + SEC + '/lab';
-            labOpt.textContent = '🧪 InnoTech Mock Lab (Environnement de test local)';
+            labOpt.textContent = ' InnoTech Mock Lab (Environnement de test local)';
             presetSelect.appendChild(labOpt);
 
             // Add verified domains
@@ -591,7 +604,7 @@ async function loadDomains() {
                 verifiedList.forEach(d => {
                     const opt = document.createElement('option');
                     opt.value = `https://${d.domain}`;
-                    opt.textContent = `🏢 ${d.domain}`;
+                    opt.textContent = ` ${d.domain}`;
                     grp.appendChild(opt);
                 });
                 presetSelect.appendChild(grp);
@@ -743,7 +756,7 @@ async function loadSchedules() {
             const isActive = s.is_active === 1;
             const statusBadge = isActive 
                 ? `<span class="badge-tag badge-safe">● Active</span>`
-                : `<span class="badge-tag badge-crit">⏸ En pause</span>`;
+                : `<span class="badge-tag badge-crit"> En pause</span>`;
 
             tr.innerHTML = `
                 <td style="padding: 0.75rem; font-family: var(--font-mono); color: var(--cyan);">${escapeHtml(s.target_url)}</td>
@@ -752,9 +765,9 @@ async function loadSchedules() {
                 <td style="padding: 0.75rem;">${statusBadge}</td>
                 <td style="padding: 0.75rem; text-align: right; display: flex; gap: 0.5rem; justify-content: flex-end;">
                     <button class="btn btn-secondary" style="padding: 0.35rem 0.6rem; font-size: 0.8rem;" onclick="toggleSchedule(${s.id}, ${!isActive})">
-                        ${isActive ? '⏸ Pause' : '▶ Reprendre'}
+                        ${isActive ? ' Pause' : ' Reprendre'}
                     </button>
-                    <button class="btn btn-danger" style="padding: 0.35rem 0.6rem; font-size: 0.8rem;" onclick="deleteSchedule(${s.id})">🗑️</button>
+                    <button class="btn btn-danger" style="padding: 0.35rem 0.6rem; font-size: 0.8rem;" onclick="deleteSchedule(${s.id})"></button>
                 </td>
             `;
             tbody.appendChild(tr);
@@ -841,7 +854,7 @@ async function openPatchModal() {
         codeContainer.innerHTML = '';
         const patches = data.code_patches || [];
         if (patches.length === 0) {
-            codeContainer.innerHTML = '<div style="color: var(--green); padding: 1rem; text-align: center;">✅ Aucun correctif de code applicatif nécessaire pour ce scan.</div>';
+            codeContainer.innerHTML = '<div style="color: var(--green); padding: 1rem; text-align: center;"> Aucun correctif de code applicatif nécessaire pour ce scan.</div>';
         } else {
             patches.forEach(p => {
                 const card = document.createElement('div');
@@ -866,7 +879,7 @@ async function openPatchModal() {
                 });
 
                 card.innerHTML = `
-                    <div style="font-weight: 700; color: #fff; margin-bottom: 0.5rem;">🛡️ ${escapeHtml(p.vuln_type)}</div>
+                    <div style="font-weight: 700; color: #fff; margin-bottom: 0.5rem;"> ${escapeHtml(p.vuln_type)}</div>
                     ${langsHtml}
                 `;
                 codeContainer.appendChild(card);
@@ -1111,9 +1124,9 @@ async function executeCiGateTest() {
     const minScore = (minScoreInput && minScoreInput.value) ? parseInt(minScoreInput.value) : 75;
 
     btn.disabled = true;
-    btn.innerHTML = '<span>⏳ Test du Gate en cours...</span>';
+    btn.innerHTML = '<span>Test du Gate en cours...</span>';
     resultBox.style.display = 'block';
-    resultBox.innerHTML = '<div style="color: var(--cyan);">🚀 Déclenchement de la requête CI/CD Gate vers /api/ci/scan...</div>';
+    resultBox.innerHTML = '<div style="color: var(--cyan);"> Déclenchement de la requête CI/CD Gate vers /api/ci/scan...</div>';
 
     try {
         // Create an active key for the test
@@ -1143,8 +1156,8 @@ async function executeCiGateTest() {
 
         const isPassed = res.status === 200 && data.status === 'PASSED';
         const badge = isPassed 
-            ? '<span class="badge-tag badge-safe" style="font-size: 0.9rem;">✅ BUILD VALIDÉ (HTTP 200 - Exit Code 0)</span>'
-            : `<span class="badge-tag badge-crit" style="font-size: 0.9rem;">❌ BUILD REJETÉ (HTTP ${res.status} - Exit Code 1)</span>`;
+            ? '<span class="badge-tag badge-safe" style="font-size: 0.9rem;"> BUILD VALIDÉ (HTTP 200 - Exit Code 0)</span>'
+            : `<span class="badge-tag badge-crit" style="font-size: 0.9rem;"> BUILD REJETÉ (HTTP ${res.status} - Exit Code 1)</span>`;
 
         resultBox.innerHTML = `
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
@@ -1159,6 +1172,6 @@ async function executeCiGateTest() {
         resultBox.innerHTML = `<div style="color: var(--red);">Erreur lors du test : ${escapeHtml(e.message)}</div>`;
     } finally {
         btn.disabled = false;
-        btn.innerHTML = '<span>⚡ Tester le Gate CI/CD</span>';
+        btn.innerHTML = '<span>Tester le Gate CI/CD</span>';
     }
 }

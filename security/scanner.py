@@ -371,13 +371,22 @@ def _check_forms(base_url, html):
 
 # ---------------------------------------------------------------- orchestration
 
-def scan_target(target_url, auth_headers_user_b=None):
+def scan_target(target_url, auth_headers_user_b=None, categories=None):
     """
     Performs a comprehensive, non-destructive audit of the target: HTTP security headers, cookie flags,
     TLS/certificate health, CORS configuration, dangerous HTTP methods, directory listing, mixed content,
     outdated components, exposed secrets in page source, robots.txt disclosure, exposed sensitive files,
     basic form hygiene, and active DAST modules (SQLi, XSS, Path Traversal, Rate Limiting, IDOR).
+
+    `categories`: optional iterable of category keys to run (see CATEGORY keys below). When None (default),
+    every category runs, exactly as before this parameter existed. When provided, only the listed categories
+    run - this lets the caller (e.g. the scanner UI's checkboxes) opt out of specific checks, including the
+    active DAST probes, without removing any of the underlying check functions.
     """
+    cats = set(categories) if categories is not None else None
+    def _on(key):
+        return cats is None or key in cats
+
     auth_ok, auth_reason = check_target_authorization(target_url)
     if not auth_ok:
         return {
@@ -401,78 +410,96 @@ def scan_target(target_url, auth_headers_user_b=None):
     base_url = f"{parsed.scheme}://{parsed.netloc}"
 
     # 1. HTTP security headers
-    for header_name, meta in SECURITY_HEADERS.items():
-        val = resp.headers.get(header_name)
-        headers_audited[header_name] = val or "Non configuré"
-        if not val:
-            findings.append(_finding(f"MISSING_{header_name.upper().replace('-', '_')}",
-                f"En-tête de sécurité manquant : {header_name}", meta["severity"], meta["category"], meta["description"],
-                f"Header '{header_name}' absent de la réponse HTTP.",
-                "Facilite l'exploitation de failles côté client ou des attaques de type Man-in-the-Middle.", meta["remediation"]))
+    if _on("headers"):
+        for header_name, meta in SECURITY_HEADERS.items():
+            val = resp.headers.get(header_name)
+            headers_audited[header_name] = val or "Non configuré"
+            if not val:
+                findings.append(_finding(f"MISSING_{header_name.upper().replace('-', '_')}",
+                    f"En-tête de sécurité manquant : {header_name}", meta["severity"], meta["category"], meta["description"],
+                    f"Header '{header_name}' absent de la réponse HTTP.",
+                    "Facilite l'exploitation de failles côté client ou des attaques de type Man-in-the-Middle.", meta["remediation"]))
 
-    server_header, powered_by = resp.headers.get("Server"), resp.headers.get("X-Powered-By")
-    if server_header or powered_by:
-        findings.append(_finding("SERVER_BANNER_DISCLOSURE", "Divulgation des versions de technologies (Server Banner)", "LOW",
-            "Information Disclosure", "Le serveur web divulgue sa signature logicielle et ses versions exactes, aidant un assaillant à cibler des vulnérabilités connues pour ces versions précises.",
-            f"Server: {server_header or 'N/A'}, X-Powered-By: {powered_by or 'N/A'}",
-            "Facilite la reconnaissance passive et le ciblage des composants obsolètes.",
-            "Masquez la signature dans la configuration du serveur (ex: ServerTokens Prod, expose_php = Off)."))
+        server_header, powered_by = resp.headers.get("Server"), resp.headers.get("X-Powered-By")
+        if server_header or powered_by:
+            findings.append(_finding("SERVER_BANNER_DISCLOSURE", "Divulgation des versions de technologies (Server Banner)", "LOW",
+                "Information Disclosure", "Le serveur web divulgue sa signature logicielle et ses versions exactes, aidant un assaillant à cibler des vulnérabilités connues pour ces versions précises.",
+                f"Server: {server_header or 'N/A'}, X-Powered-By: {powered_by or 'N/A'}",
+                "Facilite la reconnaissance passive et le ciblage des composants obsolètes.",
+                "Masquez la signature dans la configuration du serveur (ex: ServerTokens Prod, expose_php = Off)."))
+    else:
+        server_header, powered_by = resp.headers.get("Server"), resp.headers.get("X-Powered-By")
 
     # 2. Cookie security flags
-    for cookie in resp.cookies:
-        is_httponly = cookie.has_nonstandard_attr("httponly") or cookie.has_nonstandard_attr("HttpOnly")
-        is_secure = cookie.secure
-        samesite = cookie.get_nonstandard_attr("samesite", "None")
-        cookies_audited.append({"name": cookie.name, "httponly": is_httponly, "secure": is_secure, "samesite": samesite})
-        if not is_httponly:
-            findings.append(_finding(f"COOKIE_NO_HTTPONLY_{cookie.name}", f"Cookie sensible sans flag HttpOnly ({cookie.name})", "HIGH",
-                "Session Security", f"Le cookie '{cookie.name}' est accessible via JavaScript document.cookie.",
-                f"Set-Cookie: {cookie.name}=***; HttpOnly non défini.",
-                "En cas d'attaque XSS, la session utilisateur peut être volée directement.",
-                "Définissez le paramètre httpOnly = True lors de la création du cookie de session."))
-        if not is_secure and target_url.startswith("https"):
-            findings.append(_finding(f"COOKIE_NO_SECURE_{cookie.name}", f"Cookie sensible sans flag Secure ({cookie.name})", "HIGH",
-                "Session Security", f"Le cookie '{cookie.name}' peut être transmis en clair sur des requêtes non chiffrées.",
-                f"Set-Cookie: {cookie.name}=***; Secure non défini.",
-                "Interception de session par écoute sur le réseau local (Wifi non sécurisé, ARP spoofing).",
-                "Définissez le paramètre secure = True sur tous les cookies de production."))
+    if _on("headers"):
+        for cookie in resp.cookies:
+            is_httponly = cookie.has_nonstandard_attr("httponly") or cookie.has_nonstandard_attr("HttpOnly")
+            is_secure = cookie.secure
+            samesite = cookie.get_nonstandard_attr("samesite", "None")
+            cookies_audited.append({"name": cookie.name, "httponly": is_httponly, "secure": is_secure, "samesite": samesite})
+            if not is_httponly:
+                findings.append(_finding(f"COOKIE_NO_HTTPONLY_{cookie.name}", f"Cookie sensible sans flag HttpOnly ({cookie.name})", "HIGH",
+                    "Session Security", f"Le cookie '{cookie.name}' est accessible via JavaScript document.cookie.",
+                    f"Set-Cookie: {cookie.name}=***; HttpOnly non défini.",
+                    "En cas d'attaque XSS, la session utilisateur peut être volée directement.",
+                    "Définissez le paramètre httpOnly = True lors de la création du cookie de session."))
+            if not is_secure and target_url.startswith("https"):
+                findings.append(_finding(f"COOKIE_NO_SECURE_{cookie.name}", f"Cookie sensible sans flag Secure ({cookie.name})", "HIGH",
+                    "Session Security", f"Le cookie '{cookie.name}' peut être transmis en clair sur des requêtes non chiffrées.",
+                    f"Set-Cookie: {cookie.name}=***; Secure non défini.",
+                    "Interception de session par écoute sur le réseau local (Wifi non sécurisé, ARP spoofing).",
+                    "Définissez le paramètre secure = True sur tous les cookies de production."))
 
     # 3. Exposed sensitive files
-    for rel_path, file_title, severity, desc in SENSITIVE_PATHS:
-        try:
-            probe_resp = session.get(urllib.parse.urljoin(base_url, rel_path), timeout=3, allow_redirects=False)
-        except Exception:
-            continue
-        if looks_exposed(rel_path, probe_resp):
-            findings.append(_finding(f"EXPOSED_FILE_{rel_path.replace('/', '_').replace('.', '')}",
-                f"Fichier sensible accessible publiquement ({file_title})", severity, "Sensitive Data Exposure", desc,
-                f"URL {urllib.parse.urljoin(base_url, rel_path)} a retourné le code HTTP 200 ({len(probe_resp.text)} octets).",
-                "Fuite majeure d'informations d'infrastructure ou de clés privées.",
-                "Interdisez l'accès à ce fichier via le serveur web ou supprimez-le du répertoire public."))
+    if _on("files"):
+        for rel_path, file_title, severity, desc in SENSITIVE_PATHS:
+            try:
+                probe_resp = session.get(urllib.parse.urljoin(base_url, rel_path), timeout=3, allow_redirects=False)
+            except Exception:
+                continue
+            if looks_exposed(rel_path, probe_resp):
+                findings.append(_finding(f"EXPOSED_FILE_{rel_path.replace('/', '_').replace('.', '')}",
+                    f"Fichier sensible accessible publiquement ({file_title})", severity, "Sensitive Data Exposure", desc,
+                    f"URL {urllib.parse.urljoin(base_url, rel_path)} a retourné le code HTTP 200 ({len(probe_resp.text)} octets).",
+                    "Fuite majeure d'informations d'infrastructure ou de clés privées.",
+                    "Interdisez l'accès à ce fichier via le serveur web ou supprimez-le du répertoire public."))
 
     # 4. Extended checks (TLS, CORS, methods, directory listing, mixed content, outdated libs, secrets, robots.txt, forms)
-    findings += _check_tls(parsed)
-    findings += _check_cors(session, base_url)
-    findings += _check_http_methods(session, base_url)
-    findings += _check_directory_listing(session, base_url)
-    findings += _check_mixed_content(parsed, resp.text)
-    findings += _check_outdated_components(resp.text, resp.headers)
-    findings += _check_secrets_in_source(resp.text)
-    findings += _check_robots_sitemap(session, base_url)
-    findings += _check_forms(resp.url, resp.text)
+    if _on("tls"):
+        findings += _check_tls(parsed)
+    if _on("cors"):
+        findings += _check_cors(session, base_url)
+    if _on("methods"):
+        findings += _check_http_methods(session, base_url)
+    if _on("directory"):
+        findings += _check_directory_listing(session, base_url)
+    if _on("mixed"):
+        findings += _check_mixed_content(parsed, resp.text)
+    if _on("outdated"):
+        findings += _check_outdated_components(resp.text, resp.headers)
+    if _on("secrets"):
+        findings += _check_secrets_in_source(resp.text)
+    if _on("robots"):
+        findings += _check_robots_sitemap(session, base_url)
+    if _on("forms"):
+        findings += _check_forms(resp.url, resp.text)
 
     # 5. Active DAST audit (SQL Injection, XSS, Path Traversal, Rate Limiting, IDOR)
-    csp_val = resp.headers.get("Content-Security-Policy", "")
-    findings += run_dast_audit(target_url, session, resp.text, csp_header=csp_val, auth_headers_user_b=auth_headers_user_b)
+    if _on("active"):
+        csp_val = resp.headers.get("Content-Security-Policy", "")
+        findings += run_dast_audit(target_url, session, resp.text, csp_header=csp_val, auth_headers_user_b=auth_headers_user_b)
 
     # 6. Static Code Secret Analysis (SAST - AWS, Stripe, OpenAI, GitHub tokens)
-    findings += scan_code_for_secrets(resp.text, source_name="Code Source / Scripts Client")
+    if _on("sast"):
+        findings += scan_code_for_secrets(resp.text, source_name="Code Source / Scripts Client")
 
     # 7. Software Composition Analysis (SCA - CVEs jQuery, Lodash, Bootstrap)
-    findings += scan_vulnerable_components(resp.text)
+    if _on("sca"):
+        findings += scan_vulnerable_components(resp.text)
 
     # 8. Server & CMS Infrastructure CVEs (NIST NVD / OSV)
-    findings += detect_server_and_cms_cves(server_header, powered_by, resp.text)
+    if _on("cve"):
+        findings += detect_server_and_cms_cves(server_header, powered_by, resp.text)
 
     # 9. Risk score & grade
     critical_count = sum(1 for f in findings if f["severity"] == "CRITICAL")

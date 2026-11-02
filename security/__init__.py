@@ -239,11 +239,12 @@ def run_scan():
     req_json = request.get_json(silent=True) or {}
     target_url = (req_json.get("target_url") or "").strip()
     user_b_headers = req_json.get("user_b_headers")
+    categories = req_json.get("categories")  # optional list of category keys; None (not sent) = run everything
 
     if not target_url:
         return jsonify({"error": "L'URL cible est requise"}), 400
     log_event("SCAN_INITIATED", "INFO", "SCANNER_MODULE", f"Démarrage de l'analyse défensive sur {target_url}")
-    res = scan_target(target_url, auth_headers_user_b=user_b_headers)
+    res = scan_target(target_url, auth_headers_user_b=user_b_headers, categories=categories)
     if not res.get("success"):
         log_event("SCAN_REJECTED", "WARN", "POLICY_MGR", f"Analyse refusée sur {target_url}: {res.get('error')}")
         return jsonify(res), 400

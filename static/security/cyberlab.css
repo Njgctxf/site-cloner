@@ -435,3 +435,73 @@ body::after {
   body::before, .brand-icon::after { animation: none; }
   .card, .nav-item, .btn { transition: none; }
 }
+
+/* ============================================================================
+   Navigation grouping labels (additive) - organizes the sidebar into sections.
+   ============================================================================ */
+.nav-section-label {
+  padding: 0.9rem 1rem 0.3rem;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  opacity: 0.7;
+}
+.nav-section-label:first-child { padding-top: 0.2rem; }
+
+/* ============================================================================
+   Scanner: check-category selector (additive) - lets the user choose which
+   scan categories run before launching, instead of everything firing at once.
+   ============================================================================ */
+.scan-category-group {
+  margin-bottom: 1rem;
+}
+.scan-category-group-title {
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: 0.6rem;
+}
+.scan-category-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+  gap: 0.5rem;
+}
+.scan-category-item {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.55rem 0.7rem;
+  border-radius: 8px;
+  border: 1px solid var(--border-color);
+  background: rgba(255, 255, 255, 0.02);
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: border-color .2s, background .2s, color .2s;
+}
+.scan-category-item:hover {
+  border-color: rgba(0, 240, 255, 0.35);
+  color: var(--text-primary);
+}
+.scan-category-item input[type="checkbox"] {
+  accent-color: var(--cyan);
+  width: 15px;
+  height: 15px;
+  flex-shrink: 0;
+}
+.scan-category-item.active-probe {
+  border-color: rgba(239, 68, 68, 0.3);
+}
+.scan-category-item.active-probe:hover {
+  border-color: rgba(239, 68, 68, 0.55);
+}
+.scan-category-note {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  margin-top: 0.5rem;
+  line-height: 1.5;
+}

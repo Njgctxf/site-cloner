@@ -65,7 +65,7 @@
     <!-- SIDEBAR NAVIGATION -->
     <aside class="sidebar">
         <div class="sidebar-header">
-            <div class="brand-icon">🛡️</div>
+            <div class="brand-icon"></div>
             <div>
                 <div class="brand-title">CyberLab</div>
                 <div class="brand-subtitle" style="color: #f87171;">Espace Privé Propriétaire</div>
@@ -74,19 +74,19 @@
 
         <ul class="nav-links">
             <li class="nav-item active" data-tab="admin-domains">
-                <span class="nav-icon">🏢</span>
+                <span class="nav-icon"></span>
                 <span>Mes Domaines Privés</span>
             </li>
             <li class="nav-item" data-tab="admin-audit">
-                <span class="nav-icon">🔬</span>
+                <span class="nav-icon"></span>
                 <span>Audit Approfondi & SQLi</span>
             </li>
             <li class="nav-item" data-tab="admin-diff">
-                <span class="nav-icon">⚖️</span>
+                <span class="nav-icon"></span>
                 <span>Comparateur Temporel</span>
             </li>
             <li class="nav-item" data-tab="admin-history">
-                <span class="nav-icon">📑</span>
+                <span class="nav-icon"></span>
                 <span>Historique Privé</span>
             </li>
         </ul>
@@ -94,7 +94,7 @@
         <div class="sidebar-footer">
             <a href="/__sc/security" style="display:block;margin-bottom:6px;color:var(--cyan);text-decoration:none;font-weight:600">← SOC Public CyberLab</a>
             <a href="/admin" style="display:block;margin-bottom:12px;color:var(--text-muted);text-decoration:none;font-size:0.85rem">← Admin SiteCloner</a>
-            <div class="admin-badge">🔐 Admin : {{ admin_user }}</div>
+            <div class="admin-badge"> Admin : {{ admin_user }}</div>
         </div>
     </aside>
 
@@ -108,7 +108,7 @@
             </div>
             <div style="display: flex; align-items: center; gap: 0.75rem;">
                 <button class="btn btn-secondary" onclick="window.location.reload()">
-                    <span>🔄 Actualiser</span>
+                    <span>Actualiser</span>
                 </button>
             </div>
         </header>
@@ -116,7 +116,7 @@
         <!-- TAB 1: MES DOMAINES PRIVÉS -->
         <section id="tab-admin-domains" class="tab-pane active">
             <div class="card" style="margin-bottom: 1.5rem;">
-                <h2 style="font-size: 1.25rem; margin-bottom: 0.35rem; color: var(--cyan);">🏢 Gestion Privée de Mes Applications & Domaines</h2>
+                <h2 style="font-size: 1.25rem; margin-bottom: 0.35rem; color: var(--cyan);"> Gestion Privée de Mes Applications & Domaines</h2>
                 <p style="color: var(--text-secondary); font-size: 0.9rem; margin: 0;">
                     Enregistrez et validez la propriété de vos propres sites web pour débloquer les diagnostics avancés, l'analyse différentielle SQLi et la comparaison temporelle.
                 </p>
@@ -177,7 +177,7 @@
         <!-- TAB 2: AUDIT APPROFONDI & SQLI -->
         <section id="tab-admin-audit" class="tab-pane">
             <div class="card" style="margin-bottom: 1.5rem;">
-                <h2 style="font-size: 1.25rem; margin-bottom: 0.35rem; color: var(--cyan);">🔬 Audit Approfondi & Détection SQLi Non-Destructive</h2>
+                <h2 style="font-size: 1.25rem; margin-bottom: 0.35rem; color: var(--cyan);"> Audit Approfondi & Détection SQLi Non-Destructive</h2>
                 <p style="color: var(--text-secondary); font-size: 0.9rem; margin: 0;">
                     Analyse technique approfondie réservée à l'administrateur. Inclut l'analyse différentielle booléenne et les sondes de syntaxe sans exfiltration de données et sans altération.
                 </p>
@@ -200,7 +200,7 @@
 
                 <!-- OPTIONS AVANCÉES -->
                 <div style="background: #06080e; border: 1px solid var(--border-color); border-radius: 8px; padding: 1rem; margin-bottom: 1.25rem;">
-                    <div style="font-weight: 700; font-size: 0.85rem; color: var(--text-primary); margin-bottom: 0.75rem;">⚙️ Paramètres d'Audit Approfondi</div>
+                    <div style="font-weight: 700; font-size: 0.85rem; color: var(--text-primary); margin-bottom: 0.75rem;"> Paramètres d'Audit Approfondi</div>
                     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 0.75rem;">
                         <div>
                             <label style="font-size: 0.75rem; color: var(--text-muted); display: block; margin-bottom: 0.2rem;">Cookie de Session / Authentification (Optionnel)</label>
@@ -221,10 +221,10 @@
 
                 <div style="display: flex; justify-content: space-between; align-items: center;">
                     <div style="font-size: 0.8rem; color: var(--text-muted);">
-                        🛡️ <em>Garantie d'intégrité : Aucune exfiltration de base, aucun dump de table, aucune instruction destructive.</em>
+                         <em>Garantie d'intégrité : Aucune exfiltration de base, aucun dump de table, aucune instruction destructive.</em>
                     </div>
                     <button class="btn btn-primary" id="btn-run-admin-scan" onclick="triggerAdminScan()">
-                        <span>🚀 Lancer l'Audit Approfondi</span>
+                        <span>Lancer l'Audit Approfondi</span>
                     </button>
                 </div>
             </div>
@@ -246,7 +246,7 @@
         <!-- TAB 3: COMPARATEUR TEMPOREL -->
         <section id="tab-admin-diff" class="tab-pane">
             <div class="card" style="margin-bottom: 1.5rem;">
-                <h2 style="font-size: 1.25rem; margin-bottom: 0.35rem; color: var(--cyan);">⚖️ Comparateur Temporel d'Audits (Diff de Posture)</h2>
+                <h2 style="font-size: 1.25rem; margin-bottom: 0.35rem; color: var(--cyan);"> Comparateur Temporel d'Audits (Diff de Posture)</h2>
                 <p style="color: var(--text-secondary); font-size: 0.9rem; margin: 0;">
                     Comparez deux audits successifs sur une même application pour valider que vos correctifs sont effectifs et détecter d'éventuelles régressions de sécurité.
                 </p>
@@ -268,7 +268,7 @@
                         </select>
                     </div>
                     <button class="btn btn-primary" onclick="executeScanComparison()">
-                        <span>🔍 Comparer les Deux Audits</span>
+                        <span>Comparer les Deux Audits</span>
                     </button>
                 </div>
             </div>
@@ -289,7 +289,7 @@
                     <!-- RESOLVED -->
                     <div class="diff-card">
                         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
-                            <h4 style="margin: 0; color: #10b981; font-size: 0.95rem;">✅ Failles Résolues</h4>
+                            <h4 style="margin: 0; color: #10b981; font-size: 0.95rem;"> Failles Résolues</h4>
                             <span id="diff-count-resolved" class="badge-tag badge-safe">0</span>
                         </div>
                         <div id="diff-resolved-list"></div>
@@ -298,7 +298,7 @@
                     <!-- NEW REGRESSIONS -->
                     <div class="diff-card">
                         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
-                            <h4 style="margin: 0; color: #ef4444; font-size: 0.95rem;">🚨 Nouvelles Régressions</h4>
+                            <h4 style="margin: 0; color: #ef4444; font-size: 0.95rem;"> Nouvelles Régressions</h4>
                             <span id="diff-count-regressions" class="badge-tag badge-crit">0</span>
                         </div>
                         <div id="diff-regressions-list"></div>
@@ -307,7 +307,7 @@
                     <!-- PERSISTENT -->
                     <div class="diff-card">
                         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
-                            <h4 style="margin: 0; color: #f59e0b; font-size: 0.95rem;">⏳ Failles Persistantes</h4>
+                            <h4 style="margin: 0; color: #f59e0b; font-size: 0.95rem;"> Failles Persistantes</h4>
                             <span id="diff-count-persistent" class="badge-tag" style="background: rgba(245,158,11,0.15); color: #fbbf24; border: 1px solid #f59e0b;">0</span>
                         </div>
                         <div id="diff-persistent-list"></div>
@@ -319,7 +319,7 @@
         <!-- TAB 4: HISTORIQUE PRIVE -->
         <section id="tab-admin-history" class="tab-pane">
             <div class="card" style="margin-bottom: 1.5rem;">
-                <h2 style="font-size: 1.25rem; margin-bottom: 0.35rem; color: var(--cyan);">📑 Historique de Mes Audits Privés</h2>
+                <h2 style="font-size: 1.25rem; margin-bottom: 0.35rem; color: var(--cyan);"> Historique de Mes Audits Privés</h2>
                 <p style="color: var(--text-secondary); font-size: 0.9rem; margin: 0;">
                     Consultez l'historique complet des analyses de sécurité effectuées sur vos propres applications.
                 </p>
@@ -420,12 +420,12 @@
                     const isVerif = d.is_verified === 1;
                     const statusBadge = isVerif 
                         ? `<span class="badge-tag badge-safe">✓ Vérifié</span>`
-                        : `<span class="badge-tag badge-crit">⏳ En attente</span>`;
+                        : `<span class="badge-tag badge-crit"> En attente</span>`;
 
                     if (isVerif && presetSelect) {
                         const opt = document.createElement('option');
                         opt.value = `https://${d.domain}`;
-                        opt.textContent = `🏢 ${d.domain}`;
+                        opt.textContent = ` ${d.domain}`;
                         presetSelect.appendChild(opt);
                     }
 
@@ -442,7 +442,7 @@
                                 ? `<button class="btn btn-primary" style="padding: 0.25rem 0.6rem; font-size: 0.75rem;" onclick="auditAdminDomain('https://${d.domain}')">Auditer</button>`
                                 : `<button class="btn btn-secondary" style="padding: 0.25rem 0.6rem; font-size: 0.75rem;" onclick="verifyAdminDomainNow(${d.id})">Vérifier</button>`
                             }
-                            <button class="btn btn-danger" style="padding: 0.25rem 0.5rem; font-size: 0.75rem;" onclick="deleteAdminDomainNow(${d.id})">🗑️</button>
+                            <button class="btn btn-danger" style="padding: 0.25rem 0.5rem; font-size: 0.75rem;" onclick="deleteAdminDomainNow(${d.id})"></button>
                         </td>
                     `;
                     tbody.appendChild(tr);
@@ -546,9 +546,9 @@
             if (authHeader) customHeaders["Authorization"] = authHeader;
 
             btn.disabled = true;
-            btn.innerHTML = '<span>⏳ Audit Approfondi en cours...</span>';
+            btn.innerHTML = '<span>Audit Approfondi en cours...</span>';
             resultCard.style.display = 'block';
-            document.getElementById('admin-findings-container').innerHTML = '<div style="color: var(--cyan); padding: 1.5rem; text-align: center;">🚀 Exécution des diagnostics de sécurité & analyse différentielle SQLi...</div>';
+            document.getElementById('admin-findings-container').innerHTML = '<div style="color: var(--cyan); padding: 1.5rem; text-align: center;"> Exécution des diagnostics de sécurité & analyse différentielle SQLi...</div>';
 
             try {
                 const res = await fetch(SEC + '/api/admin/scan', {
@@ -622,7 +622,7 @@
                 document.getElementById('admin-findings-container').innerHTML = `<div style="color: var(--red);">Erreur : ${e.message}</div>`;
             } finally {
                 btn.disabled = false;
-                btn.innerHTML = '<span>🚀 Lancer l\'Audit Approfondi</span>';
+                btn.innerHTML = '<span>Lancer l\'Audit Approfondi</span>';
             }
         }
 
@@ -673,7 +673,7 @@
                         <td style="padding: 0.75rem; color: #f97316;">${s.high_count}</td>
                         <td style="padding: 0.75rem; color: #f59e0b;">${s.medium_count}</td>
                         <td style="padding: 0.75rem; text-align: right;">
-                            <button class="btn btn-secondary" style="padding: 0.25rem 0.5rem; font-size: 0.75rem;" onclick="window.open('${SEC}/api/scans/${s.id}/report', '_blank')">📑 Rapport</button>
+                            <button class="btn btn-secondary" style="padding: 0.25rem 0.5rem; font-size: 0.75rem;" onclick="window.open('${SEC}/api/scans/${s.id}/report', '_blank')"> Rapport</button>
                         </td>
                     `;
                     tbody.appendChild(tr);
@@ -733,7 +733,7 @@
                 data.new_regressions.forEach(f => {
                     const el = document.createElement('div');
                     el.className = 'regression-item';
-                    el.innerHTML = `<div style="font-weight: 700; font-size: 0.8rem; color: #ef4444;">🚨 ${f.title}</div><div style="font-size: 0.75rem; color: var(--text-muted);">${f.category}</div>`;
+                    el.innerHTML = `<div style="font-weight: 700; font-size: 0.8rem; color: #ef4444;"> ${f.title}</div><div style="font-size: 0.75rem; color: var(--text-muted);">${f.category}</div>`;
                     regList.appendChild(el);
                 });
 
@@ -742,7 +742,7 @@
                 data.persistent_findings.forEach(f => {
                     const el = document.createElement('div');
                     el.className = 'persistent-item';
-                    el.innerHTML = `<div style="font-weight: 700; font-size: 0.8rem; color: #f59e0b;">⏳ ${f.title}</div><div style="font-size: 0.75rem; color: var(--text-muted);">${f.category}</div>`;
+                    el.innerHTML = `<div style="font-weight: 700; font-size: 0.8rem; color: #f59e0b;"> ${f.title}</div><div style="font-size: 0.75rem; color: var(--text-muted);">${f.category}</div>`;
                     persList.appendChild(el);
                 });
 

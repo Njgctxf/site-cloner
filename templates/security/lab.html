@@ -22,17 +22,17 @@
     <!-- Target Protection Mode Banner -->
     {% if mode == 'VULNERABLE' %}
     <div class="banner-vuln">
-        ⚠️ CIBLE DE LABORATOIRE : MODE VULNÉRABLE (Protections désactivées pour démonstration pédagogique)
+         CIBLE DE LABORATOIRE : MODE VULNÉRABLE (Protections désactivées pour démonstration pédagogique)
     </div>
     {% else %}
     <div class="banner-sec">
-        🛡️ CIBLE DE LABORATOIRE : MODE SÉCURISÉ (Protections activées : requêtes préparées, filtrage XSS & RBAC)
+         CIBLE DE LABORATOIRE : MODE SÉCURISÉ (Protections activées : requêtes préparées, filtrage XSS & RBAC)
     </div>
     {% endif %}
 
     <header class="nav">
         <div style="font-size: 1.2rem; font-weight: 800; display: flex; align-items: center; gap: 0.5rem;">
-            <span>🏢</span> InnoTech Corp Intranet
+            <span></span> InnoTech Corp Intranet
         </div>
         <div>
             <a href="/" class="btn" style="background: rgba(255,255,255,0.15); font-size: 0.85rem;">← Retour au SOC CyberLab</a>
@@ -53,7 +53,7 @@
         <div class="grid">
             <!-- Simulated Login -->
             <div class="card">
-                <h3 style="font-size: 1.1rem; margin-bottom: 0.5rem;">🔐 Espace Authentification (Test SQLi)</h3>
+                <h3 style="font-size: 1.1rem; margin-bottom: 0.5rem;"> Espace Authentification (Test SQLi)</h3>
                 <p style="color: #64748b; font-size: 0.85rem; margin-bottom: 1rem;">Testez l'authentification avec un payload SQL ou un compte valide.</p>
                 
                 <label style="font-size: 0.85rem; font-weight: 600;">Nom d'utilisateur</label>
@@ -68,7 +68,7 @@
 
             <!-- Simulated Search -->
             <div class="card">
-                <h3 style="font-size: 1.1rem; margin-bottom: 0.5rem;">🔍 Moteur de Recherche Interne (Test XSS)</h3>
+                <h3 style="font-size: 1.1rem; margin-bottom: 0.5rem;"> Moteur de Recherche Interne (Test XSS)</h3>
                 <p style="color: #64748b; font-size: 0.85rem; margin-bottom: 1rem;">Testez l'injection de balises HTML / scripts dans les résultats de recherche.</p>
 
                 <label style="font-size: 0.85rem; font-weight: 600;">Terme recherché</label>
@@ -83,7 +83,7 @@
 
         <!-- Directory of Employees (IDOR) -->
         <div class="card">
-            <h3 style="font-size: 1.1rem; margin-bottom: 0.5rem;">👥 Annuaire des Collaborateurs (Test IDOR)</h3>
+            <h3 style="font-size: 1.1rem; margin-bottom: 0.5rem;"> Annuaire des Collaborateurs (Test IDOR)</h3>
             <p style="color: #64748b; font-size: 0.85rem; margin-bottom: 1rem;">
                 Tentez d'accéder aux fiches salariales confidentielles en modifiant l'ID demandé.
             </p>
@@ -107,9 +107,9 @@
             const d = await res.json();
             const fb = document.getElementById('login-feedback');
             if (d.outcome === 'VULNERABILITY_CONFIRMED') {
-                fb.innerHTML = `<span style="color: #dc2626; font-weight: 600;">⚠️ Auth Bypass Réussi !</span> Données extraites : ${d.result_data.records_exposed.length} utilisateurs.`;
+                fb.innerHTML = `<span style="color: #dc2626; font-weight: 600;"> Auth Bypass Réussi !</span> Données extraites : ${d.result_data.records_exposed.length} utilisateurs.`;
             } else {
-                fb.innerHTML = `<span style="color: #16a34a; font-weight: 600;">🛡️ Requête neutralisée</span> par la requête préparée.`;
+                fb.innerHTML = `<span style="color: #16a34a; font-weight: 600;"> Requête neutralisée</span> par la requête préparée.`;
             }
         }
 
@@ -141,7 +141,7 @@
             if (d.outcome === 'VULNERABILITY_CONFIRMED') {
                 const u = d.result_data.data;
                 fb.innerHTML = `<div style="background: #fee2e2; padding: 0.75rem; border-radius: 6px; color: #991b1b;">
-                    <strong>⚠️ Donnée Confidentielle Divulguée :</strong><br>
+                    <strong> Donnée Confidentielle Divulguée :</strong><br>
                     Utilisateur : ${u.username} (${u.role})<br>
                     Email : ${u.email}<br>
                     Salaire : <strong>${u.salary}</strong><br>
@@ -149,7 +149,7 @@
                 </div>`;
             } else {
                 fb.innerHTML = `<div style="background: #dcfce7; padding: 0.75rem; border-radius: 6px; color: #166534;">
-                    🛡️ ${d.result_data.message}
+                     ${d.result_data.message}
                 </div>`;
             }
         }
