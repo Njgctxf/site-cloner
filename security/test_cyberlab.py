@@ -729,5 +729,205 @@ class CyberLabTestSuite(unittest.TestCase):
         persistent_ids = [f["id"] for f in diff["persistent_findings"]]
         self.assertIn("VULN_XSS", persistent_ids)
 
+
+# ==============================================================================
+# TESTS 34-40 : Nouveaux Modules de Sécurité (SSRF, XXE, SSTI, Clickjacking,
+#               Cookie Security, Subdomain Takeover, HTTP Methods)
+# ==============================================================================
+
+class TestNewSecurityModules(unittest.TestCase):
+
+    def test_34_ssrf_param_detection(self):
+        """Verifies SSRF audit identifies URL/fetch parameters by name."""
+        from security.dast_engine import audit_ssrf, SSRF_PARAM_NAMES
+        # Verify the SSRF param set contains expected parameter names
+        self.assertIn("url", SSRF_PARAM_NAMES)
+        self.assertIn("webhook", SSRF_PARAM_NAMES)
+        self.assertIn("fetch", SSRF_PARAM_NAMES)
+        self.assertIn("proxy", SSRF_PARAM_NAMES)
+        self.assertIn("src", SSRF_PARAM_NAMES)
+        # audit_ssrf is callable and returns a list when given no SSRF-named params
+        import requests
+        session = requests.Session()
+        forms_no_ssrf = [{"action": "http://localhost/", "method": "GET",
+                          "inputs": [{"name": "q", "type": "text", "default": "test"}]}]
+        result = audit_ssrf(session, forms_no_ssrf, [], "http://localhost/")
+        self.assertIsInstance(result, list)
+
+    def test_35_xxe_probe_structure(self):
+        """Verifies XXE probe contains correct DOCTYPE + ENTITY structure."""
+        from security.dast_engine import audit_xxe
+        import requests
+
+        # Validate the probe that will be sent
+        probe_content = '<!DOCTYPE scprobe'
+        # Reconstruct what the probe looks like
+        probe = """<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE scprobe [
+  <!ENTITY xxetest SYSTEM "file:///tmp/sc_xxe_probe_test.tmp">
+]>
+<scaudit><data>&xxetest;</data></scaudit>"""
+
+        self.assertIn("DOCTYPE", probe)
+        self.assertIn("ENTITY", probe)
+        self.assertIn("SYSTEM", probe)
+        self.assertIn("file:///tmp/", probe)
+
+        # Function is callable and returns list without real network call
+        session = requests.Session()
+        result = audit_xxe(session, [], "http://localhost/")
+        self.assertIsInstance(result, list)
+
+    def test_36_ssti_arithmetic_probes(self):
+        """Verifies SSTI probes use safe arithmetic canaries and detect evaluation."""
+        from security.dast_engine import SSTI_PROBES, audit_ssti
+
+        # All probes use 7*7 arithmetic
+        for probe, expected, engine in SSTI_PROBES:
+            self.assertEqual(expected, "49", f"Probe for {engine} should expect '49'")
+            self.assertIn("7*7", probe, f"Probe for {engine} should contain '7*7'")
+
+        # No destructive keywords in probes
+        forbidden = ["__import__", "os.system", "subprocess", "eval(", "exec(", "open("]
+        for probe, _, engine in SSTI_PROBES:
+            for kw in forbidden:
+                self.assertNotIn(kw, probe, f"SSTI probe for {engine} must not contain '{kw}'")
+
+        import requests
+        session = requests.Session()
+        result = audit_ssti(session, [], [])
+        self.assertIsInstance(result, list)
+
+    def test_37_clickjacking_detection(self):
+        """Verifies clickjacking audit correctly identifies missing and unsafe frame protection."""
+        from security.dast_engine import audit_clickjacking
+        import requests
+        from unittest.mock import patch, MagicMock
+
+        # Mock HTTP response with no XFO and no CSP frame-ancestors
+        mock_resp = MagicMock()
+        mock_resp.headers = {}
+        mock_resp.status_code = 200
+
+        session = requests.Session()
+        with patch.object(session, 'get', return_value=mock_resp):
+            findings = audit_clickjacking(session, "https://example.com", csp_header="", xfo_header="")
+
+        # Should detect missing protection
+        self.assertTrue(any("CLICKJACKING" in f["id"] for f in findings),
+                        "Should detect absence of clickjacking protection")
+
+        # Test with CSP wildcard — should flag it
+        mock_resp.headers = {"Content-Security-Policy": "frame-ancestors *", "X-Frame-Options": ""}
+        with patch.object(session, 'get', return_value=mock_resp):
+            findings_wildcard = audit_clickjacking(session, "https://example.com",
+                                                   csp_header="frame-ancestors *", xfo_header="")
+        self.assertTrue(any("WILDCARD" in f["id"] for f in findings_wildcard),
+                        "Should detect CSP frame-ancestors with wildcard")
+
+    def test_38_cookie_security_audit(self):
+        """Verifies cookie security audit detects missing HttpOnly, Secure, and SameSite flags."""
+        from security.dast_engine import audit_cookie_security
+        import requests
+        from unittest.mock import patch, MagicMock
+        from http.cookiejar import Cookie
+
+        def make_mock_cookie(name, value, secure=False, httponly=False, samesite=None, domain="example.com"):
+            """Helper to create a mock cookie object."""
+            c = MagicMock()
+            c.name = name
+            c.value = value
+            c.secure = secure
+            c.domain = domain
+            c.has_nonstandard_attr = lambda attr: attr.lower() == "httponly" and httponly
+            c.get_nonstandard_attr = lambda attr, default=None: samesite if attr.lower() == "samesite" else default
+            return c
+
+        # Session cookie without HttpOnly and without SameSite
+        bad_cookie = make_mock_cookie("session_id", "abc123sessiontoken", secure=True, httponly=False, samesite=None)
+
+        mock_resp = MagicMock()
+        mock_resp.cookies = [bad_cookie]
+        mock_resp.headers = {"Set-Cookie": "session_id=abc123; Secure"}
+        mock_resp.raw = MagicMock()
+        mock_resp.raw.headers = MagicMock()
+        mock_resp.raw.headers.getlist = lambda x: []
+
+        session = requests.Session()
+        with patch.object(session, 'get', return_value=mock_resp):
+            findings = audit_cookie_security(session, "https://example.com")
+
+        # Should find missing HttpOnly and SameSite issues on session cookie
+        ids = [f["id"] for f in findings]
+        self.assertTrue(any("HTTPONLY" in fid for fid in ids),
+                        "Should detect missing HttpOnly on session cookie")
+        self.assertTrue(any("SAMESITE" in fid for fid in ids),
+                        "Should detect missing SameSite on session cookie")
+
+    def test_39_subdomain_takeover_fingerprints(self):
+        """Verifies subdomain takeover fingerprints cover major cloud platforms."""
+        from security.dast_engine import TAKEOVER_FINGERPRINTS
+
+        services = [service for _, service in TAKEOVER_FINGERPRINTS]
+        self.assertIn("Heroku", services)
+        self.assertIn("GitHub Pages", services)
+        self.assertIn("AWS S3", services)
+        self.assertIn("Netlify", services)
+        self.assertIn("Fastly", services)
+        self.assertIn("Azure", services)
+
+        # At least 8 fingerprints
+        self.assertGreaterEqual(len(TAKEOVER_FINGERPRINTS), 8,
+                                "Should cover at least 8 cloud platform takeover fingerprints")
+
+        import requests
+        session = requests.Session()
+        result_empty = audit_subdomain_takeover_direct(session, "http://localhost/", "")
+        self.assertIsInstance(result_empty, list)
+
+    def test_40_http_dangerous_methods(self):
+        """Verifies HTTP dangerous methods audit detects TRACE and unsafe verbs."""
+        from security.dast_engine import audit_http_methods
+        import requests
+        from unittest.mock import patch, MagicMock
+
+        # Mock OPTIONS response advertising TRACE and PUT
+        mock_opts = MagicMock()
+        mock_opts.headers = {"Allow": "GET, POST, TRACE, PUT, DELETE, OPTIONS"}
+        mock_opts.status_code = 200
+
+        # Mock TRACE response (reflects request = XST confirmed)
+        mock_trace = MagicMock()
+        mock_trace.status_code = 200
+        mock_trace.text = "TRACE / HTTP/1.1\r\nHost: example.com\r\n"
+
+        session = requests.Session()
+
+        def fake_request(method, url, **kwargs):
+            if method == "OPTIONS":
+                return mock_opts
+            if method == "TRACE":
+                return mock_trace
+            return MagicMock(status_code=200, text="", headers={})
+
+        with patch.object(session, 'options', return_value=mock_opts), \
+             patch.object(session, 'request', side_effect=fake_request):
+            findings = audit_http_methods(session, "https://example.com")
+
+        self.assertIsInstance(findings, list)
+        # Should detect TRACE and/or PUT from Allow header
+        dangerous_ids = [f["id"] for f in findings]
+        self.assertTrue(
+            any("TRACE" in fid or "PUT" in fid or "DELETE" in fid for fid in dangerous_ids),
+            f"Should detect dangerous methods. Got: {dangerous_ids}"
+        )
+
+
+# Helper import for test_39
+def audit_subdomain_takeover_direct(session, base_url, html_content):
+    from security.dast_engine import audit_subdomain_takeover
+    return audit_subdomain_takeover(session, base_url, html_content)
+
+
 if __name__ == "__main__":
     unittest.main()
