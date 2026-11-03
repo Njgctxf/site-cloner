@@ -32,6 +32,7 @@ Règles fondamentales et éthiques absolues :
 4. Pour chaque problème identifié, fournis une explication claire en français, la preuve technique constatée (statut HTTP, en-tête, comportement différentiel), l'impact potentiel et la recommandation de remédiation concrète.
 5. Lorsque l'utilisateur te demande d'analyser une URL ou un composant (JWT, upload, formulaire, concurrence), utilise les outils mis à ta disposition.
 6. Tu disposes d'un référentiel de 818 procédures opérationnelles de cybersécurité (MITRE ATT&CK, NIST CSF, OWASP). Utilise search_security_skills pour trouver des procédures pertinentes, puis load_skill_detail pour charger leurs instructions complètes avant d'agir.
+7. Tu as accès au serveur officiel Kali Linux MCP (mcp-kali-server) pour orchestrer des outils réputés (nmap, nikto, whatweb, sslyze, gobuster, etc.) sur des cibles vérifiées via get_kali_mcp_status et execute_kali_security_tool.
 """
 
 # OpenAPI / JSON-Schema tool declarations provided to the LLM
@@ -436,6 +437,44 @@ SENTINEL_TOOLS_SCHEMA = [
                 }
             }
         }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "get_kali_mcp_status",
+            "description": "Consulte l'état de connexion, la version et l'inventaire des outils de sécurité disponibles sur le serveur officiel Kali Linux MCP (mcp-kali-server).",
+            "parameters": {
+                "type": "object",
+                "properties": {}
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "execute_kali_security_tool",
+            "description": "Exécute un outil de sécurité officiel de Kali Linux (nmap, nikto, whatweb, sslyze, testssl.sh, dnsrecon, gobuster, whois, sqlmap) via le serveur MCP Kali sur une cible strictement autorisée.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "tool_name": {
+                        "type": "string",
+                        "enum": ["nmap", "nikto", "whatweb", "sslyze", "testssl.sh", "dnsrecon", "gobuster", "whois", "sqlmap"],
+                        "description": "Nom de l'outil Kali officiel à exécuter"
+                    },
+                    "target": {
+                        "type": "string",
+                        "description": "URL, domaine ou adresse IP de la cible autorisée"
+                    },
+                    "custom_args": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": "Arguments CLI optionnels complémentaires (ex: ['-sV', '-p', '80,443'])"
+                    }
+                },
+                "required": ["tool_name", "target"]
+            }
+        }
     }
 ]
 
@@ -623,6 +662,19 @@ class SentinelAgent:
             except Exception as e:
                 return ToolResult(tool_call_id="", name=tool_name, result={"error": str(e)}, is_error=True)
 
+        if tool_name == "get_kali_mcp_status":
+            try:
+                from .kali_connector import kali_connector
+                health = kali_connector.health_check()
+                discovery = kali_connector.discover_tools()
+                return ToolResult(
+                    tool_call_id="",
+                    name=tool_name,
+                    result={"health": health, "discovery": discovery}
+                )
+            except Exception as e:
+                return ToolResult(tool_call_id="", name=tool_name, result={"error": str(e)}, is_error=True)
+
         # 1. Guardian Policy Check for all other tools
         is_allowed, reason = guardian.validate_tool_call(tool_name, arguments)
         if not is_allowed:
@@ -685,6 +737,19 @@ class SentinelAgent:
                 cfg = arguments.get("config_text")
                 res = audit_database_config(db_type=db_type, target=target, config_text=cfg)
                 return ToolResult(tool_call_id="", name=tool_name, result=res)
+
+            elif tool_name == "execute_kali_security_tool":
+                from .kali_connector import kali_connector
+                k_tool = arguments.get("tool_name", "")
+                target = arguments.get("target", "")
+                c_args = arguments.get("custom_args")
+                res = kali_connector.execute_tool(tool_name=k_tool, target=target, custom_args=c_args, triggered_by="sentinel_agent")
+                return ToolResult(
+                    tool_call_id="",
+                    name=tool_name,
+                    result=res,
+                    is_error=not res.get("success", False)
+                )
 
             return ToolResult(tool_call_id="", name=tool_name, result={"error": f"Outil inconnu: {tool_name}"}, is_error=True)
         except Exception as e:

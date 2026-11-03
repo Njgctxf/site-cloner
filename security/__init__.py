@@ -754,6 +754,9 @@ from .sentinel import (
     get_project_knowledge_context, generate_consolidated_soc_report,
     generate_executive_html_report
 )
+from .sentinel.kali_connector import (
+    init_kali_tables, kali_connector, PERMITTED_KALI_TOOLS
+)
 from .sentinel.realtime import (
     init_realtime_tables, provision_agent_key, revoke_agent_key,
     resolve_agent_key, list_agent_keys, ingest_request_event,
@@ -1348,6 +1351,74 @@ def sentinel_executive_html_report_api():
     return html, 200, {"Content-Type": "text/html; charset=utf-8"}
 
 
+# --- OFFICIAL KALI LINUX MCP INTEGRATION API ---
+
+@bp.route("/api/sentinel/kali/status", methods=["GET"])
+def sentinel_kali_status_api():
+    """Returns connectivity health and settings for the official Kali MCP Server."""
+    cfg = kali_connector.get_config()
+    health = kali_connector.health_check()
+    return jsonify({
+        "config": cfg,
+        "health": health,
+        "permitted_tools": list(PERMITTED_KALI_TOOLS.keys())
+    })
+
+
+@bp.route("/api/sentinel/kali/config", methods=["POST"])
+def sentinel_kali_config_api():
+    """Updates the Kali MCP Server connection settings."""
+    data = request.get_json(silent=True) or {}
+    server_url = data.get("server_url", "http://127.0.0.1:5000")
+    api_token = data.get("api_token")
+    is_enabled = bool(data.get("is_enabled", True))
+    timeout = int(data.get("timeout_seconds", 60))
+    verify_ssl = bool(data.get("verify_ssl", False))
+
+    cfg = kali_connector.update_config(
+        server_url=server_url,
+        api_token=api_token,
+        is_enabled=is_enabled,
+        timeout_seconds=timeout,
+        verify_ssl=verify_ssl
+    )
+    return jsonify({"success": True, "config": cfg})
+
+
+@bp.route("/api/sentinel/kali/sync", methods=["POST"])
+def sentinel_kali_sync_api():
+    """Forces discovery and capability check on the Kali MCP Server."""
+    discovery = kali_connector.discover_tools()
+    return jsonify({"success": True, "discovery": discovery})
+
+
+@bp.route("/api/sentinel/kali/execute", methods=["POST"])
+def sentinel_kali_execute_api():
+    """Executes an authorized Kali tool on an authorized asset through the Guardian."""
+    data = request.get_json(silent=True) or {}
+    tool_name = (data.get("tool_name") or data.get("tool") or "").strip().lower()
+    target = (data.get("target") or "").strip()
+    custom_args = data.get("custom_args") or data.get("arguments") or []
+
+    if not tool_name or not target:
+        return jsonify({"error": "tool_name et target sont obligatoires."}), 400
+
+    result = kali_connector.execute_tool(
+        tool_name=tool_name,
+        target=target,
+        custom_args=custom_args if isinstance(custom_args, list) else None,
+        triggered_by="soc_dashboard"
+    )
+    return jsonify(result), (200 if result.get("success") else 400)
+
+
+@bp.route("/api/sentinel/kali/history", methods=["GET"])
+def sentinel_kali_history_api():
+    """Lists past Kali tool executions."""
+    limit = min(int(request.args.get("limit", 50)), 100)
+    return jsonify({"history": kali_connector.list_history(limit=limit)})
+
+
 def init_security(app):
     init_db()
     init_sentinel_tables()
@@ -1356,6 +1427,7 @@ def init_security(app):
     init_remediation_tables()
     init_memory_tables()
     init_realtime_tables()
+    init_kali_tables()
     from .scheduler import start_background_scheduler
     start_background_scheduler(interval_seconds=60)
     app.register_blueprint(bp)

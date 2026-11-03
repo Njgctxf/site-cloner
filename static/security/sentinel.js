@@ -49,6 +49,14 @@ function setupEventListeners() {
             openSkillsLib();
         });
     }
+
+    const openKaliBtn = document.getElementById("openKaliBtn");
+    if (openKaliBtn) {
+        openKaliBtn.addEventListener("click", (e) => {
+            e.preventDefault();
+            openKaliModal();
+        });
+    }
 }
 
 async function loadConversations() {
@@ -481,4 +489,195 @@ function selectSkillToPrompt(skillName) {
         chatInput.focus();
     }
 }
+
+// ==============================================================================
+// KALI LINUX MCP INTEGRATION CONTROLLER
+// ==============================================================================
+
+async function openKaliModal() {
+    const modal = document.getElementById("kaliModal");
+    if (modal) {
+        modal.classList.add("active");
+        await loadKaliStatus();
+        await syncKaliTools();
+    }
+}
+
+function closeKaliModal() {
+    const modal = document.getElementById("kaliModal");
+    if (modal) modal.classList.remove("active");
+}
+
+async function loadKaliStatus() {
+    try {
+        const res = await fetch("/__sc/security/api/sentinel/kali/status");
+        const data = await res.json();
+        const cfg = data.config || {};
+        const health = data.health || {};
+
+        const urlInput = document.getElementById("kaliInputUrl");
+        if (urlInput && !urlInput.value) urlInput.value = cfg.server_url || "http://127.0.0.1:5000";
+
+        const urlDisplay = document.getElementById("kaliServerUrlDisplay");
+        if (urlDisplay) urlDisplay.textContent = `URL : ${cfg.server_url || "http://127.0.0.1:5000"}`;
+
+        const syncDisplay = document.getElementById("kaliLastSyncDisplay");
+        if (syncDisplay) syncDisplay.textContent = `Dernière synchro : ${cfg.last_sync_at || "Jamais"} (${cfg.last_sync_status || "N/A"})`;
+
+        const latDisplay = document.getElementById("kaliLatencyDisplay");
+        if (latDisplay) latDisplay.textContent = `Latence : ${health.latency_ms ? health.latency_ms + ' ms' : 'Inaccessible'}`;
+
+        const tokenNotice = document.getElementById("kaliTokenNotice");
+        if (tokenNotice) {
+            tokenNotice.textContent = cfg.has_token ? `Clé enregistrée (${cfg.token_preview})` : "Aucune clé requise pour un serveur local standard";
+        }
+
+        const badge = document.getElementById("kaliConnBadge");
+        const pill = document.getElementById("kaliStatusPill");
+        if (health.connected) {
+            if (badge) {
+                badge.style.background = "#059669";
+                badge.style.color = "#ecfdf5";
+                badge.textContent = `Connecté (${health.version || "kali-mcp"})`;
+            }
+            if (pill) {
+                pill.style.background = "rgba(16, 185, 129, 0.2)";
+                pill.style.borderColor = "rgba(16, 185, 129, 0.5)";
+                pill.style.color = "#34d399";
+                pill.textContent = "ONLINE";
+            }
+        } else {
+            if (badge) {
+                badge.style.background = "#b91c1c";
+                badge.style.color = "#fef2f2";
+                badge.textContent = "Hors ligne / Simulation";
+            }
+            if (pill) {
+                pill.style.background = "rgba(239, 68, 68, 0.2)";
+                pill.style.borderColor = "rgba(239, 68, 68, 0.5)";
+                pill.style.color = "#f87171";
+                pill.textContent = "OFFLINE";
+            }
+        }
+    } catch (e) {
+        console.error("Erreur de chargement du statut Kali MCP:", e);
+    }
+}
+
+async function saveKaliConfig() {
+    const url = (document.getElementById("kaliInputUrl")?.value || "").trim();
+    const token = (document.getElementById("kaliInputToken")?.value || "").trim();
+
+    try {
+        const payload = { server_url: url };
+        if (token) payload.api_token = token;
+
+        const res = await fetch("/__sc/security/api/sentinel/kali/config", {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+        if (data.success) {
+            alert("Configuration Kali MCP enregistrée avec succès !");
+            await loadKaliStatus();
+            await syncKaliTools();
+        } else {
+            alert("Erreur: " + (data.error || "Échec de sauvegarde."));
+        }
+    } catch (e) {
+        alert("Erreur réseau: " + e.message);
+    }
+}
+
+async function syncKaliTools() {
+    const list = document.getElementById("kaliToolsList");
+    if (!list) return;
+
+    try {
+        const res = await fetch("/__sc/security/api/sentinel/kali/sync", {
+            method: "POST",
+            headers: {"Content-Type": "application/json"}
+        });
+        const data = await res.json();
+        const discovery = data.discovery || {};
+        const tools = discovery.tools || [];
+
+        const badgeCount = document.getElementById("kaliToolsCountBadge");
+        if (badgeCount) badgeCount.textContent = `${tools.length} outils`;
+
+        list.innerHTML = tools.map(t => {
+            const isReady = t.is_available;
+            const badgeBg = isReady ? "rgba(16, 185, 129, 0.15)" : "rgba(56, 189, 248, 0.1)";
+            const badgeBorder = isReady ? "rgba(16, 185, 129, 0.35)" : "rgba(56, 189, 248, 0.25)";
+            const badgeColor = isReady ? "#34d399" : "#38bdf8";
+            const icon = isReady ? "fa-check" : "fa-shield-halved";
+
+            return `
+                <div style="background: ${badgeBg}; border: 1px solid ${badgeBorder}; border-radius: 6px; padding: 4px 8px; font-size: 0.72rem; color: ${badgeColor}; display: flex; align-items: center; gap: 6px;" title="${escapeHtml(t.description)}">
+                    <i class="fa-solid ${icon}"></i>
+                    <strong>${escapeHtml(t.name)}</strong>
+                    <span style="font-size: 0.65rem; opacity: 0.8;">(${escapeHtml(t.category)})</span>
+                </div>
+            `;
+        }).join("");
+    } catch (e) {
+        console.error("Erreur de synchronisation des outils Kali:", e);
+    }
+}
+
+async function executeKaliToolManual() {
+    const tool = document.getElementById("kaliExecToolSelect")?.value;
+    const target = (document.getElementById("kaliExecTarget")?.value || "").trim();
+    const argsRaw = (document.getElementById("kaliExecArgs")?.value || "").trim();
+    const consoleBox = document.getElementById("kaliOutputConsole");
+    const statusBadge = document.getElementById("kaliExecStatusBadge");
+    const btn = document.getElementById("kaliExecBtn");
+
+    if (!target) {
+        alert("Veuillez saisir une cible autorisée.");
+        return;
+    }
+
+    const customArgs = argsRaw ? argsRaw.split(/\s+/) : [];
+
+    if (consoleBox) consoleBox.textContent = `// Transmission de l'opération ${tool} vers Kali MCP...\n// Contrôle Guardian en cours...\n`;
+    if (statusBadge) statusBadge.textContent = "Exécution...";
+    if (btn) btn.disabled = true;
+
+    try {
+        const res = await fetch("/__sc/security/api/sentinel/kali/execute", {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify({
+                tool: tool,
+                target: target,
+                custom_args: customArgs
+            })
+        });
+        const data = await res.json();
+
+        if (statusBadge) {
+            statusBadge.textContent = data.status || (data.success ? "Succès" : "Erreur");
+            statusBadge.style.color = data.success ? "#34d399" : "#f87171";
+        }
+
+        if (consoleBox) {
+            let output = `[COMMANDE EXÉCUTÉE] : ${data.command || tool}\n`;
+            output += `[STATUT] : ${data.status} (Code retour: ${data.returncode})\n`;
+            output += `[DURÉE]  : ${data.duration_seconds || 0}s\n`;
+            output += `------------------------------------------------------------\n`;
+            if (data.stdout) output += data.stdout + "\n";
+            if (data.stderr) output += `[STDERR / INFO] : \n${data.stderr}\n`;
+            if (data.error) output += `[ERREUR GUARDIAN / SYSTÈME] : ${data.error}\n`;
+            consoleBox.textContent = output;
+        }
+    } catch (e) {
+        if (consoleBox) consoleBox.textContent = `[ERREUR DE COMMUNICATION] : ${e.message}`;
+        if (statusBadge) statusBadge.textContent = "Échec";
+    } finally {
+        if (btn) btn.disabled = false;
+    }
+}
+
 

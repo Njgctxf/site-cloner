@@ -499,6 +499,7 @@
                 <a href="/__sc/security/"><i class="fa-solid fa-chart-line"></i> Dashboard SOC</a>
                 <a href="/__sc/security/admin"><i class="fa-solid fa-user-shield"></i> Espace Privé Propriétaire</a>
                 <a href="{{ lab_url }}" target="_blank"><i class="fa-solid fa-flask"></i> Laboratoire InnoTech</a>
+                <a href="#" id="openKaliBtn" style="color: #38bdf8; font-weight: 600;"><i class="fa-brands fa-linux"></i> Kali Linux MCP <span id="kaliStatusPill" style="font-size:0.68rem; background:rgba(56,189,248,0.2); padding:1px 6px; border-radius:10px; border:1px solid #38bdf855;">MCP</span></a>
                 <a href="#" id="openSkillsLibBtn" style="color: #a78bfa;"><i class="fa-solid fa-book-open"></i> Skills Library <span style="font-size:0.7rem; background:#a78bfa22; padding:1px 6px; border-radius:10px; border:1px solid #a78bfa55;">818</span></a>
             </div>
         </header>
@@ -542,6 +543,9 @@
                 </div>
                 <div class="prompt-pill" onclick="sendQuickPrompt('Vérifie si le panier autorise la manipulation de prix négatifs ou nuls')">
                     🛒 Logique Métier & Prix
+                </div>
+                <div class="prompt-pill" onclick="sendQuickPrompt('Vérifie le statut du serveur Kali Linux MCP et liste les outils de sécurité disponibles')" style="border-color: rgba(56, 189, 248, 0.4); color: #38bdf8;">
+                    🐧 Kali Linux MCP
                 </div>
                 <div class="prompt-pill" onclick="openSkillsLib()" style="border-color: rgba(167, 139, 250, 0.4); color: #a78bfa;">
                     📚 818 Skills MITRE/OWASP
@@ -638,6 +642,126 @@
         <div style="margin-top: 12px; padding-top: 10px; border-top: 1px solid #1e293b; display: flex; justify-content: space-between; align-items: center;">
             <span style="color: #475569; font-size: 0.72rem;">Cliquez sur une compétence pour ordonner à Sentinel AI de l'utiliser.</span>
             <button onclick="closeSkillsLib()" style="background: #1e293b; color: #cbd5e1; border: 1px solid #334155; padding: 6px 14px; border-radius: 6px; font-size: 0.8rem; cursor: pointer;">Fermer</button>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Kali Linux Integration -->
+<div class="modal-overlay" id="kaliModal">
+    <div class="modal-card" style="width: 920px; max-width: 95vw; max-height: 90vh; display: flex; flex-direction: column;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; border-bottom: 1px solid #1e293b; padding-bottom: 10px;">
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <i class="fa-brands fa-linux" style="color: #38bdf8; font-size: 1.6rem;"></i>
+                <div>
+                    <h3 style="margin: 0; font-size: 1.15rem; color: #fff;">
+                        KALI LINUX INTEGRATION &bull; MCP SERVER
+                    </h3>
+                    <small style="color: #64748b; font-size: 0.72rem;">
+                        Serveur officiel mcp-kali-server (kali-server-mcp / mcp-server) &bull; Contrôle Zéro-Trust Guardian
+                    </small>
+                </div>
+            </div>
+            <button onclick="closeKaliModal()" style="background: none; border: none; color: #94a3b8; font-size: 1.2rem; cursor: pointer;">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; overflow-y: auto; flex: 1; padding-right: 4px;">
+            <!-- Colonne Gauche : Configuration et État -->
+            <div style="display: flex; flex-direction: column; gap: 12px;">
+                <!-- Status Box -->
+                <div style="background: #0f172a; border: 1px solid #1e293b; border-radius: 8px; padding: 12px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                        <span style="font-size: 0.75rem; text-transform: uppercase; color: #94a3b8; font-weight: 700;">État de Connexion</span>
+                        <span id="kaliConnBadge" style="font-size: 0.7rem; padding: 2px 8px; border-radius: 12px; font-weight: 600; background: #334155; color: #94a3b8;">Vérification...</span>
+                    </div>
+                    <div style="font-size: 0.8rem; color: #cbd5e1; margin-bottom: 4px;" id="kaliServerUrlDisplay">URL : http://127.0.0.1:5000</div>
+                    <div style="font-size: 0.75rem; color: #64748b;" id="kaliLastSyncDisplay">Dernière synchro : En attente</div>
+                    <div style="font-size: 0.75rem; color: #64748b;" id="kaliLatencyDisplay">Latence : -- ms</div>
+                </div>
+
+                <!-- Config Form -->
+                <div style="background: #0f172a; border: 1px solid #1e293b; border-radius: 8px; padding: 12px;">
+                    <div style="font-size: 0.75rem; text-transform: uppercase; color: #94a3b8; font-weight: 700; margin-bottom: 10px;">Paramètres du Serveur MCP</div>
+                    <div class="form-group" style="margin-bottom: 8px;">
+                        <label class="form-label" style="font-size: 0.72rem;">URL du Serveur Kali MCP</label>
+                        <input type="text" id="kaliInputUrl" class="form-input" style="font-size: 0.8rem; padding: 6px 10px;" placeholder="http://127.0.0.1:5000 ou https://kali-vm:5000">
+                    </div>
+                    <div class="form-group" style="margin-bottom: 8px;">
+                        <label class="form-label" style="font-size: 0.72rem;">Jeton d'authentification API (Optionnel)</label>
+                        <input type="password" id="kaliInputToken" class="form-input" style="font-size: 0.8rem; padding: 6px 10px;" placeholder="Token Bearer / Clé MCP distante">
+                        <small id="kaliTokenNotice" style="color: #64748b; font-size: 0.68rem;"></small>
+                    </div>
+                    <div style="display: flex; gap: 8px; margin-top: 10px;">
+                        <button onclick="saveKaliConfig()" style="flex: 1; background: #0284c7; color: #fff; border: none; padding: 7px 12px; border-radius: 6px; font-size: 0.78rem; font-weight: 600; cursor: pointer;">
+                            <i class="fa-solid fa-floppy-disk"></i> Enregistrer
+                        </button>
+                        <button onclick="syncKaliTools()" style="background: #1e293b; color: #38bdf8; border: 1px solid #334155; padding: 7px 12px; border-radius: 6px; font-size: 0.78rem; font-weight: 600; cursor: pointer;">
+                            <i class="fa-solid fa-arrows-rotate"></i> Synchroniser
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Outils Disponibles -->
+                <div style="background: #0f172a; border: 1px solid #1e293b; border-radius: 8px; padding: 12px; flex: 1;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                        <span style="font-size: 0.75rem; text-transform: uppercase; color: #94a3b8; font-weight: 700;">Outils Kali Homologués</span>
+                        <span id="kaliToolsCountBadge" style="font-size: 0.7rem; color: #38bdf8; font-weight: 600;">9 outils</span>
+                    </div>
+                    <div id="kaliToolsList" style="display: flex; flex-wrap: wrap; gap: 6px; max-height: 180px; overflow-y: auto;">
+                        <!-- Badges dynamiques -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Colonne Droite : Formulaire d'Exécution Contrôlée & Résultats -->
+            <div style="display: flex; flex-direction: column; gap: 12px;">
+                <div style="background: #0f172a; border: 1px solid #1e293b; border-radius: 8px; padding: 12px;">
+                    <div style="font-size: 0.75rem; text-transform: uppercase; color: #94a3b8; font-weight: 700; margin-bottom: 8px;">
+                        <i class="fa-solid fa-terminal" style="color: #38bdf8;"></i> Exécution Contrôlée (Sous Guardian)
+                    </div>
+                    <div class="form-group" style="margin-bottom: 8px;">
+                        <label class="form-label" style="font-size: 0.72rem;">Outil Kali</label>
+                        <select id="kaliExecToolSelect" class="form-input" style="font-size: 0.8rem; padding: 6px 10px;">
+                            <option value="nmap">nmap - Découverte de ports et versions de services</option>
+                            <option value="nikto">nikto - Audit de sécurité serveur web</option>
+                            <option value="whatweb">whatweb - Reconnaissance technologies et CMS</option>
+                            <option value="sslyze">sslyze - Audit SSL/TLS et suites de chiffrement</option>
+                            <option value="testssl.sh">testssl.sh - Vérification ciphers et vulnérabilités TLS</option>
+                            <option value="dnsrecon">dnsrecon - Énumération DNS autorisée</option>
+                            <option value="gobuster">gobuster - Découverte de répertoires web</option>
+                            <option value="whois">whois - Consultation d'annuaire Whois</option>
+                            <option value="sqlmap">sqlmap - Validation SQLi inoffensive (batch/safe)</option>
+                        </select>
+                    </div>
+                    <div class="form-group" style="margin-bottom: 8px;">
+                        <label class="form-label" style="font-size: 0.72rem;">Cible Autorisée (URL, Domaine ou IP)</label>
+                        <input type="text" id="kaliExecTarget" class="form-input" style="font-size: 0.8rem; padding: 6px 10px;" placeholder="https://innotech-lab.local ou 127.0.0.1">
+                        <small style="color: #64748b; font-size: 0.68rem;">La cible doit être préalablement vérifiée ou mandatée dans le CyberLab.</small>
+                    </div>
+                    <div class="form-group" style="margin-bottom: 10px;">
+                        <label class="form-label" style="font-size: 0.72rem;">Arguments Complémentaires (Optionnel, séparés par des espaces)</label>
+                        <input type="text" id="kaliExecArgs" class="form-input" style="font-size: 0.8rem; padding: 6px 10px;" placeholder="ex: -sV -p 80,443">
+                    </div>
+                    <button onclick="executeKaliToolManual()" id="kaliExecBtn" style="width: 100%; background: #0284c7; color: #fff; border: none; padding: 8px 12px; border-radius: 6px; font-size: 0.82rem; font-weight: 700; cursor: pointer;">
+                        <i class="fa-solid fa-play"></i> Lancer l'Audit via Kali MCP
+                    </button>
+                </div>
+
+                <!-- Console de Résultat -->
+                <div style="background: #020617; border: 1px solid #1e293b; border-radius: 8px; padding: 12px; flex: 1; display: flex; flex-direction: column;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                        <span style="font-size: 0.72rem; text-transform: uppercase; color: #94a3b8; font-weight: 700;">Console d'Exécution &bull; Sortie MCP</span>
+                        <span id="kaliExecStatusBadge" style="font-size: 0.68rem; color: #64748b;">Prêt</span>
+                    </div>
+                    <pre id="kaliOutputConsole" style="flex: 1; margin: 0; background: #090d16; border: 1px solid #1e293b; border-radius: 6px; padding: 8px; color: #38bdf8; font-family: monospace; font-size: 0.75rem; overflow-y: auto; white-space: pre-wrap; max-height: 240px; min-height: 140px;">// En attente d'une commande...</pre>
+                </div>
+            </div>
+        </div>
+
+        <div style="margin-top: 10px; padding-top: 10px; border-top: 1px solid #1e293b; display: flex; justify-content: space-between; align-items: center;">
+            <span style="color: #475569; font-size: 0.72rem;">Protection stricte : injection de commandes bloquée &bull; Root shell interdit &bull; Cibles hors périmètre rejetées.</span>
+            <button onclick="closeKaliModal()" style="background: #1e293b; color: #cbd5e1; border: 1px solid #334155; padding: 6px 14px; border-radius: 6px; font-size: 0.8rem; cursor: pointer;">Fermer</button>
         </div>
     </div>
 </div>

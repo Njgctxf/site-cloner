@@ -999,6 +999,164 @@ NullSessionShares: 1
         self.assertEqual(r_html.status_code, 200)
         self.assertIn(b"Rapport Ex\xc3\xa9cutif SOC", r_html.data)
 
+    # ---------------- 12. OFFICIAL KALI LINUX MCP INTEGRATION ----------------
+
+    def test_56_kali_connector_config_and_health_check(self):
+        """Verifies KaliMCPConnector configuration management and health check probe."""
+        from security.sentinel.kali_connector import kali_connector
+
+        cfg = kali_connector.get_config()
+        self.assertIn("server_url", cfg)
+        self.assertIn("timeout_seconds", cfg)
+
+        updated = kali_connector.update_config(server_url="http://127.0.0.1:5000", timeout_seconds=45)
+        self.assertEqual(updated["server_url"], "http://127.0.0.1:5000")
+        self.assertEqual(updated["timeout_seconds"], 45)
+
+        health = kali_connector.health_check()
+        self.assertIn("connected", health)
+        self.assertIn("message", health)
+
+    def test_57_kali_connector_tool_discovery(self):
+        """Verifies Kali tool catalog discovery matches the permitted security tool list."""
+        from security.sentinel.kali_connector import kali_connector, PERMITTED_KALI_TOOLS
+
+        disc = kali_connector.discover_tools()
+        self.assertIn("tools", disc)
+        tool_names = [t["name"] for t in disc["tools"]]
+        for expected in ("nmap", "nikto", "whatweb", "sslyze", "sqlmap"):
+            self.assertIn(expected, tool_names)
+
+    def test_58_kali_argument_sanitization_and_injection_blocking(self):
+        """Verifies argument sanitizer prevents shell injection and disallowed flags."""
+        from security.sentinel.kali_connector import kali_connector
+
+        # 1. Shell command injection attempts must be blocked
+        malicious_args = ["-sV", "; rm -rf /", "80"]
+        ok, clean, reason = kali_connector.sanitize_arguments("nmap", malicious_args)
+        self.assertFalse(ok)
+        self.assertIn("Injection de commande", reason)
+
+        pipe_args = ["-sV", "| cat /etc/passwd"]
+        ok2, clean2, reason2 = kali_connector.sanitize_arguments("nmap", pipe_args)
+        self.assertFalse(ok2)
+        self.assertIn("Injection de commande", reason2)
+
+        # 2. Weaponized flags must be blocked (e.g. --os-shell for sqlmap)
+        bad_sqlmap_args = ["--batch", "--os-shell"]
+        ok3, clean3, reason3 = kali_connector.sanitize_arguments("sqlmap", bad_sqlmap_args)
+        self.assertFalse(ok3)
+        self.assertIn("Option de commande interdite", reason3)
+
+        # 3. Legitimate arguments pass
+        safe_args = ["-sV", "--version-light", "-p", "80,443"]
+        ok_safe, clean_safe, reason_safe = kali_connector.sanitize_arguments("nmap", safe_args)
+        self.assertTrue(ok_safe)
+        self.assertEqual(clean_safe, safe_args)
+
+    def test_59_kali_guardian_blocks_unauthorized_target(self):
+        """Verifies Guardian rejects Kali tool executions targeting unauthorized hosts."""
+        from security.sentinel.kali_connector import kali_connector
+
+        res = kali_connector.execute_tool(
+            tool_name="nmap",
+            target="https://unauthorized-victim-corporation.com",
+            custom_args=["-sV"]
+        )
+        self.assertFalse(res["success"])
+        self.assertEqual(res["status"], "blocked_by_guardian")
+        self.assertIn("non autoris", res["error"])
+
+    def test_60_kali_execution_on_authorized_target(self):
+        """Verifies execution completes cleanly on authorized target (lab host)."""
+        from security.sentinel.kali_connector import kali_connector
+
+        res = kali_connector.execute_tool(
+            tool_name="whatweb",
+            target="https://innotech-lab.local",
+            custom_args=["-a", "1"]
+        )
+        self.assertTrue(res["success"])
+        self.assertIn(res["status"], ("completed", "simulated"))
+        self.assertIn("innotech-lab.local", res["command"])
+        self.assertTrue(len(res["stdout"]) > 0)
+
+        # Verify history is persisted
+        hist = kali_connector.list_history(limit=5)
+        self.assertTrue(len(hist) > 0)
+        self.assertEqual(hist[0]["tool_name"], "whatweb")
+
+    def test_61_sentinel_agent_kali_tools(self):
+        """Verifies SentinelAgent integrates get_kali_mcp_status and execute_kali_security_tool."""
+        agent = SentinelAgent(provider=MockProvider())
+
+        # 1. get_kali_mcp_status
+        res_status = agent.execute_tool("get_kali_mcp_status", {})
+        self.assertFalse(res_status.is_error)
+        self.assertIn("health", res_status.result)
+        self.assertIn("discovery", res_status.result)
+
+        # 2. execute_kali_security_tool on authorized lab
+        res_exec = agent.execute_tool("execute_kali_security_tool", {
+            "tool_name": "nmap",
+            "target": "https://innotech-lab.local",
+            "custom_args": ["-sV", "-p", "80,443"]
+        })
+        self.assertFalse(res_exec.is_error)
+        self.assertTrue(res_exec.result["success"])
+
+        # 3. execute_kali_security_tool blocked on unauthorized target by Guardian
+        res_blocked = agent.execute_tool("execute_kali_security_tool", {
+            "tool_name": "nmap",
+            "target": "https://unauthorized-evil-target.com"
+        })
+        self.assertTrue(res_blocked.is_error)
+        self.assertIn("Bloqué par le Guardian", res_blocked.result.get("error", ""))
+
+    def test_62_api_sentinel_kali_endpoints(self):
+        """Verifies REST API endpoints for Kali status, config, sync, execute, and history."""
+        # 1. Status
+        r_stat = self.client.get("/__sc/security/api/sentinel/kali/status")
+        self.assertEqual(r_stat.status_code, 200)
+        self.assertIn("config", r_stat.json)
+        self.assertIn("permitted_tools", r_stat.json)
+
+        # 2. Config update
+        r_cfg = self.client.post("/__sc/security/api/sentinel/kali/config", json={
+            "server_url": "http://127.0.0.1:5000",
+            "timeout_seconds": 50
+        })
+        self.assertEqual(r_cfg.status_code, 200)
+        self.assertTrue(r_cfg.json["success"])
+
+        # 3. Sync
+        r_sync = self.client.post("/__sc/security/api/sentinel/kali/sync")
+        self.assertEqual(r_sync.status_code, 200)
+        self.assertTrue(r_sync.json["success"])
+        self.assertIn("tools", r_sync.json["discovery"])
+
+        # 4. Execute on authorized target
+        r_exec = self.client.post("/__sc/security/api/sentinel/kali/execute", json={
+            "tool": "whatweb",
+            "target": "https://innotech-lab.local"
+        })
+        self.assertEqual(r_exec.status_code, 200)
+        self.assertTrue(r_exec.json["success"])
+
+        # 5. Execute rejected on unauthorized target
+        r_bad = self.client.post("/__sc/security/api/sentinel/kali/execute", json={
+            "tool": "whatweb",
+            "target": "https://evil-unauthorized.com"
+        })
+        self.assertEqual(r_bad.status_code, 400)
+        self.assertFalse(r_bad.json["success"])
+
+        # 6. History
+        r_hist = self.client.get("/__sc/security/api/sentinel/kali/history")
+        self.assertEqual(r_hist.status_code, 200)
+        self.assertIn("history", r_hist.json)
+        self.assertTrue(len(r_hist.json["history"]) > 0)
+
 
 if __name__ == "__main__":
     unittest.main()

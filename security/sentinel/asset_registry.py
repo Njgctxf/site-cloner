@@ -38,7 +38,8 @@ VALID_TEST_TYPES = {
     "business_logic",
     "config_audit",
     "system_check",
-    "passive_recon"
+    "passive_recon",
+    "kali_audit"
 }
 
 
