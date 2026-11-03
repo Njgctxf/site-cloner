@@ -310,6 +310,78 @@ SENTINEL_TOOLS_SCHEMA = [
                 "required": ["target", "db_type"]
             }
         }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "generate_vulnerability_remediation",
+            "description": "Génère un plan de remédiation formel (patch diff unifié, cause racine, code corrigé) pour une vulnérabilité identifiée (sqli, xss, jwt, upload, race_condition, ssh_hardening, db_hardening). Soumis à validation humaine obligatoire.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "vulnerability_type": {
+                        "type": "string",
+                        "enum": ["sqli", "xss", "jwt", "upload", "race_condition", "ssh_hardening", "db_hardening"],
+                        "description": "Catégorie de la vulnérabilité"
+                    },
+                    "target": {
+                        "type": "string",
+                        "description": "Cible ou endpoint concerné"
+                    },
+                    "title": {
+                        "type": "string",
+                        "description": "Titre du correctif"
+                    },
+                    "original_code": {
+                        "type": "string",
+                        "description": "Extrait de code ou configuration vulnérable (optionnel)"
+                    },
+                    "fixed_code": {
+                        "type": "string",
+                        "description": "Extrait de code ou configuration corrigée (optionnel)"
+                    }
+                },
+                "required": ["vulnerability_type", "target"]
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "list_remediations",
+            "description": "Consulte les plans de remédiation en attente d'approbation humaine, appliqués ou contre-validés.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "target": {
+                        "type": "string",
+                        "description": "Filtre optionnel par cible"
+                    },
+                    "status": {
+                        "type": "string",
+                        "enum": ["pending", "approved", "applied", "rejected", "rolled_back"],
+                        "description": "Filtre optionnel par statut"
+                    }
+                }
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "verify_remediation_effectiveness",
+            "description": "Exécute une contre-validation technique pour prouver si un correctif appliqué a définitivement éliminé la vulnérabilité ciblée.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "remediation_id": {
+                        "type": "string",
+                        "description": "Identifiant du plan de remédiation à contre-valider (ex: rem_xxx)"
+                    }
+                },
+                "required": ["remediation_id"]
+            }
+        }
     }
 ]
 
@@ -415,6 +487,56 @@ class SentinelAgent:
                     tool_call_id="",
                     name=tool_name,
                     result={"shield_updated": True, "state": res}
+                )
+            except Exception as e:
+                return ToolResult(tool_call_id="", name=tool_name, result={"error": str(e)}, is_error=True)
+
+        if tool_name == "generate_vulnerability_remediation":
+            try:
+                from .remediation import create_remediation_plan
+                v_type = arguments.get("vulnerability_type", "sqli")
+                target = arguments.get("target", "")
+                title = arguments.get("title")
+                orig = arguments.get("original_code")
+                fixed = arguments.get("fixed_code")
+                plan = create_remediation_plan(
+                    vulnerability_type=v_type,
+                    target=target,
+                    title=title,
+                    original_code=orig,
+                    fixed_code=fixed
+                )
+                return ToolResult(
+                    tool_call_id="",
+                    name=tool_name,
+                    result={"remediation_plan": plan, "requires_human_approval": True}
+                )
+            except Exception as e:
+                return ToolResult(tool_call_id="", name=tool_name, result={"error": str(e)}, is_error=True)
+
+        if tool_name == "list_remediations":
+            try:
+                from .remediation import list_remediations
+                target = arguments.get("target")
+                status = arguments.get("status")
+                items = list_remediations(target=target, status=status)
+                return ToolResult(
+                    tool_call_id="",
+                    name=tool_name,
+                    result={"remediations": items, "count": len(items)}
+                )
+            except Exception as e:
+                return ToolResult(tool_call_id="", name=tool_name, result={"error": str(e)}, is_error=True)
+
+        if tool_name == "verify_remediation_effectiveness":
+            try:
+                from .remediation import verify_remediation_post_fix
+                rem_id = arguments.get("remediation_id", "")
+                res = verify_remediation_post_fix(remediation_id=rem_id)
+                return ToolResult(
+                    tool_call_id="",
+                    name=tool_name,
+                    result=res
                 )
             except Exception as e:
                 return ToolResult(tool_call_id="", name=tool_name, result={"error": str(e)}, is_error=True)

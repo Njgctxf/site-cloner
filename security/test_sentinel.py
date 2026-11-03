@@ -744,6 +744,132 @@ NullSessionShares: 1
         })
         self.assertEqual(r_unauth.status_code, 403)
 
+    # ---------------- 10. REMEDIATION ENGINE & COUNTER-VALIDATION ----------------
+
+    def test_43_remediation_plan_creation_with_unified_diff(self):
+        """Verifies creating a remediation plan generates standard unified diff patches."""
+        from security.sentinel.remediation import create_remediation_plan, get_remediation
+
+        plan = create_remediation_plan(
+            vulnerability_type="sqli",
+            target="https://innotech-lab.local/api/users",
+            original_code="query = f'SELECT * FROM users WHERE id = {user_id}'",
+            fixed_code="query = 'SELECT * FROM users WHERE id = ?'\ncursor.execute(query, (user_id,))"
+        )
+        self.assertTrue(plan["id"].startswith("rem_"))
+        self.assertEqual(plan["status"], "pending")
+        self.assertIn("--- a/target_code", plan["patch_diff"])
+        self.assertIn("+++ b/target_code", plan["patch_diff"])
+
+        fetched = get_remediation(plan["id"])
+        self.assertIsNotNone(fetched)
+        self.assertEqual(fetched["vulnerability_type"], "sqli")
+
+    def test_44_remediation_human_approval_enforcement(self):
+        """Verifies applying a patch strictly requires prior human approval."""
+        from security.sentinel.remediation import create_remediation_plan, approve_remediation, apply_remediation
+
+        plan = create_remediation_plan(
+            vulnerability_type="jwt",
+            target="https://innotech-lab.local/api/auth/token"
+        )
+
+        # Applying before approval must fail
+        with self.assertRaises(ValueError):
+            apply_remediation(plan["id"])
+
+        # Approve by security team lead
+        app_res = approve_remediation(plan["id"], approved_by="Alice CISO")
+        self.assertEqual(app_res["status"], "approved")
+
+        # Now applying succeeds
+        res_apply = apply_remediation(plan["id"])
+        self.assertEqual(res_apply["status"], "applied")
+
+    def test_45_remediation_rollback_workflow(self):
+        """Verifies an applied patch can be safely rolled back."""
+        from security.sentinel.remediation import create_remediation_plan, approve_remediation, apply_remediation, rollback_remediation
+
+        plan = create_remediation_plan(vulnerability_type="upload", target="https://innotech-lab.local/upload")
+        approve_remediation(plan["id"], approved_by="Bob SecOps")
+        apply_remediation(plan["id"])
+
+        res_rb = rollback_remediation(plan["id"], reason="Problème de compatibilité détecté")
+        self.assertEqual(res_rb["status"], "rolled_back")
+
+    def test_46_post_fix_counter_validation(self):
+        """Verifies running post-fix counter-validation to prove remediation."""
+        from security.sentinel.remediation import create_remediation_plan, approve_remediation, apply_remediation, verify_remediation_post_fix
+
+        plan = create_remediation_plan(vulnerability_type="race_condition", target="https://innotech-lab.local/api/coupon")
+        approve_remediation(plan["id"], approved_by="Lead Dev")
+        apply_remediation(plan["id"])
+
+        res_ver = verify_remediation_post_fix(plan["id"], test_recheck_result={
+            "recheck_passed": True,
+            "findings_remaining": 0,
+            "message": "Aucun double emploi possible après l'application du verrou atomique."
+        })
+        self.assertEqual(res_ver["post_validation_status"], "verified_fixed")
+        self.assertTrue(res_ver["is_fixed"])
+
+    def test_47_agent_remediation_tools_execution(self):
+        """Verifies SentinelAgent autonomously generates remediation proposals and checks status."""
+        agent = SentinelAgent(provider=MockProvider())
+
+        # Tool 1: generate_vulnerability_remediation
+        res_gen = agent.execute_tool("generate_vulnerability_remediation", {
+            "vulnerability_type": "sqli",
+            "target": "https://innotech-lab.local/search"
+        })
+        self.assertFalse(res_gen.is_error)
+        self.assertTrue(res_gen.result["requires_human_approval"])
+        rem_id = res_gen.result["remediation_plan"]["id"]
+
+        # Tool 2: list_remediations
+        res_list = agent.execute_tool("list_remediations", {"target": "https://innotech-lab.local/search"})
+        self.assertFalse(res_list.is_error)
+        self.assertTrue(len(res_list.result["remediations"]) >= 1)
+
+        # Tool 3: verify_remediation_effectiveness
+        from security.sentinel.remediation import approve_remediation, apply_remediation
+        approve_remediation(rem_id, approved_by="CISO")
+        apply_remediation(rem_id)
+        res_v = agent.execute_tool("verify_remediation_effectiveness", {"remediation_id": rem_id})
+        self.assertFalse(res_v.is_error)
+        self.assertEqual(res_v.result["post_validation_status"], "verified_fixed")
+
+    def test_48_api_remediation_endpoints(self):
+        """Verifies REST API endpoints for remediation creation, approval, application, and verification."""
+        # 1. Create plan via API
+        r_c = self.client.post("/__sc/security/api/sentinel/remediations/create", json={
+            "vulnerability_type": "jwt",
+            "target": "https://innotech-lab.local/api/jwt",
+            "title": "Fix JWT Signature bypass"
+        })
+        self.assertEqual(r_c.status_code, 200)
+        rem_id = r_c.json["remediation"]["id"]
+
+        # 2. Approve via API
+        r_app = self.client.post("/__sc/security/api/sentinel/remediations/approve", json={
+            "remediation_id": rem_id,
+            "approved_by": "SecOps Lead"
+        })
+        self.assertEqual(r_app.status_code, 200)
+
+        # 3. Apply via API
+        r_apl = self.client.post("/__sc/security/api/sentinel/remediations/apply", json={
+            "remediation_id": rem_id
+        })
+        self.assertEqual(r_apl.status_code, 200)
+
+        # 4. Verify post-fix via API
+        r_v = self.client.post("/__sc/security/api/sentinel/remediations/verify", json={
+            "remediation_id": rem_id
+        })
+        self.assertEqual(r_v.status_code, 200)
+        self.assertEqual(r_v.json["verification"]["post_validation_status"], "verified_fixed")
+
 
 if __name__ == "__main__":
     unittest.main()

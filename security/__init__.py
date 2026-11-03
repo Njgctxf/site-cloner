@@ -745,7 +745,10 @@ from .sentinel import (
     list_assets, get_asset, grant_authorization, revoke_authorization,
     is_target_in_universal_scope, VALID_ASSET_TYPES, VALID_TEST_TYPES,
     emergency_shield, ShieldTier, init_shield_tables,
-    audit_linux_server_config, audit_windows_server_config, audit_database_config
+    audit_linux_server_config, audit_windows_server_config, audit_database_config,
+    init_remediation_tables, create_remediation_plan, list_remediations,
+    get_remediation, approve_remediation, reject_remediation,
+    apply_remediation, rollback_remediation, verify_remediation_post_fix
 )
 from .sentinel.realtime import (
     init_realtime_tables, provision_agent_key, revoke_agent_key,
@@ -1179,11 +1182,130 @@ def sentinel_audit_database_api():
     return jsonify({"success": True, "result": res})
 
 
+# --- REMEDIATION & POST-FIX COUNTER-VALIDATION API ---
+
+@bp.route("/api/sentinel/remediations", methods=["GET"])
+def sentinel_remediations_list_api():
+    """Lists remediation plans filtered by target or status."""
+    target = request.args.get("target")
+    status = request.args.get("status")
+    limit = min(int(request.args.get("limit", 50)), 200)
+    return jsonify({"remediations": list_remediations(target=target, status=status, limit=limit)})
+
+
+@bp.route("/api/sentinel/remediations/create", methods=["POST"])
+def sentinel_remediations_create_api():
+    """Creates a formal remediation proposal with unified diff patch."""
+    data = request.get_json(silent=True) or {}
+    v_type = data.get("vulnerability_type", "sqli")
+    target = data.get("target", "")
+    title = data.get("title")
+    desc = data.get("description")
+    root = data.get("root_cause")
+    orig = data.get("original_code")
+    fixed = data.get("fixed_code")
+    diff = data.get("patch_diff")
+    proj_id = data.get("project_id")
+    asset_id = data.get("asset_id")
+
+    if not target:
+        return jsonify({"error": "target est obligatoire."}), 400
+
+    plan = create_remediation_plan(
+        vulnerability_type=v_type,
+        target=target,
+        title=title,
+        description=desc,
+        root_cause=root,
+        patch_diff=diff,
+        original_code=orig,
+        fixed_code=fixed,
+        project_id=proj_id,
+        asset_id=asset_id
+    )
+    return jsonify({"success": True, "remediation": plan})
+
+
+@bp.route("/api/sentinel/remediations/approve", methods=["POST"])
+def sentinel_remediations_approve_api():
+    """Formally approves a remediation plan (human in the loop required)."""
+    data = request.get_json(silent=True) or {}
+    rem_id = data.get("remediation_id", "")
+    approved_by = data.get("approved_by", "Responsable Sécurité")
+    if not rem_id:
+        return jsonify({"error": "remediation_id est obligatoire."}), 400
+    try:
+        res = approve_remediation(remediation_id=rem_id, approved_by=approved_by)
+        return jsonify({"success": True, "result": res})
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 400
+
+
+@bp.route("/api/sentinel/remediations/reject", methods=["POST"])
+def sentinel_remediations_reject_api():
+    """Rejects a remediation plan."""
+    data = request.get_json(silent=True) or {}
+    rem_id = data.get("remediation_id", "")
+    reason = data.get("reason", "Refusé par l'administrateur")
+    if not rem_id:
+        return jsonify({"error": "remediation_id est obligatoire."}), 400
+    try:
+        res = reject_remediation(remediation_id=rem_id, reason=reason)
+        return jsonify({"success": True, "result": res})
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 400
+
+
+@bp.route("/api/sentinel/remediations/apply", methods=["POST"])
+def sentinel_remediations_apply_api():
+    """Applies an approved remediation patch."""
+    data = request.get_json(silent=True) or {}
+    rem_id = data.get("remediation_id", "")
+    if not rem_id:
+        return jsonify({"error": "remediation_id est obligatoire."}), 400
+    try:
+        res = apply_remediation(remediation_id=rem_id)
+        return jsonify({"success": True, "result": res})
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 400
+
+
+@bp.route("/api/sentinel/remediations/rollback", methods=["POST"])
+def sentinel_remediations_rollback_api():
+    """Rolls back an applied patch using the pre-fix backup."""
+    data = request.get_json(silent=True) or {}
+    rem_id = data.get("remediation_id", "")
+    reason = data.get("reason", "Rollback demandé suite à régression")
+    if not rem_id:
+        return jsonify({"error": "remediation_id est obligatoire."}), 400
+    try:
+        res = rollback_remediation(remediation_id=rem_id, reason=reason)
+        return jsonify({"success": True, "result": res})
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 400
+
+
+@bp.route("/api/sentinel/remediations/verify", methods=["POST"])
+def sentinel_remediations_verify_api():
+    """Executes counter-validation post-fix to prove remediation effectiveness."""
+    data = request.get_json(silent=True) or {}
+    rem_id = data.get("remediation_id", "")
+    recheck_report = data.get("recheck_report")
+    if not rem_id:
+        return jsonify({"error": "remediation_id est obligatoire."}), 400
+    try:
+        res = verify_remediation_post_fix(remediation_id=rem_id, test_recheck_result=recheck_report)
+        return jsonify({"success": True, "verification": res})
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 400
+
+
 def init_security(app):
     init_db()
     init_sentinel_tables()
     init_asset_tables()
     init_shield_tables()
+    init_remediation_tables()
     init_realtime_tables()
     from .scheduler import start_background_scheduler
     start_background_scheduler(interval_seconds=60)

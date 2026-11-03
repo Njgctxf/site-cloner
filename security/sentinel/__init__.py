@@ -41,6 +41,18 @@ from .system_engine import (
     audit_windows_server_config,
     audit_database_config,
 )
+from .remediation import (
+    init_remediation_tables,
+    create_remediation_plan,
+    list_remediations,
+    get_remediation,
+    approve_remediation,
+    reject_remediation,
+    apply_remediation,
+    rollback_remediation,
+    verify_remediation_post_fix,
+    STANDARD_REMEDIATION_TEMPLATES,
+)
 
 __all__ = [
     "AgentMessage",
@@ -83,4 +95,14 @@ __all__ = [
     "audit_linux_server_config",
     "audit_windows_server_config",
     "audit_database_config",
+    "init_remediation_tables",
+    "create_remediation_plan",
+    "list_remediations",
+    "get_remediation",
+    "approve_remediation",
+    "reject_remediation",
+    "apply_remediation",
+    "rollback_remediation",
+    "verify_remediation_post_fix",
+    "STANDARD_REMEDIATION_TEMPLATES",
 ]
