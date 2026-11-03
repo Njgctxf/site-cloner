@@ -740,7 +740,7 @@ from .sentinel import (
     SentinelAgent, AgentMessage, get_provider, guardian,
     init_sentinel_tables, get_sentinel_config, save_sentinel_config,
     list_conversations, create_conversation, get_conversation_messages,
-    save_message, delete_conversation
+    save_message, delete_conversation, skills_registry
 )
 from .sentinel.realtime import (
     init_realtime_tables, provision_agent_key, revoke_agent_key,
@@ -973,6 +973,32 @@ def sentinel_agent_blocklist_api():
 def sentinel_incidents_api():
     domain = request.args.get("domain")
     return jsonify({"incidents": list_incidents(domain=domain)})
+
+
+# --- SENTINEL SKILLS LIBRARY API ---
+
+@bp.route("/api/sentinel/skills", methods=["GET"])
+def sentinel_skills_list_api():
+    """Returns the skills registry statistics (total count, categories)."""
+    return jsonify(skills_registry.get_stats())
+
+
+@bp.route("/api/sentinel/skills/search", methods=["GET"])
+def sentinel_skills_search_api():
+    """Searches the 818 cybersecurity skills by keyword query."""
+    query = request.args.get("q", "")
+    limit = min(int(request.args.get("limit", 10)), 50)
+    results = skills_registry.search_skills(query=query, limit=limit)
+    return jsonify({"results": results, "count": len(results), "query": query, "total_available": skills_registry.count()})
+
+
+@bp.route("/api/sentinel/skills/<path:skill_name>", methods=["GET"])
+def sentinel_skill_detail_api(skill_name):
+    """Returns the full SKILL.md content for a specific security skill."""
+    skill = skills_registry.get_skill(skill_name)
+    if not skill:
+        return jsonify({"error": f"Compétence '{skill_name}' introuvable."}), 404
+    return jsonify(skill.load_full_content())
 
 
 def init_security(app):

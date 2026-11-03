@@ -286,6 +286,72 @@ class SentinelAITestSuite(unittest.TestCase):
         self.assertEqual(r_deact.status_code, 200)
         self.assertFalse(r_deact.json["kill_switch_active"])
 
+    # ---------------- 6. SKILLS REGISTRY & 818 CYBER PROCEDURES ----------------
+
+    def test_20_skills_registry_indexing(self):
+        """Verifies skills registry indexes all 818 procedures and extracts categories."""
+        from security.sentinel.skills_registry import skills_registry
+        self.assertEqual(skills_registry.count(), 818)
+        stats = skills_registry.get_stats()
+        self.assertEqual(stats["total_skills"], 818)
+        self.assertTrue(stats["is_active"])
+        self.assertIn("application-security", stats["categories"])
+
+    def test_21_skills_registry_search_and_load(self):
+        """Verifies skill keyword search and progressive disclosure loading of SKILL.md."""
+        from security.sentinel.skills_registry import skills_registry
+        results = skills_registry.search_skills("jwt", limit=5)
+        self.assertTrue(len(results) > 0)
+        first_skill_name = results[0]["name"]
+
+        skill_obj = skills_registry.get_skill(first_skill_name)
+        self.assertIsNotNone(skill_obj)
+        content = skill_obj.load_full_content()
+        self.assertIn("instructions_markdown", content)
+        self.assertIn("description", content)
+
+    def test_22_agent_skills_tool_execution(self):
+        """Verifies SentinelAgent autonomously executes search_security_skills and load_skill_detail."""
+        agent = SentinelAgent(provider=MockProvider())
+        # Search tool
+        res_search = agent.execute_tool("search_security_skills", {"query": "race condition", "limit": 3})
+        self.assertFalse(res_search.is_error)
+        self.assertEqual(res_search.result["total_available"], 818)
+        self.assertTrue(len(res_search.result["skills"]) > 0)
+
+        first_name = res_search.result["skills"][0]["name"]
+        # Load tool
+        res_load = agent.execute_tool("load_skill_detail", {"skill_name": first_name})
+        self.assertFalse(res_load.is_error)
+        self.assertIn("instructions_markdown", res_load.result)
+
+    def test_23_api_sentinel_skills_endpoints(self):
+        """Verifies GET /api/sentinel/skills, search, and detail API endpoints."""
+        # Stats
+        r_stats = self.client.get("/__sc/security/api/sentinel/skills")
+        self.assertEqual(r_stats.status_code, 200)
+        self.assertEqual(r_stats.json["total_skills"], 818)
+
+        # Search
+        r_search = self.client.get("/__sc/security/api/sentinel/skills/search?q=api&limit=5")
+        self.assertEqual(r_search.status_code, 200)
+        self.assertTrue(len(r_search.json["results"]) > 0)
+        self.assertEqual(r_search.json["total_available"], 818)
+
+        # Detail
+        skill_name = r_search.json["results"][0]["name"]
+        r_detail = self.client.get(f"/__sc/security/api/sentinel/skills/{skill_name}")
+        self.assertEqual(r_detail.status_code, 200)
+        self.assertIn("instructions_markdown", r_detail.json)
+
+    def test_24_mock_provider_skills_routing(self):
+        """Verifies MockProvider routes skill-related prompts to search_security_skills."""
+        p = MockProvider()
+        msgs = [AgentMessage(role="user", content="Quelle est la procédure OWASP pour les failles d'upload ?")]
+        resp = p.chat(msgs)
+        self.assertTrue(len(resp.tool_calls) > 0)
+        self.assertEqual(resp.tool_calls[0].name, "search_security_skills")
+
 
 if __name__ == "__main__":
     unittest.main()

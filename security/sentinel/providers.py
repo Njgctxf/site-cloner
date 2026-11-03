@@ -402,8 +402,13 @@ class MockProvider(LLMProvider):
     def chat(self, messages: List[AgentMessage], tools: Optional[List[Dict[str, Any]]] = None) -> AgentResponse:
         last_user_msg = next((m.content.lower() for m in reversed(messages) if m.role == "user"), "")
 
-        # If user explicitly asks for an audit of a domain, propose tool calls
-        if "jwt" in last_user_msg:
+        # If user explicitly asks for security procedures / skills, search catalog first
+        if any(w in last_user_msg for w in ("skill", "procédure", "compétence", "technique", "mitre", "owasp")):
+            return AgentResponse(
+                content="Je recherche les procédures opérationnelles de cybersécurité pertinentes dans le référentiel de 818 compétences MITRE ATT&CK/NIST CSF/OWASP.",
+                tool_calls=[ToolCall(id="mock_call_5", name="search_security_skills", arguments={"query": last_user_msg[:60], "limit": 5})]
+            )
+        elif "jwt" in last_user_msg:
             return AgentResponse(
                 content="J'ai détecté une demande d'analyse JWT. Je vais inspecter les signatures et les algorithmes acceptés.",
                 tool_calls=[ToolCall(id="mock_call_1", name="audit_jwt_token", arguments={"token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c"})]
@@ -425,7 +430,7 @@ class MockProvider(LLMProvider):
             )
 
         return AgentResponse(
-            content=f"Sentinel AI (Mode Simulation Active) : J'ai bien reçu votre consigne : '{messages[-1].content}'. Que souhaitez-vous analyser ? (JWT, Upload de fichier, Race condition, ou diagnostic complet)."
+            content=f"Sentinel AI (Mode Simulation Active) : J'ai bien reçu votre consigne : '{messages[-1].content}'. Que souhaitez-vous analyser ? (JWT, Upload de fichier, Race condition, diagnostic complet, ou recherche de compétences cybersécurité)."
         )
 
     def health_check(self) -> Dict[str, Any]:

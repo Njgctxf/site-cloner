@@ -41,6 +41,14 @@ function setupEventListeners() {
     });
 
     killSwitchBtn.addEventListener("click", () => toggleKillSwitch());
+
+    const openSkillsLibBtn = document.getElementById("openSkillsLibBtn");
+    if (openSkillsLibBtn) {
+        openSkillsLibBtn.addEventListener("click", (e) => {
+            e.preventDefault();
+            openSkillsLib();
+        });
+    }
 }
 
 async function loadConversations() {
@@ -375,3 +383,102 @@ function updateKillSwitchUI(isActive) {
         btn.style.color = "#ef4444";
     }
 }
+
+// ==========================================
+// SENTINEL SKILLS LIBRARY (818 SKILLS)
+// ==========================================
+
+let _skillsDebounceTimer = null;
+let _skillsStatsLoaded = false;
+
+function openSkillsLib() {
+    const modal = document.getElementById("skillsLibModal");
+    if (!modal) return;
+    modal.classList.add("active");
+    if (!_skillsStatsLoaded) {
+        loadSkillsStats();
+        _skillsStatsLoaded = true;
+    }
+    const input = document.getElementById("skillsSearchInput");
+    if (input) {
+        input.value = "";
+        searchSkills("");
+        setTimeout(() => input.focus(), 100);
+    }
+}
+
+function closeSkillsLib() {
+    const modal = document.getElementById("skillsLibModal");
+    if (modal) modal.classList.remove("active");
+}
+
+function searchSkillsDebounced(query) {
+    if (_skillsDebounceTimer) clearTimeout(_skillsDebounceTimer);
+    _skillsDebounceTimer = setTimeout(() => searchSkills(query), 200);
+}
+
+async function loadSkillsStats() {
+    try {
+        const res = await fetch("/__sc/security/api/sentinel/skills");
+        const data = await res.json();
+        const badge = document.getElementById("skillsTotalBadge");
+        if (badge && data.total_skills) {
+            badge.textContent = `${data.total_skills} compétences`;
+        }
+    } catch (e) {
+        console.error("Erreur stats skills", e);
+    }
+}
+
+async function searchSkills(query) {
+    const container = document.getElementById("skillsResultsContainer");
+    if (!container) return;
+    container.innerHTML = `<div style="grid-column: 1 / -1; color: #64748b; text-align: center; padding: 2rem;">Recherche dans les 818 procédures...</div>`;
+
+    try {
+        const res = await fetch(`/__sc/security/api/sentinel/skills/search?q=${encodeURIComponent(query)}&limit=24`);
+        const data = await res.json();
+        const results = data.results || [];
+
+        if (results.length === 0) {
+            container.innerHTML = `<div style="grid-column: 1 / -1; color: #64748b; text-align: center; padding: 2rem;">Aucune procédure trouvée pour "${escapeHtml(query)}"</div>`;
+            return;
+        }
+
+        container.innerHTML = results.map(s => {
+            const safeName = escapeHtml(s.name || "");
+            const safeDesc = escapeHtml(s.description || "");
+            const safeSub = escapeHtml(s.subdomain || "cybersecurity");
+            return `
+                <div class="skill-card" onclick="selectSkillToPrompt('${safeName}')" style="background: #1e293b; border: 1px solid #334155; border-radius: 8px; padding: 10px; cursor: pointer; transition: all 0.15s; display: flex; flex-direction: column; justify-content: space-between;" onmouseover="this.style.borderColor='#a78bfa'; this.style.transform='translateY(-2px)'" onmouseout="this.style.borderColor='#334155'; this.style.transform='none'">
+                    <div>
+                        <div style="font-size: 0.82rem; font-weight: 600; color: #f1f5f9; margin-bottom: 4px; display: flex; align-items: center; gap: 6px;">
+                            <i class="fa-solid fa-shield-virus" style="color: #a78bfa; font-size: 0.75rem;"></i>
+                            <span>${safeName}</span>
+                        </div>
+                        <div style="font-size: 0.72rem; color: #94a3b8; line-height: 1.35; margin-bottom: 8px;">
+                            ${safeDesc.length > 110 ? safeDesc.substring(0, 110) + '...' : safeDesc}
+                        </div>
+                    </div>
+                    <div>
+                        <span style="background: rgba(167, 139, 250, 0.12); color: #c4b5fd; font-size: 0.65rem; padding: 2px 6px; border-radius: 4px; border: 1px solid rgba(167, 139, 250, 0.25);">
+                            ${safeSub}
+                        </span>
+                    </div>
+                </div>
+            `;
+        }).join("");
+    } catch (e) {
+        container.innerHTML = `<div style="grid-column: 1 / -1; color: #ef4444; text-align: center; padding: 2rem;">Erreur de chargement des compétences.</div>`;
+    }
+}
+
+function selectSkillToPrompt(skillName) {
+    closeSkillsLib();
+    const chatInput = document.getElementById("chatInput");
+    if (chatInput) {
+        chatInput.value = `Applique la procédure de sécurité "${skillName}" sur notre environnement autorise et donne-moi les recommandations techniques.`;
+        chatInput.focus();
+    }
+}
+

@@ -16,6 +16,7 @@ from .storage import (
     save_message,
     delete_conversation,
 )
+from .skills_registry import skills_registry, SkillsRegistry, SecuritySkill
 
 __all__ = [
     "AgentMessage",
@@ -37,4 +38,7 @@ __all__ = [
     "get_conversation_messages",
     "save_message",
     "delete_conversation",
+    "skills_registry",
+    "SkillsRegistry",
+    "SecuritySkill",
 ]

@@ -499,6 +499,7 @@
                 <a href="/__sc/security/"><i class="fa-solid fa-chart-line"></i> Dashboard SOC</a>
                 <a href="/__sc/security/admin"><i class="fa-solid fa-user-shield"></i> Espace Privé Propriétaire</a>
                 <a href="{{ lab_url }}" target="_blank"><i class="fa-solid fa-flask"></i> Laboratoire InnoTech</a>
+                <a href="#" id="openSkillsLibBtn" style="color: #a78bfa;"><i class="fa-solid fa-book-open"></i> Skills Library <span style="font-size:0.7rem; background:#a78bfa22; padding:1px 6px; border-radius:10px; border:1px solid #a78bfa55;">818</span></a>
             </div>
         </header>
 
@@ -541,6 +542,9 @@
                 </div>
                 <div class="prompt-pill" onclick="sendQuickPrompt('Vérifie si le panier autorise la manipulation de prix négatifs ou nuls')">
                     🛒 Logique Métier & Prix
+                </div>
+                <div class="prompt-pill" onclick="openSkillsLib()" style="border-color: rgba(167, 139, 250, 0.4); color: #a78bfa;">
+                    📚 818 Skills MITRE/OWASP
                 </div>
             </div>
 
@@ -601,6 +605,39 @@
             <button onclick="saveByokConfig()" style="background: #0284c7; color: #fff; border: none; padding: 8px 16px; border-radius: 6px; font-weight: 600; cursor: pointer;">
                 Enregistrer la configuration
             </button>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Skills Library -->
+<div class="modal-overlay" id="skillsLibModal">
+    <div class="modal-card" style="width: 860px; max-width: 95vw; max-height: 85vh; display: flex; flex-direction: column;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+            <div>
+                <h3 style="margin: 0; font-size: 1.15rem; color: #a78bfa;">
+                    <i class="fa-solid fa-book-open" style="margin-right: 8px;"></i> Bibliothèque de Compétences Cybersécurité
+                </h3>
+                <small style="color: #64748b; font-size: 0.75rem;">
+                    818 procédures opérationnelles autonomes &bull; MITRE ATT&amp;CK &bull; NIST CSF 2.0 &bull; OWASP &bull; MITRE D3FEND
+                </small>
+            </div>
+            <button onclick="closeSkillsLib()" style="background: none; border: none; color: #94a3b8; font-size: 1.2rem; cursor: pointer;">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+        </div>
+
+        <div style="display: flex; gap: 10px; margin-bottom: 12px;">
+            <input type="text" id="skillsSearchInput" class="form-input" style="flex: 1;" placeholder="Rechercher une compétence (ex: jwt, upload, memory, cobalt strike, api...)" oninput="searchSkillsDebounced(this.value)">
+            <span id="skillsTotalBadge" style="background: rgba(167, 139, 250, 0.15); border: 1px solid rgba(167, 139, 250, 0.3); color: #a78bfa; padding: 6px 14px; border-radius: 6px; font-size: 0.8rem; font-weight: 600; white-space: nowrap; display: flex; align-items: center;">818 compétences</span>
+        </div>
+
+        <div id="skillsResultsContainer" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 10px; overflow-y: auto; flex: 1; padding-right: 4px; min-height: 250px; max-height: 420px;">
+            <!-- Dynamically populated -->
+        </div>
+
+        <div style="margin-top: 12px; padding-top: 10px; border-top: 1px solid #1e293b; display: flex; justify-content: space-between; align-items: center;">
+            <span style="color: #475569; font-size: 0.72rem;">Cliquez sur une compétence pour ordonner à Sentinel AI de l'utiliser.</span>
+            <button onclick="closeSkillsLib()" style="background: #1e293b; color: #cbd5e1; border: 1px solid #334155; padding: 6px 14px; border-radius: 6px; font-size: 0.8rem; cursor: pointer;">Fermer</button>
         </div>
     </div>
 </div>

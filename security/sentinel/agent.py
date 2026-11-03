@@ -31,6 +31,7 @@ Règles fondamentales et éthiques absolues :
 3. Toutes les actions techniques sont strictement soumises au Guardian de sécurité (contrôle de scope, anti-SSRF, rate limiting).
 4. Pour chaque problème identifié, fournis une explication claire en français, la preuve technique constatée (statut HTTP, en-tête, comportement différentiel), l'impact potentiel et la recommandation de remédiation concrète.
 5. Lorsque l'utilisateur te demande d'analyser une URL ou un composant (JWT, upload, formulaire, concurrence), utilise les outils mis à ta disposition.
+6. Tu disposes d'un référentiel de 818 procédures opérationnelles de cybersécurité (MITRE ATT&CK, NIST CSF, OWASP). Utilise search_security_skills pour trouver des procédures pertinentes, puis load_skill_detail pour charger leurs instructions complètes avant d'agir.
 """
 
 # OpenAPI / JSON-Schema tool declarations provided to the LLM
@@ -149,6 +150,44 @@ SENTINEL_TOOLS_SCHEMA = [
                 "required": ["profile_url"]
             }
         }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "search_security_skills",
+            "description": "Recherche parmi les 818 procédures opérationnelles de cybersécurité (MITRE ATT&CK, NIST CSF, OWASP) du référentiel Anthropic-Cybersecurity-Skills. Utilise cet outil automatiquement quand tu as besoin d'une procédure ou guide pour une technique de sécurité spécifique. Retourne les compétences les plus pertinentes avec leur description.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "query": {
+                        "type": "string",
+                        "description": "Requête de recherche (ex: 'jwt token forgery', 'memory forensics', 'cobalt strike detection', 'api security', 'race condition')"
+                    },
+                    "limit": {
+                        "type": "integer",
+                        "description": "Nombre max de résultats à retourner (défaut: 5, max: 20)"
+                    }
+                },
+                "required": ["query"]
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "load_skill_detail",
+            "description": "Charge et retourne les instructions complètes d'une compétence de sécurité spécifique (SKILL.md complet avec procédures, commandes et étapes d'exécution). Appelle cet outil après search_security_skills pour obtenir le contenu détaillé d'une compétence pertinente.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "skill_name": {
+                        "type": "string",
+                        "description": "Nom exact de la compétence tel que retourné par search_security_skills"
+                    }
+                },
+                "required": ["skill_name"]
+            }
+        }
     }
 ]
 
@@ -165,8 +204,47 @@ class SentinelAgent:
     def execute_tool(self, tool_name: str, arguments: Dict[str, Any]) -> ToolResult:
         """
         Executes a security tool strictly vetted by the Guardian.
+        Skills tools (search_security_skills, load_skill_detail) bypass Guardian
+        as they only read local files — no network, no destructive action.
         """
-        # 1. Guardian Policy Check
+        # Skills tools are read-only local operations — no Guardian check needed
+        if tool_name == "search_security_skills":
+            try:
+                from .skills_registry import skills_registry
+                query = arguments.get("query", "")
+                limit = min(int(arguments.get("limit", 5)), 20)
+                results = skills_registry.search_skills(query=query, limit=limit)
+                return ToolResult(
+                    tool_call_id="",
+                    name=tool_name,
+                    result={
+                        "skills": results,
+                        "count": len(results),
+                        "total_available": skills_registry.count(),
+                        "query": query
+                    }
+                )
+            except Exception as e:
+                return ToolResult(tool_call_id="", name=tool_name, result={"error": str(e)}, is_error=True)
+
+        if tool_name == "load_skill_detail":
+            try:
+                from .skills_registry import skills_registry
+                skill_name = arguments.get("skill_name", "")
+                skill = skills_registry.get_skill(skill_name)
+                if skill:
+                    content = skill.load_full_content()
+                    return ToolResult(tool_call_id="", name=tool_name, result=content)
+                return ToolResult(
+                    tool_call_id="",
+                    name=tool_name,
+                    result={"error": f"Compétence '{skill_name}' introuvable. Utilisez search_security_skills pour trouver le nom exact."},
+                    is_error=True
+                )
+            except Exception as e:
+                return ToolResult(tool_call_id="", name=tool_name, result={"error": str(e)}, is_error=True)
+
+        # 1. Guardian Policy Check for all other tools
         is_allowed, reason = guardian.validate_tool_call(tool_name, arguments)
         if not is_allowed:
             return ToolResult(
