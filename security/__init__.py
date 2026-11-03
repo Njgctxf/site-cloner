@@ -743,7 +743,8 @@ from .sentinel import (
     save_message, delete_conversation, skills_registry,
     init_asset_tables, create_project, list_projects, register_asset,
     list_assets, get_asset, grant_authorization, revoke_authorization,
-    is_target_in_universal_scope, VALID_ASSET_TYPES, VALID_TEST_TYPES
+    is_target_in_universal_scope, VALID_ASSET_TYPES, VALID_TEST_TYPES,
+    emergency_shield, ShieldTier, init_shield_tables
 )
 from .sentinel.realtime import (
     init_realtime_tables, provision_agent_key, revoke_agent_key,
@@ -1090,10 +1091,54 @@ def sentinel_scope_verify_api():
     return jsonify({"is_authorized": is_auth, "message": msg, "context": ctx})
 
 
+# --- EMERGENCY SHIELD 4-TIER ACTIVE DEFENSE API ---
+
+@bp.route("/api/sentinel/shield/status", methods=["GET"])
+def sentinel_shield_status_api():
+    """Returns the current Emergency Shield operational tier and active mitigations."""
+    return jsonify(emergency_shield.get_status())
+
+
+@bp.route("/api/sentinel/shield/tier", methods=["POST"])
+def sentinel_shield_set_tier_api():
+    """Sets the Emergency Shield operational tier (NORMAL, ALERT, DEFENSIVE, EMERGENCY)."""
+    data = request.get_json(silent=True) or {}
+    tier_str = (data.get("tier") or "NORMAL").upper()
+    reason = data.get("reason", "Modification manuelle via l'API SOC")
+    try:
+        tier_enum = ShieldTier(tier_str)
+        updated = emergency_shield.set_tier(tier_enum, reason, manual=True)
+        return jsonify({"success": True, "shield": updated})
+    except ValueError:
+        return jsonify({"error": f"Palier invalide. Valeurs acceptées: {[t.value for t in ShieldTier]}"}), 400
+
+
+@bp.route("/api/sentinel/shield/forensics", methods=["GET"])
+def sentinel_shield_forensics_api():
+    """Lists forensic evidence snapshots captured during attacks."""
+    limit = min(int(request.args.get("limit", 50)), 200)
+    return jsonify({"forensics": emergency_shield.list_forensic_evidence(limit=limit)})
+
+
+@bp.route("/api/sentinel/shield/revoke_session", methods=["POST"])
+def sentinel_shield_revoke_session_api():
+    """Immediately revokes a compromised session token across all protected assets."""
+    data = request.get_json(silent=True) or {}
+    target = data.get("target", "all")
+    source_ip = data.get("source_ip", "0.0.0.0")
+    token = data.get("session_token", "")
+    reason = data.get("reason", "Révocation d'urgence suite à détection d'attaque")
+    if not token:
+        return jsonify({"error": "session_token obligatoire."}), 400
+    revoked = emergency_shield.revoke_session(target=target, source_ip=source_ip, session_token=token, reason=reason)
+    return jsonify({"success": revoked, "revoked_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S")})
+
+
 def init_security(app):
     init_db()
     init_sentinel_tables()
     init_asset_tables()
+    init_shield_tables()
     init_realtime_tables()
     from .scheduler import start_background_scheduler
     start_background_scheduler(interval_seconds=60)

@@ -507,6 +507,134 @@ class SentinelAITestSuite(unittest.TestCase):
         self.assertEqual(r_v.status_code, 200)
         self.assertTrue(r_v.json["is_authorized"])
 
+    # ---------------- 8. EMERGENCY SHIELD & ACTIVE DEFENSE (4 TIERS) ----------------
+
+    def test_31_emergency_shield_deterministic_tiers_and_transitions(self):
+        """Verifies Emergency Shield graduated tiers (NORMAL -> ALERT -> DEFENSIVE -> EMERGENCY)."""
+        from security.sentinel.shield import emergency_shield, ShieldTier
+
+        # Reset to NORMAL
+        status_norm = emergency_shield.reset_to_normal()
+        self.assertEqual(status_norm["tier"], ShieldTier.NORMAL.value)
+        self.assertEqual(status_norm["tier_level"], 0)
+
+        # Elevate to ALERT
+        st_alert = emergency_shield.set_tier(ShieldTier.ALERT, "Détection de reconnaissance anormale")
+        self.assertEqual(st_alert["tier"], ShieldTier.ALERT.value)
+        self.assertIn("soc_live_alerts", st_alert["active_mitigations"])
+
+        # Elevate to DEFENSIVE
+        st_def = emergency_shield.set_tier(ShieldTier.DEFENSIVE, "Exploitation active détectée")
+        self.assertEqual(st_def["tier"], ShieldTier.DEFENSIVE.value)
+        self.assertIn("dynamic_ip_blocking", st_def["active_mitigations"])
+
+        # Elevate to EMERGENCY
+        st_em = emergency_shield.set_tier(ShieldTier.EMERGENCY, "Tentative de compromission critique")
+        self.assertEqual(st_em["tier"], ShieldTier.EMERGENCY.value)
+        self.assertIn("strict_ip_isolation", st_em["active_mitigations"])
+        self.assertIn("forensic_evidence_snapshot", st_em["active_mitigations"])
+
+    def test_32_forensic_evidence_sha256_snapshot(self):
+        """Verifies capturing tamper-evident attack payloads with SHA-256 fingerprint."""
+        from security.sentinel.shield import emergency_shield
+        import hashlib
+
+        payload = "UNION SELECT username, password_hash FROM admin_users --"
+        rec = emergency_shield.record_forensic_evidence(
+            target="api.innotech-lab.local",
+            source_ip="198.51.100.42",
+            attack_type="sql_injection",
+            raw_payload=payload
+        )
+        self.assertIsNotNone(rec["id"])
+        expected_hash = hashlib.sha256(payload.encode("utf-8")).hexdigest()
+        self.assertEqual(rec["payload_hash"], expected_hash)
+
+        ev_list = emergency_shield.list_forensic_evidence(limit=10)
+        self.assertTrue(any(e["payload_hash"] == expected_hash for e in ev_list))
+
+    def test_33_session_revocation_and_invalidation(self):
+        """Verifies immediate session revocation and query check."""
+        from security.sentinel.shield import emergency_shield
+
+        token = "sess_secret_token_abcdef123456"
+        self.assertFalse(emergency_shield.is_session_revoked(token))
+
+        emergency_shield.revoke_session(
+            target="app.innotech.internal",
+            source_ip="203.0.113.88",
+            session_token=token,
+            reason="Exfiltration de token détectée"
+        )
+        self.assertTrue(emergency_shield.is_session_revoked(token))
+
+    def test_34_active_defense_escalation_to_defensive_and_emergency(self):
+        """Verifies ingest_request_event automatically drives EmergencyShield state machine."""
+        from security.sentinel.shield import emergency_shield, ShieldTier
+        from security.sentinel.realtime import ingest_request_event
+
+        emergency_shield.reset_to_normal()
+
+        # Ingest SQL injection attack (HIGH severity)
+        directive = ingest_request_event(
+            domain="innotech-lab.local",
+            source_ip="198.51.100.99",
+            method="GET",
+            path="/api/products",
+            query_string="id=1' OR '1'='1"
+        )
+        self.assertTrue(directive["attack_detected"])
+        self.assertTrue(directive["block"])
+        self.assertIn(directive["shield_tier"], (ShieldTier.DEFENSIVE.value, ShieldTier.EMERGENCY.value))
+
+    def test_35_api_emergency_shield_endpoints(self):
+        """Verifies REST API endpoints for Emergency Shield."""
+        # 1. Status
+        r_st = self.client.get("/__sc/security/api/sentinel/shield/status")
+        self.assertEqual(r_st.status_code, 200)
+        self.assertIn("tier", r_st.json)
+        self.assertIn("active_mitigations", r_st.json)
+
+        # 2. Set Tier
+        r_post = self.client.post("/__sc/security/api/sentinel/shield/tier", json={
+            "tier": "DEFENSIVE",
+            "reason": "Test audit automatique SOC"
+        })
+        self.assertEqual(r_post.status_code, 200)
+        self.assertEqual(r_post.json["shield"]["tier"], "DEFENSIVE")
+
+        # 3. Forensics
+        r_f = self.client.get("/__sc/security/api/sentinel/shield/forensics")
+        self.assertEqual(r_f.status_code, 200)
+        self.assertIn("forensics", r_f.json)
+
+        # 4. Revoke session
+        r_rev = self.client.post("/__sc/security/api/sentinel/shield/revoke_session", json={
+            "target": "portal.innotech-lab.local",
+            "source_ip": "192.0.2.1",
+            "session_token": "token_to_kill_xyz",
+            "reason": "Suspicion de vol de session"
+        })
+        self.assertEqual(r_rev.status_code, 200)
+        self.assertTrue(r_rev.json["success"])
+
+    def test_36_agent_shield_tools_execution(self):
+        """Verifies SentinelAgent executes get_shield_status and trigger_emergency_defenses tools."""
+        agent = SentinelAgent(provider=MockProvider())
+
+        # Tool 1: get_shield_status
+        res_st = agent.execute_tool("get_shield_status", {})
+        self.assertFalse(res_st.is_error)
+        self.assertIn("tier", res_st.result)
+
+        # Tool 2: trigger_emergency_defenses
+        res_trig = agent.execute_tool("trigger_emergency_defenses", {
+            "tier": "EMERGENCY",
+            "reason": "Alerte intrusion confirmée par l'agent"
+        })
+        self.assertFalse(res_trig.is_error)
+        self.assertEqual(res_trig.result["state"]["tier"], "EMERGENCY")
+
 
 if __name__ == "__main__":
     unittest.main()

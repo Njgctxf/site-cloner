@@ -251,24 +251,50 @@ def ingest_request_event(domain: str, source_ip: str, method: str, path: str,
     """
     Main entry point called for every request an installed agent reports.
     Runs passive signature detection, stores the event, correlates it against
-    recent history from the same IP, and - if the evidence crosses the
-    threshold - opens/escalates an incident, triggers an automatic response
-    (temporary IP block) and fires a live alert.
-    Returns a directive the calling agent can act on immediately.
+    recent history from the same IP, evaluates the Emergency Shield threat tier,
+    and triggers deterministic mitigations (IP block, session revocation, forensic snapshot).
     """
-    headers = headers or {}
-    findings = inspect_request(method, path, query_string, body, headers)
+    from .shield import emergency_shield, ShieldTier
 
-    directive = {"block": False, "attack_detected": False, "incident": None}
+    headers = headers or {}
+    shield_status = emergency_shield.get_status()
+    directive = {
+        "block": False,
+        "attack_detected": False,
+        "incident": None,
+        "shield_tier": shield_status["tier"]
+    }
+
+    # Check revoked sessions in incoming auth or cookie headers
+    auth_val = headers.get("Authorization") or headers.get("authorization") or headers.get("Cookie") or headers.get("cookie") or ""
+    if auth_val and emergency_shield.is_session_revoked(auth_val):
+        directive["block"] = True
+        directive["reason"] = "session_revoked"
+        return directive
 
     if _is_ip_blocked(domain, source_ip):
         directive["block"] = True
         return directive
 
+    findings = inspect_request(method, path, query_string, body, headers)
     if not findings:
         return directive
 
     severity = highest_severity(findings)
+    categories = sorted({f["category"] for f in findings})
+    primary_category = categories[0] if categories else "generic_attack"
+
+    # Evaluate Emergency Shield deterministic tier
+    combined_payload = f"Path: {path}?{query_string}\nBody: {body}"
+    new_tier = emergency_shield.evaluate_incident_stream(
+        target=domain,
+        source_ip=source_ip,
+        severity=severity,
+        attack_type=primary_category,
+        raw_payload=combined_payload
+    )
+    directive["shield_tier"] = new_tier.value
+
     conn = get_connection()
     c = conn.cursor()
     c.execute("""INSERT INTO sentinel_events (domain, source_ip, method, path, findings_json, severity, created_at)
@@ -280,16 +306,21 @@ def ingest_request_event(domain: str, source_ip: str, method: str, path: str,
 
     directive["attack_detected"] = True
     event_count = _recent_event_count(domain, source_ip)
-    categories = sorted({f["category"] for f in findings})
     summary = f"{event_count} requête(s) suspecte(s) depuis {source_ip} sur {domain} ({', '.join(categories)})"
 
-    should_escalate = severity in IMMEDIATE_ESCALATION_SEVERITIES or event_count >= EVENT_COUNT_THRESHOLD
+    should_escalate = (
+        severity in IMMEDIATE_ESCALATION_SEVERITIES or
+        event_count >= EVENT_COUNT_THRESHOLD or
+        new_tier in (ShieldTier.DEFENSIVE, ShieldTier.EMERGENCY)
+    )
+
     if should_escalate:
         incident = _open_or_update_incident(domain, source_ip, severity, event_count, summary)
         directive["incident"] = incident
 
-        _block_ip(domain, source_ip, summary, minutes=30)
-        _mark_incident_action(incident["id"], "ip_blocked_30min")
+        block_minutes = 120 if new_tier == ShieldTier.EMERGENCY else (60 if new_tier == ShieldTier.DEFENSIVE else 30)
+        _block_ip(domain, source_ip, summary, minutes=block_minutes)
+        _mark_incident_action(incident["id"], f"ip_blocked_{block_minutes}min")
         directive["block"] = True
 
         log_event("SENTINEL_ATTACK_DETECTED", severity, "SENTINEL", summary)

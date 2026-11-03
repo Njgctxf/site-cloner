@@ -225,6 +225,39 @@ SENTINEL_TOOLS_SCHEMA = [
                 "required": ["target"]
             }
         }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "get_shield_status",
+            "description": "Consulte l'état actuel de l'Emergency Shield (Palier NORMAL, ALERT, DEFENSIVE, ou EMERGENCY) et la liste des mesures de protection actives.",
+            "parameters": {
+                "type": "object",
+                "properties": {}
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "trigger_emergency_defenses",
+            "description": "Modifie le palier de protection de l'Emergency Shield en cas d'attaque détectée ou place le système en mode de défense renforcée (DEFENSIVE / EMERGENCY).",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "tier": {
+                        "type": "string",
+                        "enum": ["NORMAL", "ALERT", "DEFENSIVE", "EMERGENCY"],
+                        "description": "Nouveau palier d'urgence à appliquer"
+                    },
+                    "reason": {
+                        "type": "string",
+                        "description": "Justification technique du changement de palier"
+                    }
+                },
+                "required": ["tier", "reason"]
+            }
+        }
     }
 ]
 
@@ -304,6 +337,32 @@ class SentinelAgent:
                     tool_call_id="",
                     name=tool_name,
                     result={"is_authorized": is_auth, "message": msg, "details": ctx}
+                )
+            except Exception as e:
+                return ToolResult(tool_call_id="", name=tool_name, result={"error": str(e)}, is_error=True)
+
+        if tool_name == "get_shield_status":
+            try:
+                from .shield import emergency_shield
+                return ToolResult(
+                    tool_call_id="",
+                    name=tool_name,
+                    result=emergency_shield.get_status()
+                )
+            except Exception as e:
+                return ToolResult(tool_call_id="", name=tool_name, result={"error": str(e)}, is_error=True)
+
+        if tool_name == "trigger_emergency_defenses":
+            try:
+                from .shield import emergency_shield, ShieldTier
+                tier_str = arguments.get("tier", "DEFENSIVE").upper()
+                reason = arguments.get("reason", "Déclenchement défensif par Sentinel AI")
+                tier_enum = ShieldTier(tier_str)
+                res = emergency_shield.set_tier(tier_enum, reason, manual=False)
+                return ToolResult(
+                    tool_call_id="",
+                    name=tool_name,
+                    result={"shield_updated": True, "state": res}
                 )
             except Exception as e:
                 return ToolResult(tool_call_id="", name=tool_name, result={"error": str(e)}, is_error=True)

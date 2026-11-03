@@ -30,6 +30,12 @@ from .asset_registry import (
     VALID_ASSET_TYPES,
     VALID_TEST_TYPES,
 )
+from .shield import (
+    emergency_shield,
+    EmergencyShield,
+    ShieldTier,
+    init_shield_tables,
+)
 
 __all__ = [
     "AgentMessage",
@@ -65,4 +71,8 @@ __all__ = [
     "is_target_in_universal_scope",
     "VALID_ASSET_TYPES",
     "VALID_TEST_TYPES",
+    "emergency_shield",
+    "EmergencyShield",
+    "ShieldTier",
+    "init_shield_tables",
 ]
