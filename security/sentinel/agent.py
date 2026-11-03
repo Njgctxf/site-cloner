@@ -188,6 +188,43 @@ SENTINEL_TOOLS_SCHEMA = [
                 "required": ["skill_name"]
             }
         }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "list_authorized_scope",
+            "description": "Consulte le registre des actifs et périmètres autorisés (domaines vérifiés, serveurs Linux/Windows, APIs, BDD, mandats d'autorisation actifs). Utilise cet outil pour vérifier ce que tu as le droit d'auditer.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "asset_type": {
+                        "type": "string",
+                        "description": "Filtre optionnel par type d'actif ('domain', 'ip', 'api', 'linux_server', 'windows_server', 'database', etc.)"
+                    }
+                }
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "verify_asset_authorization",
+            "description": "Vérifie si une cible spécifique (URL, IP, domaine, serveur) dispose d'un mandat d'autorisation actif et valide selon les règles du Guardian.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "target": {
+                        "type": "string",
+                        "description": "L'URL, domaine ou adresse IP de la cible à vérifier"
+                    },
+                    "test_type": {
+                        "type": "string",
+                        "description": "Type de test envisagé ('dast', 'jwt', 'upload', 'race_condition', 'config_audit', 'all')"
+                    }
+                },
+                "required": ["target"]
+            }
+        }
     }
 ]
 
@@ -240,6 +277,33 @@ class SentinelAgent:
                     name=tool_name,
                     result={"error": f"Compétence '{skill_name}' introuvable. Utilisez search_security_skills pour trouver le nom exact."},
                     is_error=True
+                )
+            except Exception as e:
+                return ToolResult(tool_call_id="", name=tool_name, result={"error": str(e)}, is_error=True)
+
+        if tool_name == "list_authorized_scope":
+            try:
+                from .asset_registry import list_assets
+                asset_type = arguments.get("asset_type")
+                assets = list_assets(asset_type=asset_type)
+                return ToolResult(
+                    tool_call_id="",
+                    name=tool_name,
+                    result={"authorized_assets": assets, "count": len(assets)}
+                )
+            except Exception as e:
+                return ToolResult(tool_call_id="", name=tool_name, result={"error": str(e)}, is_error=True)
+
+        if tool_name == "verify_asset_authorization":
+            try:
+                from .asset_registry import is_target_in_universal_scope
+                target = arguments.get("target", "")
+                test_type = arguments.get("test_type")
+                is_auth, msg, ctx = is_target_in_universal_scope(target, test_type=test_type)
+                return ToolResult(
+                    tool_call_id="",
+                    name=tool_name,
+                    result={"is_authorized": is_auth, "message": msg, "details": ctx}
                 )
             except Exception as e:
                 return ToolResult(tool_call_id="", name=tool_name, result={"error": str(e)}, is_error=True)

@@ -740,7 +740,10 @@ from .sentinel import (
     SentinelAgent, AgentMessage, get_provider, guardian,
     init_sentinel_tables, get_sentinel_config, save_sentinel_config,
     list_conversations, create_conversation, get_conversation_messages,
-    save_message, delete_conversation, skills_registry
+    save_message, delete_conversation, skills_registry,
+    init_asset_tables, create_project, list_projects, register_asset,
+    list_assets, get_asset, grant_authorization, revoke_authorization,
+    is_target_in_universal_scope, VALID_ASSET_TYPES, VALID_TEST_TYPES
 )
 from .sentinel.realtime import (
     init_realtime_tables, provision_agent_key, revoke_agent_key,
@@ -1001,9 +1004,96 @@ def sentinel_skill_detail_api(skill_name):
     return jsonify(skill.load_full_content())
 
 
+# --- UNIVERSAL ASSET & SCOPE AUTHORIZATION API ---
+
+@bp.route("/api/sentinel/projects", methods=["GET", "POST"])
+def sentinel_projects_api():
+    if request.method == "POST":
+        data = request.get_json(silent=True) or {}
+        name = data.get("name", "")
+        company = data.get("company_name", "")
+        desc = data.get("description", "")
+        if not name or not company:
+            return jsonify({"error": "Nom du projet et nom de l'entreprise obligatoires."}), 400
+        proj = create_project(name=name, company_name=company, description=desc)
+        return jsonify({"success": True, "project": proj})
+    return jsonify({"projects": list_projects()})
+
+
+@bp.route("/api/sentinel/assets", methods=["GET", "POST"])
+def sentinel_assets_api():
+    if request.method == "POST":
+        data = request.get_json(silent=True) or {}
+        name = data.get("name", "")
+        asset_type = data.get("asset_type", "domain")
+        target = data.get("target", "")
+        proj_id = data.get("project_id")
+        env = data.get("environment", "production")
+        meta = data.get("metadata", {})
+        try:
+            asset = register_asset(name=name, asset_type=asset_type, target=target, project_id=proj_id, environment=env, metadata=meta)
+            return jsonify({"success": True, "asset": asset})
+        except ValueError as e:
+            return jsonify({"error": str(e)}), 400
+
+    proj_id = request.args.get("project_id")
+    asset_type = request.args.get("asset_type")
+    return jsonify({"assets": list_assets(project_id=proj_id, asset_type=asset_type)})
+
+
+@bp.route("/api/sentinel/authorizations", methods=["POST"])
+def sentinel_authorizations_api():
+    data = request.get_json(silent=True) or {}
+    asset_id = data.get("asset_id", "")
+    auth_by = data.get("authorized_by", "")
+    valid_from = data.get("valid_from", "")
+    valid_until = data.get("valid_until", "")
+    mandate_ref = data.get("mandate_ref", "")
+    tests = data.get("allowed_test_types", ["dast"])
+    rate_limit = int(data.get("max_rate_limit", 120))
+
+    if not asset_id or not auth_by or not valid_from or not valid_until:
+        return jsonify({"error": "asset_id, authorized_by, valid_from et valid_until sont obligatoires."}), 400
+
+    try:
+        mandate = grant_authorization(
+            asset_id=asset_id,
+            authorized_by=auth_by,
+            valid_from=valid_from,
+            valid_until=valid_until,
+            mandate_ref=mandate_ref,
+            allowed_test_types=tests,
+            max_rate_limit=rate_limit
+        )
+        return jsonify({"success": True, "authorization": mandate})
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 400
+
+
+@bp.route("/api/sentinel/authorizations/revoke", methods=["POST"])
+def sentinel_authorizations_revoke_api():
+    data = request.get_json(silent=True) or {}
+    auth_id = data.get("authorization_id", "")
+    reason = data.get("reason", "Révocation administrative immédiate")
+    if not auth_id:
+        return jsonify({"error": "authorization_id requis."}), 400
+    revoked = revoke_authorization(auth_id, reason=reason)
+    return jsonify({"success": revoked, "authorization_id": auth_id})
+
+
+@bp.route("/api/sentinel/scope/verify", methods=["POST"])
+def sentinel_scope_verify_api():
+    data = request.get_json(silent=True) or {}
+    target = data.get("target", "")
+    test_type = data.get("test_type")
+    is_auth, msg, ctx = is_target_in_universal_scope(target, test_type=test_type)
+    return jsonify({"is_authorized": is_auth, "message": msg, "context": ctx})
+
+
 def init_security(app):
     init_db()
     init_sentinel_tables()
+    init_asset_tables()
     init_realtime_tables()
     from .scheduler import start_background_scheduler
     start_background_scheduler(interval_seconds=60)

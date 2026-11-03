@@ -352,6 +352,161 @@ class SentinelAITestSuite(unittest.TestCase):
         self.assertTrue(len(resp.tool_calls) > 0)
         self.assertEqual(resp.tool_calls[0].name, "search_security_skills")
 
+    # ---------------- 7. UNIVERSAL ASSET & SCOPE AUTHORIZATION ----------------
+
+    def test_25_universal_asset_registration_and_listing(self):
+        """Verifies registering heterogeneous assets (Linux server, API, DB) into project."""
+        from security.sentinel.asset_registry import create_project, register_asset, list_assets, get_asset
+        proj = create_project("Audit Banque Interne", "Banque Nationale", "Audit de sécurité annuel")
+        self.assertTrue(proj["id"].startswith("proj_"))
+
+        asset = register_asset(
+            name="Serveur API Paiements",
+            asset_type="linux_server",
+            target="api-payments.corp.internal",
+            project_id=proj["id"],
+            environment="production",
+            metadata={"os": "Debian 12", "criticality": "tier-1"}
+        )
+        self.assertTrue(asset["id"].startswith("ast_"))
+        self.assertEqual(asset["asset_type"], "linux_server")
+
+        fetched = get_asset(asset["id"])
+        self.assertIsNotNone(fetched)
+        self.assertEqual(fetched["metadata"]["os"], "Debian 12")
+
+        assets_list = list_assets(project_id=proj["id"])
+        self.assertTrue(len(assets_list) >= 1)
+
+    def test_26_formal_authorization_mandate_and_temporal_validity(self):
+        """Verifies RoE mandate grants Guardian access, and temporal validity is enforced."""
+        from security.sentinel.asset_registry import register_asset, grant_authorization, is_target_in_universal_scope
+        from datetime import datetime, timedelta
+
+        asset = register_asset(name="Passerelle Authentification", asset_type="api", target="auth-gateway.corp.internal")
+        now = datetime.now()
+        yesterday = (now - timedelta(days=1)).strftime("%Y-%m-%d %H:%M:%S")
+        tomorrow = (now + timedelta(days=1)).strftime("%Y-%m-%d %H:%M:%S")
+
+        # Active mandate
+        grant_authorization(
+            asset_id=asset["id"],
+            authorized_by="Chief Information Security Officer",
+            mandate_ref="MANDATE-2026-AUTH-01",
+            allowed_test_types=["jwt", "dast"],
+            valid_from=yesterday,
+            valid_until=tomorrow
+        )
+
+        # Validated target via Guardian
+        ok, msg = guardian.validate_target("https://auth-gateway.corp.internal/v1/token")
+        self.assertTrue(ok)
+        self.assertIn("MANDATE-2026-AUTH-01", msg)
+
+        # Non-authorized test type
+        is_auth, reason, _ = is_target_in_universal_scope("auth-gateway.corp.internal", test_type="upload")
+        self.assertFalse(is_auth)
+
+    def test_27_authorization_revocation_immediately_blocks_guardian(self):
+        """Verifies revoking a mandate immediately cuts Guardian authorization."""
+        from security.sentinel.asset_registry import register_asset, grant_authorization, revoke_authorization
+        from datetime import datetime, timedelta
+
+        asset = register_asset(name="Base de Données Client", asset_type="database", target="db-cluster.corp.internal")
+        now = datetime.now()
+        auth = grant_authorization(
+            asset_id=asset["id"],
+            authorized_by="SecOps Lead",
+            mandate_ref="MANDATE-DB-TEMP",
+            allowed_test_types=["dast", "config_audit"],
+            valid_from=(now - timedelta(hours=1)).strftime("%Y-%m-%d %H:%M:%S"),
+            valid_until=(now + timedelta(hours=2)).strftime("%Y-%m-%d %H:%M:%S")
+        )
+
+        ok_before, _ = guardian.validate_target("https://db-cluster.corp.internal")
+        self.assertTrue(ok_before)
+
+        # Revoke mandate
+        revoked = revoke_authorization(auth["id"], reason="Incident de sécurité en cours, gel des audits")
+        self.assertTrue(revoked)
+
+        ok_after, reason_after = guardian.validate_target("https://db-cluster.corp.internal")
+        self.assertFalse(ok_after)
+        self.assertIn("non autorisé", reason_after)
+
+    def test_28_network_cidr_ip_scope_matching(self):
+        """Verifies network CIDR mandate authorizes IPs within the subnet and rejects external IPs."""
+        from security.sentinel.asset_registry import register_asset, grant_authorization
+        from datetime import datetime, timedelta
+
+        asset = register_asset(name="Zone DMZ Corporate", asset_type="network_cidr", target="10.200.50.0/24")
+        now = datetime.now()
+        grant_authorization(
+            asset_id=asset["id"],
+            authorized_by="Network Security Admin",
+            mandate_ref="MANDATE-CIDR-DMZ",
+            allowed_test_types=["all"],
+            valid_from=(now - timedelta(days=1)).strftime("%Y-%m-%d %H:%M:%S"),
+            valid_until=(now + timedelta(days=1)).strftime("%Y-%m-%d %H:%M:%S")
+        )
+
+        # IP inside subnet
+        ok_in, msg_in = guardian.validate_target("https://10.200.50.15/api")
+        self.assertTrue(ok_in)
+        self.assertIn("10.200.50.0/24", msg_in)
+
+        # IP outside subnet
+        ok_out, _ = guardian.validate_target("https://10.200.99.15/api")
+        self.assertFalse(ok_out)
+
+    def test_29_agent_list_authorized_scope_tool(self):
+        """Verifies SentinelAgent can autonomously inspect authorized scope assets."""
+        agent = SentinelAgent(provider=MockProvider())
+        res = agent.execute_tool("list_authorized_scope", {})
+        self.assertFalse(res.is_error)
+        self.assertIn("authorized_assets", res.result)
+        self.assertIsInstance(res.result["authorized_assets"], list)
+
+    def test_30_api_endpoints_assets_and_mandates(self):
+        """Verifies REST API endpoints for projects, assets, mandates, and scope verification."""
+        # 1. Create project via API
+        r_p = self.client.post("/__sc/security/api/sentinel/projects", json={
+            "name": "Audit ERP Global",
+            "company_name": "InnoTech Industries"
+        })
+        self.assertEqual(r_p.status_code, 200)
+        proj_id = r_p.json["project"]["id"]
+
+        # 2. Register asset via API
+        r_a = self.client.post("/__sc/security/api/sentinel/assets", json={
+            "project_id": proj_id,
+            "name": "ERP SAP Central",
+            "asset_type": "windows_server",
+            "target": "erp-central.innotech.internal"
+        })
+        self.assertEqual(r_a.status_code, 200)
+        asset_id = r_a.json["asset"]["id"]
+
+        # 3. Grant authorization mandate via API
+        from datetime import datetime, timedelta
+        now = datetime.now()
+        r_auth = self.client.post("/__sc/security/api/sentinel/authorizations", json={
+            "asset_id": asset_id,
+            "authorized_by": "Direction Sécurité",
+            "mandate_ref=":"MANDATE-SAP-2026",
+            "valid_from": (now - timedelta(days=1)).strftime("%Y-%m-%d %H:%M:%S"),
+            "valid_until": (now + timedelta(days=5)).strftime("%Y-%m-%d %H:%M:%S"),
+            "allowed_test_types": ["dast", "config_audit"]
+        })
+        self.assertEqual(r_auth.status_code, 200)
+
+        # 4. Verify scope via API
+        r_v = self.client.post("/__sc/security/api/sentinel/scope/verify", json={
+            "target": "https://erp-central.innotech.internal:8443/login"
+        })
+        self.assertEqual(r_v.status_code, 200)
+        self.assertTrue(r_v.json["is_authorized"])
+
 
 if __name__ == "__main__":
     unittest.main()

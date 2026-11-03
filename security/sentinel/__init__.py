@@ -17,6 +17,19 @@ from .storage import (
     delete_conversation,
 )
 from .skills_registry import skills_registry, SkillsRegistry, SecuritySkill
+from .asset_registry import (
+    init_asset_tables,
+    create_project,
+    list_projects,
+    register_asset,
+    list_assets,
+    get_asset,
+    grant_authorization,
+    revoke_authorization,
+    is_target_in_universal_scope,
+    VALID_ASSET_TYPES,
+    VALID_TEST_TYPES,
+)
 
 __all__ = [
     "AgentMessage",
@@ -41,4 +54,15 @@ __all__ = [
     "skills_registry",
     "SkillsRegistry",
     "SecuritySkill",
+    "init_asset_tables",
+    "create_project",
+    "list_projects",
+    "register_asset",
+    "list_assets",
+    "get_asset",
+    "grant_authorization",
+    "revoke_authorization",
+    "is_target_in_universal_scope",
+    "VALID_ASSET_TYPES",
+    "VALID_TEST_TYPES",
 ]
