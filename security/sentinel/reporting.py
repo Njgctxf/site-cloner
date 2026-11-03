@@ -114,7 +114,7 @@ def generate_executive_html_report(project_id: Optional[str] = None) -> str:
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <title>SENTINEL AI — Rapport Exécutif de Sécurité</title>
+    <title>ULTON AI — Rapport Exécutif de Sécurité</title>
     <style>
         body {{ font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background: #0b0f19; color: #e2e8f0; margin: 0; padding: 2rem; }}
         .report-card {{ max-width: 900px; margin: auto; background: #111827; border: 1px solid #374151; border-radius: 12px; padding: 2.5rem; }}
@@ -134,7 +134,7 @@ def generate_executive_html_report(project_id: Optional[str] = None) -> str:
     <div class="report-card">
         <div class="header">
             <div>
-                <h1 class="title">SENTINEL AI &bull; Rapport Exécutif SOC</h1>
+                <h1 class="title">ULTON AI &bull; Rapport Exécutif SOC</h1>
                 <div style="color: #9ca3af; font-size: 0.85rem; margin-top: 6px;">Périmètre : {data['project_scope']} &bull; Date : {data['generated_at']}</div>
             </div>
             <div>

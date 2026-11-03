@@ -167,7 +167,7 @@ async function sendMessage() {
     loaderEl.innerHTML = `
         <div class="avatar avatar-sentinel"><i class="fa-solid fa-spinner fa-spin"></i></div>
         <div class="msg-content" style="color: #94a3b8; font-style: italic;">
-            Sentinel AI analyse la requête et coordonne les outils sous contrôle du Guardian...
+            Ulton AI analyse la requête et coordonne les outils sous contrôle du Guardian...
         </div>
     `;
     stream.appendChild(loaderEl);
@@ -201,7 +201,7 @@ async function sendMessage() {
     } catch (e) {
         const loader = document.getElementById(loaderId);
         if (loader) loader.remove();
-        appendMessageToUI("assistant", `⚠️ Erreur réseau : Impossible de contacter Sentinel AI (${e.message})`);
+        appendMessageToUI("assistant", `⚠️ Erreur réseau : Impossible de contacter Ulton AI (${e.message})`);
         scrollChatToBottom();
     }
 }

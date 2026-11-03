@@ -425,12 +425,12 @@ class MockProvider(LLMProvider):
             )
         elif "scan" in last_user_msg or "audit" in last_user_msg:
             return AgentResponse(
-                content="Bonjour, je suis Sentinel AI. Pour débuter l'audit, j'ai vérifié que le domaine cible est autorisé. Je commence les tests non destructifs.",
+                content="Bonjour, je suis Ulton AI. Pour débuter l'audit, j'ai vérifié que le domaine cible est autorisé. Je commence les tests non destructifs.",
                 tool_calls=[ToolCall(id="mock_call_4", name="run_target_diagnostic", arguments={"target_url": "https://innotech-lab.local"})]
             )
 
         return AgentResponse(
-            content=f"Sentinel AI (Mode Simulation Active) : J'ai bien reçu votre consigne : '{messages[-1].content}'. Que souhaitez-vous analyser ? (JWT, Upload de fichier, Race condition, diagnostic complet, ou recherche de compétences cybersécurité)."
+            content=f"Ulton AI (Mode Simulation Active) : J'ai bien reçu votre consigne : '{messages[-1].content}'. Que souhaitez-vous analyser ? (JWT, Upload de fichier, Race condition, diagnostic complet, ou recherche de compétences cybersécurité)."
         )
 
     def health_check(self) -> Dict[str, Any]:

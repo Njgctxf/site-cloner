@@ -235,11 +235,16 @@ class SentinelAITestSuite(unittest.TestCase):
     # ---------------- 9. FLASK REST & WEB APIS ----------------
 
     def test_16_web_page_sentinel_accessible(self):
-        """Verifies /__sc/security/sentinel returns HTTP 200 with HTML."""
+        """Verifies /__sc/security/sentinel and /__sc/security/ulton return HTTP 200 with HTML."""
         resp = self.client.get("/__sc/security/sentinel")
         self.assertEqual(resp.status_code, 200)
-        self.assertIn(b"SENTINEL AI", resp.data)
+        self.assertIn(b"ULTON AI", resp.data)
         self.assertIn(b"Guardian", resp.data)
+
+        # Test new /ulton endpoint
+        resp_u = self.client.get("/__sc/security/ulton")
+        self.assertEqual(resp_u.status_code, 200)
+        self.assertIn(b"ULTON AI", resp_u.data)
 
     def test_17_api_sentinel_config_endpoints(self):
         """Verifies GET and POST on /__sc/security/api/sentinel/config."""
@@ -964,7 +969,7 @@ NullSessionShares: 1
         from security.sentinel.reporting import generate_executive_html_report
 
         html = generate_executive_html_report()
-        self.assertIn("SENTINEL AI", html)
+        self.assertIn("ULTON AI", html)
         self.assertIn("Rapport Exécutif SOC", html)
         self.assertIn("SHIELD:", html)
 

@@ -22,7 +22,7 @@ from ..dast_engine import run_dast_audit
 
 logger = logging.getLogger("sentinel.agent")
 
-SENTINEL_SYSTEM_PROMPT = """Tu es SENTINEL AI, l'architecte et agent intelligent expert en cybersécurité applicative et audit de vulnérabilités web.
+SENTINEL_SYSTEM_PROMPT = """Tu es ULTON AI, l'architecte et agent intelligent expert en cybersécurité applicative et audit de vulnérabilités web.
 Ton rôle est d'analyser, diagnostiquer et guider les audits de sécurité sur les applications web autorisées du propriétaire.
 
 Règles fondamentales et éthiques absolues :
@@ -486,7 +486,7 @@ class SentinelAgent:
     def __init__(self, provider: LLMProvider):
         self.provider = provider
         self.session = build_safe_session(allow_local_lab=True)
-        self.session.headers.update({"User-Agent": "Sentinel-AI-Auditor/1.0 (Defensive Assessment)"})
+        self.session.headers.update({"User-Agent": "Ulton-AI-Auditor/1.0 (Defensive Assessment)"})
 
     def execute_tool(self, tool_name: str, arguments: Dict[str, Any]) -> ToolResult:
         """
@@ -573,7 +573,7 @@ class SentinelAgent:
             try:
                 from .shield import emergency_shield, ShieldTier
                 tier_str = arguments.get("tier", "DEFENSIVE").upper()
-                reason = arguments.get("reason", "Déclenchement défensif par Sentinel AI")
+                reason = arguments.get("reason", "Déclenchement défensif par Ulton AI")
                 tier_enum = ShieldTier(tier_str)
                 res = emergency_shield.set_tier(tier_enum, reason, manual=False)
                 return ToolResult(

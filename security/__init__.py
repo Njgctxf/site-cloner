@@ -764,8 +764,9 @@ from .sentinel.realtime import (
 )
 
 @bp.route("/sentinel")
+@bp.route("/ulton")
 def sentinel_workspace():
-    """Renders the Sentinel AI dedicated interactive cyber workspace."""
+    """Renders the Ulton AI dedicated interactive cyber workspace."""
     config = get_sentinel_config()
     return render_template(
         "security/sentinel.html",
@@ -896,7 +897,7 @@ def sentinel_chat_api():
             "finish_reason": res.get("finish_reason")
         })
     except Exception as e:
-        err_msg = f"Erreur d'exécution de Sentinel AI: {str(e)}"
+        err_msg = f"Erreur d'exécution de Ulton AI: {str(e)}"
         save_message(conv_id, role="assistant", content=err_msg)
         return jsonify({"error": err_msg, "conversation_id": conv_id}), 500
 

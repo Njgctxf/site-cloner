@@ -34,7 +34,7 @@ class SentinelGuardian:
     def trigger_kill_switch(self):
         """Immediately blocks all active and upcoming operations."""
         self._kill_switch_active = True
-        log_event("SENTINEL_KILL_SWITCH", "CRITICAL", "GUARDIAN", "Le Kill-Switch de Sentinel AI a été enclenché.")
+        log_event("SENTINEL_KILL_SWITCH", "CRITICAL", "GUARDIAN", "Le Kill-Switch de Ulton AI a été enclenché.")
 
     def reset_kill_switch(self):
         self._kill_switch_active = False
