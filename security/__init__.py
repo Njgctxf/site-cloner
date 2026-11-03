@@ -731,8 +731,174 @@ def get_admin_scans_history():
     return jsonify({"scans": rows})
 
 
+# ==============================================================================
+# PROJET SENTINEL AI — AGENT INTELLIGENT DE CYBERSÉCURITÉ
+# ==============================================================================
+
+from .sentinel import (
+    SentinelAgent, AgentMessage, get_provider, guardian,
+    init_sentinel_tables, get_sentinel_config, save_sentinel_config,
+    list_conversations, create_conversation, get_conversation_messages,
+    save_message, delete_conversation
+)
+
+@bp.route("/sentinel")
+def sentinel_workspace():
+    """Renders the Sentinel AI dedicated interactive cyber workspace."""
+    config = get_sentinel_config()
+    return render_template(
+        "security/sentinel.html",
+        lab_url=lab_url(),
+        active_provider=config.get("active_provider", "mock"),
+        kill_switch=guardian.is_kill_switch_active()
+    )
+
+
+@bp.route("/api/sentinel/config", methods=["GET", "POST"])
+def sentinel_config_api():
+    """Gets or updates the Multi-LLM provider configuration (BYOK)."""
+    if request.method == "POST":
+        data = request.get_json(silent=True) or {}
+        active_provider = data.get("active_provider", "mock")
+        provider_id = data.get("provider_id", active_provider)
+        api_key = data.get("api_key")
+        model = data.get("model")
+        base_url = data.get("base_url")
+
+        save_sentinel_config(
+            active_provider=active_provider,
+            provider_id=provider_id,
+            api_key=api_key,
+            model=model,
+            base_url=base_url
+        )
+        return jsonify({"success": True, "message": "Configuration Sentinel mise à jour."})
+
+    cfg = get_sentinel_config()
+    # Mask API keys for safe UI presentation
+    masked_providers = {}
+    for p_id, p_data in cfg.get("providers", {}).items():
+        masked_p = dict(p_data)
+        if masked_p.get("api_key"):
+            key = masked_p["api_key"]
+            masked_p["api_key_masked"] = key[:4] + "..." + key[-4:] if len(key) > 8 else "********"
+            masked_p["has_key"] = True
+            del masked_p["api_key"]
+        else:
+            masked_p["has_key"] = False
+        masked_providers[p_id] = masked_p
+
+    return jsonify({
+        "active_provider": cfg.get("active_provider", "mock"),
+        "providers": masked_providers,
+        "kill_switch": guardian.is_kill_switch_active()
+    })
+
+
+@bp.route("/api/sentinel/conversations", methods=["GET", "POST"])
+def sentinel_conversations_api():
+    """Lists recent conversations or creates a new one."""
+    if request.method == "POST":
+        data = request.get_json(silent=True) or {}
+        title = data.get("title", "Nouvel audit Sentinel")
+        conv_id = create_conversation(title=title)
+        return jsonify({"success": True, "conversation_id": conv_id})
+
+    return jsonify({"conversations": list_conversations()})
+
+
+@bp.route("/api/sentinel/conversations/<conv_id>", methods=["GET", "DELETE"])
+def sentinel_conversation_item_api(conv_id):
+    """Retrieves message history or deletes a conversation."""
+    if request.method == "DELETE":
+        delete_conversation(conv_id)
+        return jsonify({"success": True})
+
+    messages = get_conversation_messages(conv_id)
+    return jsonify({"conversation_id": conv_id, "messages": messages})
+
+
+@bp.route("/api/sentinel/chat", methods=["POST"])
+def sentinel_chat_api():
+    """Processes a user message via the selected Multi-LLM provider & Guardian."""
+    data = request.get_json(silent=True) or {}
+    user_prompt = (data.get("message") or "").strip()
+    conv_id = data.get("conversation_id")
+
+    if not user_prompt:
+        return jsonify({"error": "Message vide."}), 400
+
+    if not conv_id:
+        conv_id = create_conversation(title=user_prompt[:35] + "...")
+
+    # Load provider configuration
+    cfg = get_sentinel_config()
+    active_p_id = data.get("provider") or cfg.get("active_provider", "mock")
+    p_data = cfg.get("providers", {}).get(active_p_id, {})
+
+    api_key = data.get("api_key") or p_data.get("api_key", "")
+    model = data.get("model") or p_data.get("model", "")
+    base_url = data.get("base_url") or p_data.get("base_url", "")
+
+    # Save user message to persistent DB
+    save_message(conv_id, role="user", content=user_prompt)
+
+    # Reconstruct conversation history for LLM
+    db_msgs = get_conversation_messages(conv_id)
+    history: List[AgentMessage] = []
+    for m in db_msgs:
+        history.append(AgentMessage(
+            role=m["role"],
+            content=m["content"],
+            tool_call_id=m.get("tool_call_id")
+        ))
+
+    # Initialize Provider & Agent
+    provider = get_provider(provider_id=active_p_id, api_key=api_key, model=model, base_url=base_url)
+    agent = SentinelAgent(provider=provider)
+
+    # Process step
+    try:
+        res = agent.process_message(conversation_history=history)
+        reply_text = res.get("reply", "")
+        tools_executed = res.get("tools_executed", [])
+
+        # Save assistant message to persistent DB
+        save_message(conv_id, role="assistant", content=reply_text, tool_results=tools_executed)
+
+        return jsonify({
+            "success": True,
+            "conversation_id": conv_id,
+            "reply": reply_text,
+            "tools_executed": tools_executed,
+            "provider": active_p_id,
+            "finish_reason": res.get("finish_reason")
+        })
+    except Exception as e:
+        err_msg = f"Erreur d'exécution de Sentinel AI: {str(e)}"
+        save_message(conv_id, role="assistant", content=err_msg)
+        return jsonify({"error": err_msg, "conversation_id": conv_id}), 500
+
+
+@bp.route("/api/sentinel/guardian/killswitch", methods=["POST"])
+def sentinel_killswitch_api():
+    """Toggles or triggers the Sentinel emergency kill-switch."""
+    data = request.get_json(silent=True) or {}
+    activate = data.get("activate", True)
+    if activate:
+        guardian.trigger_kill_switch()
+    else:
+        guardian.reset_kill_switch()
+
+    return jsonify({
+        "success": True,
+        "kill_switch_active": guardian.is_kill_switch_active()
+    })
+
+
 def init_security(app):
     init_db()
+    init_sentinel_tables()
     from .scheduler import start_background_scheduler
     start_background_scheduler(interval_seconds=60)
     app.register_blueprint(bp)

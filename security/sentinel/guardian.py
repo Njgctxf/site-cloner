@@ -1,0 +1,107 @@
+"""
+guardian.py - Deterministic Zero-Trust Security Guardian for Sentinel AI
+The LLM has NO direct network execution permissions.
+Every single action must be verified, sanitized, and approved by this Guardian.
+"""
+
+import re
+import time
+import urllib.parse
+from typing import Dict, Any, Tuple, Optional
+
+from ..network_guard import validate_target_url
+from ..database import is_domain_authorized, is_admin_private_domain_authorized, log_event
+
+FORBIDDEN_DESTRUCTIVE_PATTERNS = [
+    re.compile(r"\b(DROP\s+TABLE|DROP\s+DATABASE|TRUNCATE\s+TABLE|DELETE\s+FROM|UPDATE\s+\w+\s+SET)\b", re.I),
+    re.compile(r"\b(rm\s+-rf|del\s+/f|format\s+[a-z]:|shutdown|reboot)\b", re.I),
+    re.compile(r"\b(xp_cmdshell|exec\s+master\.\.xp_|INTO\s+OUTFILE|LOAD_FILE)\b", re.I),
+]
+
+class SecurityViolation(Exception):
+    pass
+
+class SentinelGuardian:
+    """
+    Enforces deterministic boundaries around the Sentinel AI agent.
+    """
+
+    def __init__(self):
+        self._kill_switch_active = False
+        self._recent_requests = []
+        self._rate_limit_per_minute = 120
+
+    def trigger_kill_switch(self):
+        """Immediately blocks all active and upcoming operations."""
+        self._kill_switch_active = True
+        log_event("SENTINEL_KILL_SWITCH", "CRITICAL", "GUARDIAN", "Le Kill-Switch de Sentinel AI a été enclenché.")
+
+    def reset_kill_switch(self):
+        self._kill_switch_active = False
+
+    def is_kill_switch_active(self) -> bool:
+        return self._kill_switch_active
+
+    def validate_target(self, url: str) -> Tuple[bool, str]:
+        """
+        Ensures the target is:
+        1. Formatted correctly
+        2. Authorized in user scope (public verified domain or admin private domain or local lab)
+        3. Protected against SSRF / internal IP targeting
+        """
+        if self._kill_switch_active:
+            return False, "Opération bloquée : Le Kill-Switch de sécurité est actif."
+
+        if not url:
+            return False, "URL cible manquante."
+
+        parsed = urllib.parse.urlparse(url)
+        hostname = (parsed.hostname or "").lower()
+        if not hostname:
+            return False, f"Nom d'hôte invalide dans l'URL: {url}"
+
+        # 1. Scope Authorization Check
+        is_lab = hostname in ("localhost", "127.0.0.1", "0.0.0.0", "innotech-lab.local", "cyberlab.local")
+        is_auth = is_lab or is_domain_authorized(hostname) or is_admin_private_domain_authorized(hostname)
+        if not is_auth:
+            return False, f"Domaine non autorisé ({hostname}). Vous devez d'abord vérifier la propriété de ce domaine dans le CyberLab."
+
+        # 2. Anti-SSRF and Network boundary
+        is_safe, _, _, err = validate_target_url(url, allow_local_lab=True)
+        if not is_safe:
+            return False, f"Rejet Anti-SSRF Guardian : {err}"
+
+        # 3. Rate limiting check
+        now = time.time()
+        self._recent_requests = [t for t in self._recent_requests if now - t < 60]
+        if len(self._recent_requests) >= self._rate_limit_per_minute:
+            return False, "Plafond de requêtes atteint (Rate Limit Guardian: 120 req/min). Veuillez patienter."
+        self._recent_requests.append(now)
+
+        return True, "Cible validée et autorisée par le Guardian."
+
+    def validate_tool_call(self, tool_name: str, arguments: Dict[str, Any]) -> Tuple[bool, str]:
+        """
+        Deep-inspects tool arguments to prevent harmful, destructive, or weaponized actions.
+        """
+        if self._kill_switch_active:
+            return False, "Opération bloquée : Kill-Switch activé."
+
+        # Stringify all arguments to scan for forbidden destructive commands
+        args_str = " ".join(str(v) for v in arguments.values())
+        for pat in FORBIDDEN_DESTRUCTIVE_PATTERNS:
+            if pat.search(args_str):
+                log_event("SENTINEL_GUARD_VIOLATION", "HIGH", "GUARDIAN", f"Tentative d'exécution d'une commande destructrice bloquée : {pat.pattern}")
+                return False, f"Action rejetée par le Guardian : Détection d'un motif destructeur interdit ({pat.pattern[:30]})."
+
+        # Check target URL inside tool arguments if present
+        for key in ("url", "target_url", "upload_url", "endpoint"):
+            if key in arguments and isinstance(arguments[key], str):
+                ok, reason = self.validate_target(arguments[key])
+                if not ok:
+                    return False, reason
+
+        return True, "Appel d'outil validé."
+
+# Global singleton
+guardian = SentinelGuardian()
