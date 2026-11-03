@@ -382,6 +382,60 @@ SENTINEL_TOOLS_SCHEMA = [
                 "required": ["remediation_id"]
             }
         }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "get_project_memory_context",
+            "description": "Consulte la mémoire d'audit persistante d'un projet (architecture connue, audits antérieurs, vulnérabilités résolues). Permet d'éviter de reposer des questions déjà clarifiées.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "project_id": {
+                        "type": "string",
+                        "description": "Identifiant du projet (ex: proj_xxx)"
+                    }
+                },
+                "required": ["project_id"]
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "compare_audit_snapshots",
+            "description": "Compare deux audits de sécurité historiques pour mesurer l'évolution de la posture (nouvelles failles, failles récurrentes, failles résolues).",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "previous_memory_id": {
+                        "type": "string",
+                        "description": "Identifiant du premier audit (ex: mem_xxx)"
+                    },
+                    "current_memory_id": {
+                        "type": "string",
+                        "description": "Identifiant du second audit à comparer (ex: mem_yyy)"
+                    }
+                },
+                "required": ["previous_memory_id", "current_memory_id"]
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "generate_soc_executive_report",
+            "description": "Génère un rapport exécutif consolidé du SOC (posture globale, statut Emergency Shield, inventaire des actifs, métriques des remédiations).",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "project_id": {
+                        "type": "string",
+                        "description": "Identifiant optionnel du projet pour restreindre le rapport"
+                    }
+                }
+            }
+        }
     }
 ]
 
@@ -538,6 +592,34 @@ class SentinelAgent:
                     name=tool_name,
                     result=res
                 )
+            except Exception as e:
+                return ToolResult(tool_call_id="", name=tool_name, result={"error": str(e)}, is_error=True)
+
+        if tool_name == "get_project_memory_context":
+            try:
+                from .memory import get_project_knowledge_context
+                p_id = arguments.get("project_id", "")
+                ctx = get_project_knowledge_context(project_id=p_id)
+                return ToolResult(tool_call_id="", name=tool_name, result=ctx)
+            except Exception as e:
+                return ToolResult(tool_call_id="", name=tool_name, result={"error": str(e)}, is_error=True)
+
+        if tool_name == "compare_audit_snapshots":
+            try:
+                from .memory import compare_audit_snapshots
+                p_id = arguments.get("previous_memory_id", "")
+                c_id = arguments.get("current_memory_id", "")
+                diff = compare_audit_snapshots(previous_memory_id=p_id, current_memory_id=c_id)
+                return ToolResult(tool_call_id="", name=tool_name, result=diff)
+            except Exception as e:
+                return ToolResult(tool_call_id="", name=tool_name, result={"error": str(e)}, is_error=True)
+
+        if tool_name == "generate_soc_executive_report":
+            try:
+                from .reporting import generate_consolidated_soc_report
+                p_id = arguments.get("project_id")
+                rep = generate_consolidated_soc_report(project_id=p_id)
+                return ToolResult(tool_call_id="", name=tool_name, result=rep)
             except Exception as e:
                 return ToolResult(tool_call_id="", name=tool_name, result={"error": str(e)}, is_error=True)
 

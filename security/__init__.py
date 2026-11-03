@@ -748,7 +748,11 @@ from .sentinel import (
     audit_linux_server_config, audit_windows_server_config, audit_database_config,
     init_remediation_tables, create_remediation_plan, list_remediations,
     get_remediation, approve_remediation, reject_remediation,
-    apply_remediation, rollback_remediation, verify_remediation_post_fix
+    apply_remediation, rollback_remediation, verify_remediation_post_fix,
+    init_memory_tables, save_audit_memory, list_audit_memory,
+    compare_audit_snapshots, record_architecture_knowledge,
+    get_project_knowledge_context, generate_consolidated_soc_report,
+    generate_executive_html_report
 )
 from .sentinel.realtime import (
     init_realtime_tables, provision_agent_key, revoke_agent_key,
@@ -1300,12 +1304,57 @@ def sentinel_remediations_verify_api():
         return jsonify({"error": str(e)}), 400
 
 
+# --- PROJECT MEMORY & ARCHITECTURE LEARNING API ---
+
+@bp.route("/api/sentinel/memory/history", methods=["GET"])
+def sentinel_memory_history_api():
+    """Lists sanitized past audit snapshots for learning and comparison."""
+    project_id = request.args.get("project_id")
+    target = request.args.get("target")
+    limit = min(int(request.args.get("limit", 50)), 100)
+    return jsonify({"history": list_audit_memory(project_id=project_id, target=target, limit=limit)})
+
+
+@bp.route("/api/sentinel/memory/compare", methods=["POST"])
+def sentinel_memory_compare_api():
+    """Compares two historical audit snapshots to measure security progress."""
+    data = request.get_json(silent=True) or {}
+    prev_id = data.get("previous_memory_id", "")
+    curr_id = data.get("current_memory_id", "")
+    if not prev_id or not curr_id:
+        return jsonify({"error": "previous_memory_id et current_memory_id sont obligatoires."}), 400
+    try:
+        diff = compare_audit_snapshots(previous_memory_id=prev_id, current_memory_id=curr_id)
+        return jsonify({"success": True, "comparison": diff})
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 400
+
+
+# --- CONSOLIDATED SOC DASHBOARD & REPORTING API ---
+
+@bp.route("/api/sentinel/reports/soc_summary", methods=["GET"])
+def sentinel_soc_summary_api():
+    """Returns the consolidated SOC security posture JSON metrics."""
+    project_id = request.args.get("project_id")
+    report = generate_consolidated_soc_report(project_id=project_id)
+    return jsonify(report)
+
+
+@bp.route("/api/sentinel/reports/executive_html", methods=["GET"])
+def sentinel_executive_html_report_api():
+    """Renders a printable executive HTML security audit report."""
+    project_id = request.args.get("project_id")
+    html = generate_executive_html_report(project_id=project_id)
+    return html, 200, {"Content-Type": "text/html; charset=utf-8"}
+
+
 def init_security(app):
     init_db()
     init_sentinel_tables()
     init_asset_tables()
     init_shield_tables()
     init_remediation_tables()
+    init_memory_tables()
     init_realtime_tables()
     from .scheduler import start_background_scheduler
     start_background_scheduler(interval_seconds=60)

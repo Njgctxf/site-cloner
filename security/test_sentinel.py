@@ -870,6 +870,135 @@ NullSessionShares: 1
         self.assertEqual(r_v.status_code, 200)
         self.assertEqual(r_v.json["verification"]["post_validation_status"], "verified_fixed")
 
+    # ---------------- 11. PROJECT MEMORY & SOC DASHBOARD REPORTING ----------------
+
+    def test_49_audit_memory_sanitization_and_persistence(self):
+        """Verifies audit memory sanitizes secrets (passwords, JWTs, keys) before persistence."""
+        from security.sentinel.memory import save_audit_memory, get_audit_memory
+
+        raw_findings = [
+            {"id": "F1", "title": "SQLi", "detail": "Leak with password='super_secret_123'"},
+            {"id": "F2", "title": "Exposed JWT", "detail": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.e30.t-ID"}
+        ]
+        mem = save_audit_memory(
+            project_id="proj_test_mem",
+            target="https://innotech-lab.local",
+            audit_type="full_dast",
+            findings_summary=raw_findings,
+            risk_score=45,
+            grade="C"
+        )
+        self.assertTrue(mem["id"].startswith("mem_"))
+
+        fetched = get_audit_memory(mem["id"])
+        self.assertIsNotNone(fetched)
+        detail_str = json.dumps(fetched["findings"])
+        self.assertNotIn("super_secret_123", detail_str)
+        self.assertIn("[REDACTED]", detail_str)
+
+    def test_50_audit_history_comparison_new_recurring_resolved(self):
+        """Verifies delta comparison between audits correctly flags resolved and new vulnerabilities."""
+        from security.sentinel.memory import save_audit_memory, compare_audit_snapshots
+
+        audit_1 = save_audit_memory(
+            project_id="proj_compare",
+            target="https://innotech-lab.local",
+            audit_type="dast",
+            findings_summary=[
+                {"rule_id": "SQLI_LOGIN", "title": "SQLi on login"},
+                {"rule_id": "XSS_SEARCH", "title": "Reflected XSS on search"}
+            ],
+            risk_score=70,
+            grade="D"
+        )
+
+        audit_2 = save_audit_memory(
+            project_id="proj_compare",
+            target="https://innotech-lab.local",
+            audit_type="dast",
+            findings_summary=[
+                {"rule_id": "SQLI_LOGIN", "title": "SQLi on login"},
+                {"rule_id": "JWT_WEAK", "title": "Weak JWT Secret"}
+            ],
+            risk_score=40,
+            grade="B"
+        )
+
+        diff = compare_audit_snapshots(audit_1["id"], audit_2["id"])
+        self.assertEqual(diff["summary"]["resolved_count"], 1)  # XSS_SEARCH resolved
+        self.assertEqual(diff["summary"]["recurring_count"], 1) # SQLI_LOGIN recurring
+        self.assertEqual(diff["summary"]["new_count"], 1)       # JWT_WEAK new
+        self.assertEqual(diff["resolved_findings"][0]["rule_id"], "XSS_SEARCH")
+        self.assertEqual(diff["new_findings"][0]["rule_id"], "JWT_WEAK")
+
+    def test_51_architecture_knowledge_and_context_injection(self):
+        """Verifies architecture components are memorized and served as context."""
+        from security.sentinel.memory import record_architecture_knowledge, get_project_knowledge_context
+
+        record_architecture_knowledge(
+            project_id="proj_arch_1",
+            component_name="API Gateway Kong",
+            component_type="reverse_proxy",
+            technology_stack="Kong 3.4 / OpenResty",
+            observations={"rate_limiting": "active", "tls": "TLS 1.3"}
+        )
+
+        ctx = get_project_knowledge_context("proj_arch_1")
+        self.assertEqual(ctx["project_id"], "proj_arch_1")
+        self.assertTrue(len(ctx["architecture_components"]) >= 1)
+        self.assertEqual(ctx["architecture_components"][0]["name"], "API Gateway Kong")
+
+    def test_52_consolidated_soc_report_aggregation(self):
+        """Verifies generate_consolidated_soc_report aggregates across all 5 dimensions."""
+        from security.sentinel.reporting import generate_consolidated_soc_report
+
+        rep = generate_consolidated_soc_report()
+        self.assertIn("global_security_posture", rep)
+        self.assertIn("shield", rep)
+        self.assertIn("assets_inventory", rep)
+        self.assertIn("incidents", rep)
+        self.assertIn("remediation_metrics", rep)
+
+    def test_53_executive_html_report_rendering(self):
+        """Verifies executive HTML report renders with proper cards and badge."""
+        from security.sentinel.reporting import generate_executive_html_report
+
+        html = generate_executive_html_report()
+        self.assertIn("SENTINEL AI", html)
+        self.assertIn("Rapport Exécutif SOC", html)
+        self.assertIn("SHIELD:", html)
+
+    def test_54_agent_memory_and_reporting_tools(self):
+        """Verifies SentinelAgent autonomously queries project memory and generates reports."""
+        agent = SentinelAgent(provider=MockProvider())
+
+        # Tool: get_project_memory_context
+        res_mem = agent.execute_tool("get_project_memory_context", {"project_id": "proj_demo"})
+        self.assertFalse(res_mem.is_error)
+        self.assertEqual(res_mem.result["project_id"], "proj_demo")
+
+        # Tool: generate_soc_executive_report
+        res_rep = agent.execute_tool("generate_soc_executive_report", {})
+        self.assertFalse(res_rep.is_error)
+        self.assertIn("global_security_posture", res_rep.result)
+
+    def test_55_api_memory_and_reports_endpoints(self):
+        """Verifies REST API endpoints for memory history, compare, and SOC reports."""
+        # History
+        r_hist = self.client.get("/__sc/security/api/sentinel/memory/history")
+        self.assertEqual(r_hist.status_code, 200)
+        self.assertIn("history", r_hist.json)
+
+        # SOC Summary JSON
+        r_soc = self.client.get("/__sc/security/api/sentinel/reports/soc_summary")
+        self.assertEqual(r_soc.status_code, 200)
+        self.assertIn("global_security_posture", r_soc.json)
+
+        # Executive HTML Report
+        r_html = self.client.get("/__sc/security/api/sentinel/reports/executive_html")
+        self.assertEqual(r_html.status_code, 200)
+        self.assertIn(b"Rapport Ex\xc3\xa9cutif SOC", r_html.data)
+
 
 if __name__ == "__main__":
     unittest.main()

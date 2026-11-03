@@ -53,6 +53,20 @@ from .remediation import (
     verify_remediation_post_fix,
     STANDARD_REMEDIATION_TEMPLATES,
 )
+from .memory import (
+    init_memory_tables,
+    save_audit_memory,
+    list_audit_memory,
+    get_audit_memory,
+    compare_audit_snapshots,
+    record_architecture_knowledge,
+    get_project_knowledge_context,
+    sanitize_secrets,
+)
+from .reporting import (
+    generate_consolidated_soc_report,
+    generate_executive_html_report,
+)
 
 __all__ = [
     "AgentMessage",
@@ -105,4 +119,14 @@ __all__ = [
     "rollback_remediation",
     "verify_remediation_post_fix",
     "STANDARD_REMEDIATION_TEMPLATES",
+    "init_memory_tables",
+    "save_audit_memory",
+    "list_audit_memory",
+    "get_audit_memory",
+    "compare_audit_snapshots",
+    "record_architecture_knowledge",
+    "get_project_knowledge_context",
+    "sanitize_secrets",
+    "generate_consolidated_soc_report",
+    "generate_executive_html_report",
 ]
