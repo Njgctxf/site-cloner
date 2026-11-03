@@ -12,6 +12,7 @@ import requests
 from .models import AgentMessage, AgentResponse, ToolCall, ToolResult
 from .providers import LLMProvider, get_provider
 from .guardian import guardian
+from ..safe_session import build_safe_session
 from .jwt_engine import audit_jwt
 from .upload_engine import audit_file_upload_endpoint
 from .race_engine import audit_race_condition
@@ -158,7 +159,7 @@ class SentinelAgent:
 
     def __init__(self, provider: LLMProvider):
         self.provider = provider
-        self.session = requests.Session()
+        self.session = build_safe_session(allow_local_lab=True)
         self.session.headers.update({"User-Agent": "Sentinel-AI-Auditor/1.0 (Defensive Assessment)"})
 
     def execute_tool(self, tool_name: str, arguments: Dict[str, Any]) -> ToolResult:

@@ -133,6 +133,7 @@ def looks_exposed(rel_path, resp):
 
 from .database import is_domain_authorized
 from .network_guard import validate_target_url
+from .safe_session import build_safe_session
 from .dast_engine import run_dast_audit
 from .sast_secrets import scan_code_for_secrets
 from .sca_engine import scan_vulnerable_components
@@ -398,7 +399,7 @@ def scan_target(target_url, auth_headers_user_b=None, categories=None):
     headers_audited = {}
     cookies_audited = []
 
-    session = requests.Session()
+    session = build_safe_session(allow_local_lab=True)
     session.headers.update({"User-Agent": UA})
 
     try:

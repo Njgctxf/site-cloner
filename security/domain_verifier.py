@@ -13,6 +13,7 @@ from typing import Dict, Any, Tuple
 import requests
 
 from .network_guard import validate_target_url
+from .safe_session import build_safe_session
 
 TOKEN_PREFIX = "sc-audit-"
 
@@ -131,10 +132,12 @@ def verify_http_challenge(domain: str, expected_token: str) -> Tuple[bool, str]:
         if not is_safe:
             continue
 
-        # Step 2: Fetch challenge file
+        # Step 2: Fetch challenge file (session re-validates the IP again at connect time,
+        # closing the DNS-rebinding window between the Step 1 check and this request)
         try:
             headers = {"User-Agent": "SiteCloner-Security-Verification/1.0"}
-            res = requests.get(target_url, headers=headers, timeout=6, allow_redirects=False)
+            session = build_safe_session(allow_local_lab=False)
+            res = session.get(target_url, headers=headers, timeout=6, allow_redirects=False)
             if res.status_code == 200:
                 body = res.text.strip()
                 if expected_token in body:
