@@ -258,6 +258,58 @@ SENTINEL_TOOLS_SCHEMA = [
                 "required": ["tier", "reason"]
             }
         }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "audit_system_configuration",
+            "description": "Audite la configuration de sécurité d'un serveur Linux (SSH, ANSSI/CIS, permissions /etc/shadow) ou Windows (SMBv1, RDP NLA, null sessions). L'actif cible doit être préalablement autorisé.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "target": {
+                        "type": "string",
+                        "description": "Nom d'hôte, IP ou URL de l'actif serveur autorisé"
+                    },
+                    "os_family": {
+                        "type": "string",
+                        "enum": ["linux", "windows"],
+                        "description": "Famille d'OS du serveur (linux ou windows)"
+                    },
+                    "config_text": {
+                        "type": "string",
+                        "description": "Contenu textuel optionnel du fichier de configuration à auditer (ex: sshd_config)"
+                    }
+                },
+                "required": ["target", "os_family"]
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "audit_database_security",
+            "description": "Évalue la posture de sécurité d'une base de données autorisée (PostgreSQL, MySQL, Redis, MongoDB) contre les mauvaises configurations, accès non chiffrés et mode protégé.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "target": {
+                        "type": "string",
+                        "description": "Hôte ou IP de l'instance de base de données autorisée"
+                    },
+                    "db_type": {
+                        "type": "string",
+                        "enum": ["postgres", "mysql", "redis", "mongodb"],
+                        "description": "Moteur de base de données"
+                    },
+                    "config_text": {
+                        "type": "string",
+                        "description": "Contenu textuel optionnel du fichier de configuration (ex: my.cnf, redis.conf, mongod.conf)"
+                    }
+                },
+                "required": ["target", "db_type"]
+            }
+        }
     }
 ]
 
@@ -410,6 +462,25 @@ class SentinelAgent:
                 url = arguments.get("profile_url", "")
                 findings = audit_role_parameter_tampering(self.session, url)
                 return ToolResult(tool_call_id="", name=tool_name, result={"findings": findings, "count": len(findings)})
+
+            elif tool_name == "audit_system_configuration":
+                from .system_engine import audit_linux_server_config, audit_windows_server_config
+                target = arguments.get("target", "")
+                os_family = (arguments.get("os_family") or "linux").lower()
+                cfg = arguments.get("config_text")
+                if os_family == "windows":
+                    res = audit_windows_server_config(target=target, config_text=cfg)
+                else:
+                    res = audit_linux_server_config(target=target, config_text=cfg)
+                return ToolResult(tool_call_id="", name=tool_name, result=res)
+
+            elif tool_name == "audit_database_security":
+                from .system_engine import audit_database_config
+                target = arguments.get("target", "")
+                db_type = arguments.get("db_type", "postgres")
+                cfg = arguments.get("config_text")
+                res = audit_database_config(db_type=db_type, target=target, config_text=cfg)
+                return ToolResult(tool_call_id="", name=tool_name, result=res)
 
             return ToolResult(tool_call_id="", name=tool_name, result={"error": f"Outil inconnu: {tool_name}"}, is_error=True)
         except Exception as e:

@@ -98,7 +98,7 @@ class SentinelGuardian:
                 return False, f"Action rejetée par le Guardian : Détection d'un motif destructeur interdit ({pat.pattern[:30]})."
 
         # Check target URL inside tool arguments if present
-        for key in ("url", "target_url", "upload_url", "endpoint"):
+        for key in ("url", "target_url", "upload_url", "endpoint", "target"):
             if key in arguments and isinstance(arguments[key], str):
                 ok, reason = self.validate_target(arguments[key])
                 if not ok:

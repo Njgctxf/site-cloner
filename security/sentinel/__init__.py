@@ -36,6 +36,11 @@ from .shield import (
     ShieldTier,
     init_shield_tables,
 )
+from .system_engine import (
+    audit_linux_server_config,
+    audit_windows_server_config,
+    audit_database_config,
+)
 
 __all__ = [
     "AgentMessage",
@@ -75,4 +80,7 @@ __all__ = [
     "EmergencyShield",
     "ShieldTier",
     "init_shield_tables",
+    "audit_linux_server_config",
+    "audit_windows_server_config",
+    "audit_database_config",
 ]

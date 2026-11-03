@@ -744,7 +744,8 @@ from .sentinel import (
     init_asset_tables, create_project, list_projects, register_asset,
     list_assets, get_asset, grant_authorization, revoke_authorization,
     is_target_in_universal_scope, VALID_ASSET_TYPES, VALID_TEST_TYPES,
-    emergency_shield, ShieldTier, init_shield_tables
+    emergency_shield, ShieldTier, init_shield_tables,
+    audit_linux_server_config, audit_windows_server_config, audit_database_config
 )
 from .sentinel.realtime import (
     init_realtime_tables, provision_agent_key, revoke_agent_key,
@@ -1132,6 +1133,50 @@ def sentinel_shield_revoke_session_api():
         return jsonify({"error": "session_token obligatoire."}), 400
     revoked = emergency_shield.revoke_session(target=target, source_ip=source_ip, session_token=token, reason=reason)
     return jsonify({"success": revoked, "revoked_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S")})
+
+
+# --- SYSTEM & DATABASE CONFIGURATION AUDIT API ---
+
+@bp.route("/api/sentinel/audit/system", methods=["POST"])
+def sentinel_audit_system_api():
+    """Audits Linux or Windows server configuration for an authorized asset."""
+    data = request.get_json(silent=True) or {}
+    target = data.get("target", "")
+    os_family = (data.get("os_family") or "linux").lower()
+    config_text = data.get("config_text")
+
+    if not target:
+        return jsonify({"error": "target est obligatoire."}), 400
+
+    # Scope validation via Guardian
+    ok, reason = guardian.validate_target(target, test_type="config_audit")
+    if not ok:
+        return jsonify({"error": f"Cible rejetée par le Guardian: {reason}"}), 403
+
+    if os_family == "windows":
+        res = audit_windows_server_config(target=target, config_text=config_text)
+    else:
+        res = audit_linux_server_config(target=target, config_text=config_text)
+    return jsonify({"success": True, "result": res})
+
+
+@bp.route("/api/sentinel/audit/database", methods=["POST"])
+def sentinel_audit_database_api():
+    """Audits database posture (PostgreSQL, MySQL, Redis, MongoDB) for an authorized asset."""
+    data = request.get_json(silent=True) or {}
+    target = data.get("target", "")
+    db_type = data.get("db_type", "postgres")
+    config_text = data.get("config_text")
+
+    if not target:
+        return jsonify({"error": "target est obligatoire."}), 400
+
+    ok, reason = guardian.validate_target(target, test_type="config_audit")
+    if not ok:
+        return jsonify({"error": f"Cible rejetée par le Guardian: {reason}"}), 403
+
+    res = audit_database_config(db_type=db_type, target=target, config_text=config_text)
+    return jsonify({"success": True, "result": res})
 
 
 def init_security(app):

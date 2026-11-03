@@ -556,8 +556,9 @@ class SentinelAITestSuite(unittest.TestCase):
     def test_33_session_revocation_and_invalidation(self):
         """Verifies immediate session revocation and query check."""
         from security.sentinel.shield import emergency_shield
+        import uuid
 
-        token = "sess_secret_token_abcdef123456"
+        token = f"sess_secret_{uuid.uuid4().hex}"
         self.assertFalse(emergency_shield.is_session_revoked(token))
 
         emergency_shield.revoke_session(
@@ -572,13 +573,15 @@ class SentinelAITestSuite(unittest.TestCase):
         """Verifies ingest_request_event automatically drives EmergencyShield state machine."""
         from security.sentinel.shield import emergency_shield, ShieldTier
         from security.sentinel.realtime import ingest_request_event
+        import random
 
         emergency_shield.reset_to_normal()
+        rand_ip = f"198.51.100.{random.randint(10, 250)}"
 
         # Ingest SQL injection attack (HIGH severity)
         directive = ingest_request_event(
             domain="innotech-lab.local",
-            source_ip="198.51.100.99",
+            source_ip=rand_ip,
             method="GET",
             path="/api/products",
             query_string="id=1' OR '1'='1"
@@ -634,6 +637,112 @@ class SentinelAITestSuite(unittest.TestCase):
         })
         self.assertFalse(res_trig.is_error)
         self.assertEqual(res_trig.result["state"]["tier"], "EMERGENCY")
+
+    # ---------------- 9. SYSTEM, SERVER & DATABASE AUDIT ENGINES ----------------
+
+    def test_37_linux_server_ssh_hardening_audit(self):
+        """Verifies Linux SSH hardening rule checks (PermitRootLogin, Protocol 1, shadow perms)."""
+        from security.sentinel.system_engine import audit_linux_server_config
+
+        vulnerable_cfg = """
+Port 22
+Protocol 1
+PermitRootLogin yes
+PasswordAuthentication yes
+PermitEmptyPasswords yes
+MaxAuthTries 10
+shadow_perms: 0644
+"""
+        res = audit_linux_server_config("linux-srv1.corp.internal", config_text=vulnerable_cfg)
+        self.assertEqual(res["status"], "vulnerable")
+        rule_ids = [f["rule_id"] for f in res["findings"]]
+        self.assertIn("SSH_ROOT_LOGIN", rule_ids)
+        self.assertIn("SSH_PROTOCOL_1", rule_ids)
+        self.assertIn("SSH_EMPTY_PASSWORDS", rule_ids)
+        self.assertIn("PERM_SHADOW_WORLD_READABLE", rule_ids)
+
+    def test_38_windows_server_hardening_audit(self):
+        """Verifies Windows server audit identifies SMBv1, missing NLA, and null sessions."""
+        from security.sentinel.system_engine import audit_windows_server_config
+
+        win_cfg = """
+SMB1: Enabled
+UserAuthentication: 0 (NLA disabled)
+NullSessionShares: 1
+"""
+        res = audit_windows_server_config("win-ad.corp.internal", config_text=win_cfg)
+        self.assertEqual(res["status"], "vulnerable")
+        rule_ids = [f["rule_id"] for f in res["findings"]]
+        self.assertIn("WIN_SMBV1_ENABLED", rule_ids)
+        self.assertIn("WIN_RDP_NLA_DISABLED", rule_ids)
+        self.assertIn("WIN_NULL_SESSION_SHARES", rule_ids)
+
+    def test_39_database_hardening_audit_redis_and_postgres(self):
+        """Verifies database posture assessments for Redis and PostgreSQL."""
+        from security.sentinel.system_engine import audit_database_config
+
+        # Redis
+        redis_cfg = "bind 0.0.0.0\nprotected-mode no"
+        res_redis = audit_database_config("redis", "redis.corp.internal", config_text=redis_cfg)
+        self.assertEqual(res_redis["status"], "vulnerable")
+        r_ids = [f["rule_id"] for f in res_redis["findings"]]
+        self.assertIn("REDIS_PROTECTED_MODE_OFF", r_ids)
+        self.assertIn("REDIS_BIND_ALL", r_ids)
+
+        # Postgres
+        pg_cfg = "listen_addresses = '*'\nssl = off"
+        res_pg = audit_database_config("postgres", "pg.corp.internal", config_text=pg_cfg)
+        self.assertEqual(res_pg["status"], "vulnerable")
+        pg_ids = [f["rule_id"] for f in res_pg["findings"]]
+        self.assertIn("PG_SSL_OFF", pg_ids)
+
+    def test_40_guardian_enforces_scope_on_system_and_db_audits(self):
+        """Verifies Guardian strictly blocks system audits on unauthorized targets."""
+        agent = SentinelAgent(provider=MockProvider())
+
+        res_blocked = agent.execute_tool("audit_system_configuration", {
+            "target": "https://unauthorized-evil-server.com",
+            "os_family": "linux"
+        })
+        self.assertTrue(res_blocked.is_error)
+        self.assertIn("Bloqué par le Guardian", res_blocked.result.get("error", ""))
+
+    def test_41_agent_system_and_db_tools_execution(self):
+        """Verifies SentinelAgent executes system and DB audit tools on authorized targets."""
+        agent = SentinelAgent(provider=MockProvider())
+
+        # Authorized target: local lab
+        res_sys = agent.execute_tool("audit_system_configuration", {
+            "target": "https://innotech-lab.local",
+            "os_family": "linux"
+        })
+        self.assertFalse(res_sys.is_error)
+        self.assertEqual(res_sys.result["os_family"], "linux")
+
+        res_db = agent.execute_tool("audit_database_security", {
+            "target": "https://innotech-lab.local",
+            "db_type": "redis"
+        })
+        self.assertFalse(res_db.is_error)
+        self.assertEqual(res_db.result["db_type"], "redis")
+
+    def test_42_api_system_and_db_audit_endpoints(self):
+        """Verifies REST API endpoints for system and database configuration audits."""
+        # Authorized lab target
+        r_sys = self.client.post("/__sc/security/api/sentinel/audit/system", json={
+            "target": "https://innotech-lab.local",
+            "os_family": "linux",
+            "config_text": "Port 22\nPermitRootLogin no\nPasswordAuthentication no"
+        })
+        self.assertEqual(r_sys.status_code, 200)
+        self.assertTrue(r_sys.json["success"])
+
+        # Unauthorized target rejected with 403
+        r_unauth = self.client.post("/__sc/security/api/sentinel/audit/system", json={
+            "target": "https://unauthorized-hacker-target.com",
+            "os_family": "linux"
+        })
+        self.assertEqual(r_unauth.status_code, 403)
 
 
 if __name__ == "__main__":
