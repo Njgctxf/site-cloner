@@ -162,3 +162,54 @@ def dispatch_scan_alerts(target_url: str, scan_result: Dict[str, Any],
     webhook_url = os.environ.get("SECURITY_ALERT_WEBHOOK")
     if webhook_url:
         send_security_alert_webhook(webhook_url, target_url, scan_result)
+
+
+def dispatch_live_attack_alert(domain: str, source_ip: str, severity: str, summary: str,
+                               recipient_email: Optional[str] = None):
+    """
+    Fired by Sentinel's real-time monitor the moment an attack in progress is
+    confirmed on a protected site (as opposed to dispatch_scan_alerts, which
+    fires after a passive/active audit scan completes).
+    """
+    target_email = recipient_email or os.environ.get("SECURITY_ALERT_EMAIL")
+    if target_email and is_smtp_configured():
+        try:
+            host = os.environ.get("SMTP_HOST")
+            port = int(os.environ.get("SMTP_PORT", 587))
+            user = os.environ.get("SMTP_USER", "")
+            password = os.environ.get("SMTP_PASSWORD", "")
+            sender = os.environ.get("SMTP_FROM") or user
+
+            msg = MIMEMultipart("alternative")
+            msg["Subject"] = f"🚨 [SENTINEL] Attaque en cours détectée sur {domain}"
+            msg["From"] = sender
+            msg["To"] = target_email
+            msg.attach(MIMEText(
+                f"Sentinel a détecté et bloqué une attaque en cours.\n\n"
+                f"Domaine : {domain}\nIP source : {source_ip}\nGravité : {severity}\n\n{summary}\n",
+                "plain"))
+
+            with smtplib.SMTP(host, port) as server:
+                server.starttls()
+                server.login(user, password)
+                server.sendmail(sender, [target_email], msg.as_string())
+            log_event("SENTINEL_ALERT_EMAIL_SENT", "INFO", "ALERT_MGR", f"Alerte live envoyée pour {domain}")
+        except Exception as e:
+            log_event("SENTINEL_ALERT_EMAIL_FAILED", "WARN", "ALERT_MGR", f"Échec de l'alerte live par email: {e}")
+
+    webhook_url = os.environ.get("SECURITY_ALERT_WEBHOOK")
+    if webhook_url:
+        try:
+            payload = {
+                "text": f"🚨 *[SENTINEL LIVE]* Attaque bloquée sur {domain}",
+                "attachments": [{
+                    "color": "#ef4444" if severity in ("CRITICAL", "HIGH") else "#f97316",
+                    "title": f"IP source : {source_ip} - Gravité : {severity}",
+                    "text": summary,
+                }]
+            }
+            res = requests.post(webhook_url, json=payload, timeout=5)
+            if res.status_code in (200, 204):
+                log_event("SENTINEL_ALERT_WEBHOOK_SENT", "INFO", "ALERT_MGR", f"Alerte live webhook envoyée pour {domain}")
+        except Exception as e:
+            log_event("SENTINEL_ALERT_WEBHOOK_FAILED", "WARN", "ALERT_MGR", f"Échec webhook alerte live: {e}")

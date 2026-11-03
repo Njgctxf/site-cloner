@@ -9,6 +9,7 @@ import json
 import urllib.parse
 from datetime import datetime
 from functools import wraps
+from typing import Optional
 
 from flask import Blueprint, jsonify, render_template, request, session, redirect
 
@@ -741,6 +742,11 @@ from .sentinel import (
     list_conversations, create_conversation, get_conversation_messages,
     save_message, delete_conversation
 )
+from .sentinel.realtime import (
+    init_realtime_tables, provision_agent_key, revoke_agent_key,
+    resolve_agent_key, list_agent_keys, ingest_request_event,
+    get_active_blocklist, list_incidents
+)
 
 @bp.route("/sentinel")
 def sentinel_workspace():
@@ -896,9 +902,83 @@ def sentinel_killswitch_api():
     })
 
 
+# ==============================================================================
+# SENTINEL — PROTECTION TEMPS RÉEL (agents installés sur des sites autorisés)
+# ==============================================================================
+
+def _authenticate_agent() -> Optional[str]:
+    """Resolves the calling agent's scoped domain from its API key, or None."""
+    api_key = request.headers.get("X-Sentinel-Agent-Key") or (request.get_json(silent=True) or {}).get("api_key")
+    return resolve_agent_key(api_key)
+
+
+@bp.route("/api/sentinel/agent/provision", methods=["POST"])
+@admin_owner_required
+def sentinel_agent_provision_api():
+    """Issues an agent key for a domain - requires proven ownership first."""
+    data = request.get_json(silent=True) or {}
+    domain = (data.get("domain") or "").strip()
+    result = provision_agent_key(domain)
+    return jsonify(result), (200 if result.get("success") else 400)
+
+
+@bp.route("/api/sentinel/agent/keys", methods=["GET"])
+@admin_owner_required
+def sentinel_agent_list_keys_api():
+    return jsonify({"keys": list_agent_keys()})
+
+
+@bp.route("/api/sentinel/agent/revoke", methods=["POST"])
+@admin_owner_required
+def sentinel_agent_revoke_api():
+    data = request.get_json(silent=True) or {}
+    domain = (data.get("domain") or "").strip()
+    ok = revoke_agent_key(domain)
+    return jsonify({"success": ok})
+
+
+@bp.route("/api/sentinel/agent/report", methods=["POST"])
+def sentinel_agent_report_api():
+    """Ingestion endpoint called by the installed middleware for every
+    request it wants correlated centrally. Authenticated by the per-domain
+    agent key - never by session cookie, since the caller is a server, not a browser."""
+    domain = _authenticate_agent()
+    if not domain:
+        return jsonify({"error": "Clé d'agent invalide ou révoquée."}), 401
+
+    data = request.get_json(silent=True) or {}
+    directive = ingest_request_event(
+        domain=domain,
+        source_ip=(data.get("source_ip") or request.remote_addr or "unknown"),
+        method=data.get("method", "GET"),
+        path=data.get("path", ""),
+        query_string=data.get("query_string", ""),
+        body=data.get("body", ""),
+        headers=data.get("headers", {})
+    )
+    return jsonify(directive)
+
+
+@bp.route("/api/sentinel/agent/blocklist", methods=["GET"])
+def sentinel_agent_blocklist_api():
+    """Polled periodically by the installed agent to refresh its local block cache."""
+    domain = _authenticate_agent()
+    if not domain:
+        return jsonify({"error": "Clé d'agent invalide ou révoquée."}), 401
+    return jsonify({"domain": domain, "blocked_ips": get_active_blocklist(domain)})
+
+
+@bp.route("/api/sentinel/incidents", methods=["GET"])
+@admin_owner_required
+def sentinel_incidents_api():
+    domain = request.args.get("domain")
+    return jsonify({"incidents": list_incidents(domain=domain)})
+
+
 def init_security(app):
     init_db()
     init_sentinel_tables()
+    init_realtime_tables()
     from .scheduler import start_background_scheduler
     start_background_scheduler(interval_seconds=60)
     app.register_blueprint(bp)
