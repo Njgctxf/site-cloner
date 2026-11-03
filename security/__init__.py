@@ -757,6 +757,9 @@ from .sentinel import (
 from .sentinel.kali_connector import (
     init_kali_tables, kali_connector, PERMITTED_KALI_TOOLS
 )
+from .sentinel.user_llm_manager import (
+    init_user_llm_tables, user_llm_manager, get_current_user_id
+)
 from .sentinel.realtime import (
     init_realtime_tables, provision_agent_key, revoke_agent_key,
     resolve_agent_key, list_agent_keys, ingest_request_event,
@@ -853,14 +856,38 @@ def sentinel_chat_api():
     if not conv_id:
         conv_id = create_conversation(title=user_prompt[:35] + "...")
 
-    # Load provider configuration
-    cfg = get_sentinel_config()
-    active_p_id = data.get("provider") or cfg.get("active_provider", "mock")
-    p_data = cfg.get("providers", {}).get(active_p_id, {})
+    # Resolve user identity and per-user LLM connection
+    user_id = get_current_user_id()
+    requested_p_id = data.get("provider")
+    requested_model = data.get("model")
+    explicit_key = data.get("api_key")
+    explicit_base_url = data.get("base_url")
 
-    api_key = data.get("api_key") or p_data.get("api_key", "")
-    model = data.get("model") or p_data.get("model", "")
-    base_url = data.get("base_url") or p_data.get("base_url", "")
+    # If explicit key was directly passed in payload, use it directly (BYOK / test mode)
+    if explicit_key:
+        active_p_id = requested_p_id or "openai"
+        provider = get_provider(provider_id=active_p_id, api_key=explicit_key, model=requested_model, base_url=explicit_base_url)
+    else:
+        # Strict isolated per-user model resolution
+        provider, route_meta = user_llm_manager.resolve_user_llm_instance(
+            user_id=user_id,
+            override_provider_id=requested_p_id,
+            override_model=requested_model
+        )
+        active_p_id = route_meta.get("provider_id", "mock")
+
+        # Fallback notice if user asked for a paid/custom provider without connecting their account
+        if route_meta.get("fallback_notice") and requested_p_id and requested_p_id != "mock":
+            notice = f"⚠️ Compte personnel non connecté : Vous avez sélectionné '{requested_p_id}', mais aucun compte n'est actuellement configuré dans votre espace personnel ({user_id}). Rendez-vous dans 'Paramètres → Fournisseurs IA' pour connecter votre clé API ou compte personnel."
+            save_message(conv_id, role="assistant", content=notice)
+            return jsonify({
+                "success": True,
+                "conversation_id": conv_id,
+                "reply": notice,
+                "tools_executed": [],
+                "provider": active_p_id,
+                "requires_setup": True
+            })
 
     # Save user message to persistent DB
     save_message(conv_id, role="user", content=user_prompt)
@@ -875,8 +902,6 @@ def sentinel_chat_api():
             tool_call_id=m.get("tool_call_id")
         ))
 
-    # Initialize Provider & Agent
-    provider = get_provider(provider_id=active_p_id, api_key=api_key, model=model, base_url=base_url)
     agent = SentinelAgent(provider=provider)
 
     # Process step
@@ -884,6 +909,9 @@ def sentinel_chat_api():
         res = agent.process_message(conversation_history=history)
         reply_text = res.get("reply", "")
         tools_executed = res.get("tools_executed", [])
+
+        # Record per-user usage statistics
+        user_llm_manager.record_usage(user_id=user_id, provider_id=active_p_id)
 
         # Save assistant message to persistent DB
         save_message(conv_id, role="assistant", content=reply_text, tool_results=tools_executed)
@@ -894,6 +922,7 @@ def sentinel_chat_api():
             "reply": reply_text,
             "tools_executed": tools_executed,
             "provider": active_p_id,
+            "user_id": user_id,
             "finish_reason": res.get("finish_reason")
         })
     except Exception as e:
@@ -1420,6 +1449,105 @@ def sentinel_kali_history_api():
     return jsonify({"history": kali_connector.list_history(limit=limit)})
 
 
+# ==============================================================================
+# INDIVIDUAL USER LLM ACCOUNT ARCHITECTURE (MULTI-TENANT BYOK & OAUTH)
+# ==============================================================================
+
+@bp.route("/api/sentinel/user/llm/providers", methods=["GET"])
+def sentinel_user_llm_providers_api():
+    """Returns the LLM provider connections catalog strictly for the current user."""
+    user_id = get_current_user_id()
+    overview = user_llm_manager.get_user_overview(user_id=user_id)
+    return jsonify(overview)
+
+
+@bp.route("/api/sentinel/user/llm/connect", methods=["POST"])
+def sentinel_user_llm_connect_api():
+    """Connects or updates an individual LLM provider account with encryption at rest."""
+    user_id = get_current_user_id()
+    data = request.get_json(silent=True) or {}
+    provider_id = (data.get("provider_id") or "").strip().lower()
+    api_key = data.get("api_key")
+    model = data.get("model")
+    base_url = data.get("base_url")
+    auth_method = data.get("auth_method", "api_key")
+    oauth_token = data.get("oauth_token")
+
+    if not provider_id:
+        return jsonify({"error": "provider_id est obligatoire."}), 400
+
+    try:
+        res = user_llm_manager.connect_provider(
+            user_id=user_id,
+            provider_id=provider_id,
+            api_key=api_key,
+            model=model,
+            base_url=base_url,
+            auth_method=auth_method,
+            oauth_token=oauth_token
+        )
+        return jsonify(res)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 400
+
+
+@bp.route("/api/sentinel/user/llm/disconnect/<provider_id>", methods=["DELETE"])
+def sentinel_user_llm_disconnect_api(provider_id):
+    """Disconnects and securely wipes stored credentials strictly for the current user."""
+    user_id = get_current_user_id()
+    ok = user_llm_manager.disconnect_provider(user_id=user_id, provider_id=provider_id.lower().strip())
+    return jsonify({"success": ok, "provider_id": provider_id, "user_id": user_id})
+
+
+@bp.route("/api/sentinel/user/llm/active", methods=["POST"])
+def sentinel_user_llm_active_api():
+    """Sets the active/preferred provider and model for the current user."""
+    user_id = get_current_user_id()
+    data = request.get_json(silent=True) or {}
+    provider_id = (data.get("provider_id") or "").strip().lower()
+    model = data.get("model")
+
+    if not provider_id:
+        return jsonify({"error": "provider_id est obligatoire."}), 400
+
+    try:
+        res = user_llm_manager.set_user_active_provider(user_id=user_id, provider_id=provider_id, model=model)
+        return jsonify(res)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 400
+
+
+@bp.route("/api/sentinel/user/llm/test", methods=["POST"])
+def sentinel_user_llm_test_api():
+    """Validates connectivity to a provider using provided or saved user credentials."""
+    user_id = get_current_user_id()
+    data = request.get_json(silent=True) or {}
+    provider_id = (data.get("provider_id") or "mock").strip().lower()
+    api_key = data.get("api_key")
+    model = data.get("model")
+    base_url = data.get("base_url")
+
+    # If api_key not provided, try to load from user's encrypted store
+    if not api_key and provider_id != "mock":
+        prov, meta = user_llm_manager.resolve_user_llm_instance(user_id, override_provider_id=provider_id, override_model=model)
+        if not meta.get("is_user_custom"):
+            return jsonify({"healthy": False, "message": "Aucun compte connecté pour ce fournisseur"}), 400
+        health = prov.health_check()
+        return jsonify(health)
+
+    prov = get_provider(provider_id=provider_id, api_key=api_key or "", model=model or "", base_url=base_url or "")
+    health = prov.health_check()
+    return jsonify(health)
+
+
+@bp.route("/api/sentinel/admin/llm-stats", methods=["GET"])
+@admin_owner_required
+def sentinel_admin_llm_stats_api():
+    """Returns global multi-tenant LLM connection telemetry without leaking user secrets."""
+    stats = user_llm_manager.get_admin_telemetry_stats()
+    return jsonify(stats)
+
+
 def init_security(app):
     init_db()
     init_sentinel_tables()
@@ -1429,6 +1557,7 @@ def init_security(app):
     init_memory_tables()
     init_realtime_tables()
     init_kali_tables()
+    init_user_llm_tables()
     from .scheduler import start_background_scheduler
     start_background_scheduler(interval_seconds=60)
     app.register_blueprint(bp)

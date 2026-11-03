@@ -57,6 +57,14 @@ function setupEventListeners() {
             openKaliModal();
         });
     }
+
+    const openUserLlmBtn = document.getElementById("openUserLlmBtn");
+    if (openUserLlmBtn) {
+        openUserLlmBtn.addEventListener("click", (e) => {
+            e.preventDefault();
+            openByokModal();
+        });
+    }
 }
 
 async function loadConversations() {
@@ -307,50 +315,283 @@ async function loadProviderConfig() {
 
 async function updateActiveProvider(providerId) {
     try {
-        await fetch("/__sc/security/api/sentinel/config", {
+        await fetch("/__sc/security/api/sentinel/user/llm/active", {
             method: "POST",
             headers: {"Content-Type": "application/json"},
-            body: JSON.stringify({ active_provider: providerId })
+            body: JSON.stringify({ provider_id: providerId })
         });
     } catch (e) {
         console.error("Erreur màj provider", e);
     }
 }
 
+// Global cache of providers metadata
+let _userProvidersCatalog = [];
+
 function openByokModal() {
-    document.getElementById("byokModal").classList.add("active");
+    const modal = document.getElementById("byokModal");
+    if (modal) {
+        modal.classList.add("active");
+        loadUserLlmProviders();
+    }
 }
 
 function closeByokModal() {
-    document.getElementById("byokModal").classList.remove("active");
+    const modal = document.getElementById("byokModal");
+    if (modal) modal.classList.remove("active");
 }
 
-async function saveByokConfig() {
-    const pId = document.getElementById("modalProviderSelect").value;
-    const apiKey = document.getElementById("modalApiKey").value;
-    const model = document.getElementById("modalModel").value;
-    const baseUrl = document.getElementById("modalBaseUrl").value;
+async function loadUserLlmProviders() {
+    try {
+        const res = await fetch("/__sc/security/api/sentinel/user/llm/providers");
+        const data = await res.json();
+        _userProvidersCatalog = data.providers || [];
+
+        // Update User ID badge
+        const uBadge = document.getElementById("userLlmBadge");
+        if (uBadge) uBadge.textContent = `Utilisateur: ${data.user_id || "Session active"}`;
+
+        const cBadge = document.getElementById("userConnectedCountBadge");
+        if (cBadge) cBadge.textContent = `${data.connected_count || 0} connecté(s)`;
+
+        // Render providers list in left column
+        const container = document.getElementById("userProvidersList");
+        if (container) {
+            container.innerHTML = _userProvidersCatalog.map(p => {
+                const isAct = p.is_active;
+                const isConn = p.is_connected;
+                const statusColor = isConn ? "#10b981" : "#64748b";
+                const statusText = isAct ? "Actif (Défaut)" : (isConn ? "Connecté" : "Non configuré");
+                const borderStyle = isAct ? "border: 1px solid #38bdf8; background: rgba(56, 189, 248, 0.08);" : "border: 1px solid #1e293b; background: #0f172a;";
+
+                return `
+                    <div style="${borderStyle} border-radius: 8px; padding: 10px; display: flex; flex-direction: column; gap: 6px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <div style="display: flex; align-items: center; gap: 8px;">
+                                <i class="fa-solid ${p.icon || 'fa-microchip'}" style="color: ${isConn ? '#38bdf8' : '#64748b'}; font-size: 0.9rem;"></i>
+                                <strong style="font-size: 0.82rem; color: #fff;">${escapeHtml(p.name)}</strong>
+                            </div>
+                            <span style="font-size: 0.68rem; padding: 2px 7px; border-radius: 10px; font-weight: 600; background: ${isConn ? 'rgba(16, 185, 129, 0.15)' : 'rgba(100, 116, 139, 0.15)'}; color: ${statusColor}; border: 1px solid ${statusColor}44;">
+                                ${statusText}
+                            </span>
+                        </div>
+                        <div style="font-size: 0.72rem; color: #94a3b8; display: flex; justify-content: space-between;">
+                            <span>Modèle: <strong style="color: #cbd5e1;">${escapeHtml(p.selected_model || 'Standard')}</strong></span>
+                            <span>Usage: <strong style="color: #38bdf8;">${p.usage_count || 0} req</strong></span>
+                        </div>
+                        ${p.masked_credentials ? `<div style="font-size: 0.68rem; color: #64748b;">Clé: ${escapeHtml(p.masked_credentials)}</div>` : ''}
+                        <div style="display: flex; gap: 6px; margin-top: 4px; padding-top: 4px; border-top: 1px solid #1e293b;">
+                            <button onclick="editProviderInForm('${p.provider_id}')" style="background: #1e293b; color: #38bdf8; border: 1px solid #334155; padding: 4px 8px; border-radius: 4px; font-size: 0.7rem; cursor: pointer;">
+                                <i class="fa-solid fa-pen-to-square"></i> Configurer
+                            </button>
+                            ${isConn ? `
+                                <button onclick="setUserActiveProvider('${p.provider_id}')" style="background: ${isAct ? '#0284c7' : '#1e293b'}; color: #fff; border: 1px solid #334155; padding: 4px 8px; border-radius: 4px; font-size: 0.7rem; cursor: pointer;">
+                                    ${isAct ? '✓ Actif' : 'Activer'}
+                                </button>
+                                <button onclick="disconnectUserProvider('${p.provider_id}')" style="background: #1e293b; color: #ef4444; border: 1px solid #334155; padding: 4px 8px; border-radius: 4px; font-size: 0.7rem; cursor: pointer;">
+                                    <i class="fa-solid fa-trash-can"></i>
+                                </button>
+                            ` : ''}
+                        </div>
+                    </div>
+                `;
+            }).join("");
+        }
+
+        // Initialize form with active or first provider
+        const curSelect = document.getElementById("modalProviderSelect");
+        if (curSelect) {
+            curSelect.value = data.active_provider_id || "gemini";
+            onProviderSelectChanged(curSelect.value);
+        }
+
+        // Synchronize main sidebar dropdown
+        const mainSelect = document.getElementById("providerSelect");
+        if (mainSelect && data.active_provider_id) {
+            mainSelect.value = data.active_provider_id;
+            const modelTag = document.getElementById("activeModelTag");
+            if (modelTag) {
+                const optText = mainSelect.options[mainSelect.selectedIndex]?.text || data.active_provider_id;
+                modelTag.textContent = `Modèle: ${optText}`;
+            }
+        }
+    } catch (e) {
+        console.error("Erreur chargement des fournisseurs utilisateur:", e);
+    }
+}
+
+function onProviderSelectChanged(providerId) {
+    const meta = _userProvidersCatalog.find(p => p.provider_id === providerId) || {};
+    const titleEl = document.getElementById("formProvTitle");
+    const iconEl = document.getElementById("formProvIcon");
+    const docLink = document.getElementById("providerDocLink");
+    const apiKeyGroup = document.getElementById("apiKeyGroup");
+    const baseUrlGroup = document.getElementById("baseUrlGroup");
+    const modelInput = document.getElementById("modalModel");
+    const baseUrlInput = document.getElementById("modalBaseUrl");
+    const quickModelsRow = document.getElementById("quickModelsRow");
+    const apiKeyInput = document.getElementById("modalApiKey");
+    const testResultBox = document.getElementById("testResultBox");
+
+    if (testResultBox) testResultBox.style.display = "none";
+    if (apiKeyInput) apiKeyInput.value = "";
+
+    if (titleEl) titleEl.textContent = `Connecter : ${meta.name || providerId}`;
+    if (iconEl) iconEl.className = `fa-solid ${meta.icon || 'fa-key'}`;
+
+    if (docLink) {
+        if (meta.docs_url) {
+            docLink.style.display = "inline";
+            docLink.href = meta.docs_url;
+            docLink.textContent = `Obtenir une clé ${meta.name} →`;
+        } else {
+            docLink.style.display = "none";
+        }
+    }
+
+    if (providerId === "mock") {
+        if (apiKeyGroup) apiKeyGroup.style.display = "none";
+        if (baseUrlGroup) baseUrlGroup.style.display = "none";
+    } else if (providerId === "ollama") {
+        if (apiKeyGroup) apiKeyGroup.style.display = "none";
+        if (baseUrlGroup) baseUrlGroup.style.display = "block";
+    } else {
+        if (apiKeyGroup) apiKeyGroup.style.display = "block";
+        if (baseUrlGroup) baseUrlGroup.style.display = "block";
+    }
+
+    if (modelInput) modelInput.value = meta.selected_model || "";
+    if (baseUrlInput) baseUrlInput.value = meta.base_url || "";
+
+    // Quick models buttons
+    if (quickModelsRow) {
+        const models = meta.available_models || [];
+        quickModelsRow.innerHTML = models.map(m => `
+            <span onclick="document.getElementById('modalModel').value='${m}'" style="background: #1e293b; border: 1px solid #334155; color: #38bdf8; font-size: 0.65rem; padding: 2px 6px; border-radius: 4px; cursor: pointer;">
+                ${m}
+            </span>
+        `).join("");
+    }
+}
+
+function editProviderInForm(providerId) {
+    const select = document.getElementById("modalProviderSelect");
+    if (select) {
+        select.value = providerId;
+        onProviderSelectChanged(providerId);
+    }
+}
+
+async function saveUserProviderConnection() {
+    const providerId = document.getElementById("modalProviderSelect").value;
+    const apiKey = (document.getElementById("modalApiKey")?.value || "").trim();
+    const model = (document.getElementById("modalModel")?.value || "").trim();
+    const baseUrl = (document.getElementById("modalBaseUrl")?.value || "").trim();
+    const btn = document.getElementById("saveConnBtn");
+
+    if (btn) btn.disabled = true;
 
     try {
-        const res = await fetch("/__sc/security/api/sentinel/config", {
+        const payload = {
+            provider_id: providerId,
+            model: model,
+            base_url: baseUrl
+        };
+        if (apiKey) payload.api_key = apiKey;
+
+        const res = await fetch("/__sc/security/api/sentinel/user/llm/connect", {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+
+        if (data.success) {
+            alert(`Fournisseur ${providerId} enregistré et connecté pour votre compte !`);
+            await loadUserLlmProviders();
+        } else {
+            alert("Erreur: " + (data.error || "Échec de connexion"));
+        }
+    } catch (e) {
+        alert("Erreur réseau: " + e.message);
+    } finally {
+        if (btn) btn.disabled = false;
+    }
+}
+
+async function testCurrentProviderConnection() {
+    const providerId = document.getElementById("modalProviderSelect").value;
+    const apiKey = (document.getElementById("modalApiKey")?.value || "").trim();
+    const model = (document.getElementById("modalModel")?.value || "").trim();
+    const baseUrl = (document.getElementById("modalBaseUrl")?.value || "").trim();
+    const box = document.getElementById("testResultBox");
+    const textEl = document.getElementById("testResultText");
+    const btn = document.getElementById("testConnBtn");
+
+    if (box) box.style.display = "block";
+    if (textEl) {
+        textEl.style.color = "#38bdf8";
+        textEl.textContent = "Test de connectivité en cours avec le fournisseur...";
+    }
+    if (btn) btn.disabled = true;
+
+    try {
+        const res = await fetch("/__sc/security/api/sentinel/user/llm/test", {
             method: "POST",
             headers: {"Content-Type": "application/json"},
             body: JSON.stringify({
-                active_provider: pId,
-                provider_id: pId,
+                provider_id: providerId,
                 api_key: apiKey,
                 model: model,
                 base_url: baseUrl
             })
         });
         const data = await res.json();
-        if (data.success) {
-            alert("Configuration enregistrée avec succès !");
-            closeByokModal();
-            loadProviderConfig();
+
+        if (data.healthy) {
+            textEl.style.color = "#10b981";
+            textEl.textContent = `✓ Succès : Connexion établie avec l'API ${providerId} (${data.message || 'Authentification validée'}).`;
+        } else {
+            textEl.style.color = "#ef4444";
+            textEl.textContent = `✗ Échec : ${data.error || data.message || 'Rejet par l\'API du fournisseur'}.`;
         }
     } catch (e) {
-        alert("Erreur lors de l'enregistrement de la configuration.");
+        textEl.style.color = "#ef4444";
+        textEl.textContent = `Erreur réseau: ${e.message}`;
+    } finally {
+        if (btn) btn.disabled = false;
+    }
+}
+
+async function disconnectUserProvider(providerId) {
+    if (!confirm(`Voulez-vous vraiment déconnecter votre compte ${providerId} ? Vos clés chiffrées seront définitivement supprimées de votre espace.`)) return;
+
+    try {
+        const res = await fetch(`/__sc/security/api/sentinel/user/llm/disconnect/${providerId}`, {
+            method: "DELETE"
+        });
+        const data = await res.json();
+        if (data.success) {
+            await loadUserLlmProviders();
+        }
+    } catch (e) {
+        alert("Erreur de déconnexion: " + e.message);
+    }
+}
+
+async function setUserActiveProvider(providerId) {
+    try {
+        const res = await fetch("/__sc/security/api/sentinel/user/llm/active", {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify({ provider_id: providerId })
+        });
+        const data = await res.json();
+        if (data.success) {
+            await loadUserLlmProviders();
+        }
+    } catch (e) {
+        alert("Erreur: " + e.message);
     }
 }
 

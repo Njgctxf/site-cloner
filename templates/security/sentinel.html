@@ -500,6 +500,7 @@
                 <a href="/__sc/security/admin"><i class="fa-solid fa-user-shield"></i> Espace Privé Propriétaire</a>
                 <a href="{{ lab_url }}" target="_blank"><i class="fa-solid fa-flask"></i> Laboratoire InnoTech</a>
                 <a href="#" id="openKaliBtn" style="color: #38bdf8; font-weight: 600;"><i class="fa-brands fa-linux"></i> Kali Linux MCP <span id="kaliStatusPill" style="font-size:0.68rem; background:rgba(56,189,248,0.2); padding:1px 6px; border-radius:10px; border:1px solid #38bdf855;">MCP</span></a>
+                <a href="#" id="openUserLlmBtn" style="color: #38bdf8; font-weight: 600;"><i class="fa-solid fa-sliders"></i> Fournisseurs IA</a>
                 <a href="#" id="openSkillsLibBtn" style="color: #a78bfa;"><i class="fa-solid fa-book-open"></i> Skills Library <span style="font-size:0.7rem; background:#a78bfa22; padding:1px 6px; border-radius:10px; border:1px solid #a78bfa55;">818</span></a>
             </div>
         </header>
@@ -562,53 +563,104 @@
     </main>
 </div>
 
-<!-- Modal BYOK Config -->
+<!-- Modal LLM Connection Center (Espace Personnel) -->
 <div class="modal-overlay" id="byokModal">
-    <div class="modal-card">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.2rem;">
-            <h3 style="margin: 0; font-size: 1.1rem; color: #fff;">
-                <i class="fa-solid fa-key" style="color: #38bdf8;"></i> Configuration Clés API (BYOK)
-            </h3>
-            <button onclick="closeByokModal()" style="background: none; border: none; color: #94a3b8; font-size: 1.1rem; cursor: pointer;">
-                <i class="fa-solid fa-xmark"></i>
-            </button>
+    <div class="modal-card" style="width: 960px; max-width: 96vw; max-height: 90vh; display: flex; flex-direction: column;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; border-bottom: 1px solid #1e293b; padding-bottom: 10px;">
+            <div style="display: flex; align-items: center; gap: 12px;">
+                <i class="fa-solid fa-brain" style="color: #38bdf8; font-size: 1.6rem;"></i>
+                <div>
+                    <h3 style="margin: 0; font-size: 1.15rem; color: #fff;">
+                        PARAMÈTRES &bull; FOURNISSEURS D'INTELLIGENCE ARTIFICIELLE
+                    </h3>
+                    <small style="color: #64748b; font-size: 0.72rem;">
+                        Espace Personnel &bull; Chiffrement AES-256 des identifiants &bull; Isolation multi-utilisateur stricte
+                    </small>
+                </div>
+            </div>
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <span id="userLlmBadge" style="background: rgba(56, 189, 248, 0.15); border: 1px solid rgba(56, 189, 248, 0.3); color: #38bdf8; font-size: 0.72rem; padding: 3px 8px; border-radius: 6px; font-weight: 600;">
+                    Utilisateur: ...
+                </span>
+                <button onclick="closeByokModal()" style="background: none; border: none; color: #94a3b8; font-size: 1.2rem; cursor: pointer;">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
         </div>
 
-        <div class="form-group">
-            <label class="form-label">Fournisseur</label>
-            <select id="modalProviderSelect" class="form-input">
-                <option value="gemini">Google Gemini</option>
-                <option value="claude">Anthropic Claude</option>
-                <option value="openai">OpenAI (ChatGPT)</option>
-                <option value="deepseek">DeepSeek</option>
-                <option value="mistral">Mistral AI</option>
-                <option value="ollama">Ollama (Local)</option>
-            </select>
+        <!-- Corps du modal -->
+        <div style="display: grid; grid-template-columns: 1fr 1.15fr; gap: 1rem; overflow-y: auto; flex: 1; padding-right: 4px;">
+            <!-- Colonne Gauche : Liste des fournisseurs connectables -->
+            <div style="display: flex; flex-direction: column; gap: 10px;">
+                <div style="font-size: 0.75rem; text-transform: uppercase; color: #94a3b8; font-weight: 700; display: flex; justify-content: space-between; align-items: center;">
+                    <span>Vos Comptes Fournisseurs</span>
+                    <span id="userConnectedCountBadge" style="color: #38bdf8; font-size: 0.7rem;">0 connecté(s)</span>
+                </div>
+
+                <div id="userProvidersList" style="display: flex; flex-direction: column; gap: 8px; max-height: 440px; overflow-y: auto;">
+                    <!-- Rempli dynamiquement -->
+                </div>
+            </div>
+
+            <!-- Colonne Droite : Formulaire de Connexion & Tests -->
+            <div style="background: #0f172a; border: 1px solid #1e293b; border-radius: 8px; padding: 14px; display: flex; flex-direction: column; gap: 10px;">
+                <div style="font-size: 0.8rem; font-weight: 700; color: #fff; display: flex; align-items: center; gap: 8px;">
+                    <i id="formProvIcon" class="fa-solid fa-key" style="color: #38bdf8;"></i>
+                    <span id="formProvTitle">Connecter un fournisseur</span>
+                </div>
+
+                <div class="form-group" style="margin-bottom: 8px;">
+                    <label class="form-label" style="font-size: 0.72rem;">Fournisseur IA</label>
+                    <select id="modalProviderSelect" class="form-input" style="font-size: 0.82rem; padding: 7px 10px;" onchange="onProviderSelectChanged(this.value)">
+                        <option value="gemini">Google Gemini (Gemini 1.5 Flash / Pro)</option>
+                        <option value="claude">Anthropic Claude (Claude 3.5 Sonnet)</option>
+                        <option value="openai">OpenAI (GPT-4o / o1)</option>
+                        <option value="deepseek">DeepSeek (V3 / R1)</option>
+                        <option value="mistral">Mistral AI (Large / Codestral)</option>
+                        <option value="ollama">Ollama (Serveur Local)</option>
+                        <option value="mock">Simulation Déterministe (Sans Clé)</option>
+                    </select>
+                </div>
+
+                <div class="form-group" id="apiKeyGroup" style="margin-bottom: 8px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                        <label class="form-label" style="font-size: 0.72rem; margin: 0;">Clé API Personnelle ou Jeton</label>
+                        <a id="providerDocLink" href="#" target="_blank" style="color: #38bdf8; font-size: 0.7rem; text-decoration: none;">Obtenir une clé &rarr;</a>
+                    </div>
+                    <input type="password" id="modalApiKey" class="form-input" style="font-size: 0.82rem; padding: 7px 10px;" placeholder="sk-... ou AIza...">
+                    <small id="apiKeyHint" style="color: #64748b; font-size: 0.68rem;">Chiffré en AES-256 dans votre espace personnel. Jamais partagé.</small>
+                </div>
+
+                <div class="form-group" style="margin-bottom: 8px;">
+                    <label class="form-label" style="font-size: 0.72rem;">Modèle préféré</label>
+                    <input type="text" id="modalModel" class="form-input" style="font-size: 0.82rem; padding: 7px 10px;" placeholder="ex: gpt-4o, gemini-1.5-flash, claude-3-5-sonnet">
+                    <div id="quickModelsRow" style="display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px;"></div>
+                </div>
+
+                <div class="form-group" id="baseUrlGroup" style="margin-bottom: 8px;">
+                    <label class="form-label" style="font-size: 0.72rem;">Base URL (Optionnel - Pour Ollama ou passerelle d'entreprise)</label>
+                    <input type="text" id="modalBaseUrl" class="form-input" style="font-size: 0.82rem; padding: 7px 10px;" placeholder="http://localhost:11434/v1">
+                </div>
+
+                <div style="display: flex; gap: 8px; margin-top: 6px;">
+                    <button onclick="testCurrentProviderConnection()" id="testConnBtn" style="background: #1e293b; color: #38bdf8; border: 1px solid #334155; padding: 8px 12px; border-radius: 6px; font-size: 0.78rem; font-weight: 600; cursor: pointer;">
+                        <i class="fa-solid fa-plug"></i> Tester
+                    </button>
+                    <button onclick="saveUserProviderConnection()" id="saveConnBtn" style="flex: 1; background: #0284c7; color: #fff; border: none; padding: 8px 14px; border-radius: 6px; font-size: 0.78rem; font-weight: 600; cursor: pointer;">
+                        <i class="fa-solid fa-floppy-disk"></i> Enregistrer &amp; Connecter
+                    </button>
+                </div>
+
+                <!-- Console de test / retour statut -->
+                <div id="testResultBox" style="display: none; margin-top: 8px; padding: 8px 10px; border-radius: 6px; font-size: 0.75rem; background: #111827; border: 1px solid #374151;">
+                    <span id="testResultText"></span>
+                </div>
+            </div>
         </div>
 
-        <div class="form-group" id="apiKeyGroup">
-            <label class="form-label">Clé API Personnelle</label>
-            <input type="password" id="modalApiKey" class="form-input" placeholder="sk-... ou AIza...">
-            <small style="color: #64748b; font-size: 0.72rem;">Votre clé est stockée localement dans votre base chiffrée, jamais partagée.</small>
-        </div>
-
-        <div class="form-group">
-            <label class="form-label">Modèle (optionnel)</label>
-            <input type="text" id="modalModel" class="form-input" placeholder="ex: gemini-1.5-flash, claude-3-5-sonnet, gpt-4o">
-        </div>
-
-        <div class="form-group" id="baseUrlGroup">
-            <label class="form-label">Base URL (Ollama ou API personnalisée)</label>
-            <input type="text" id="modalBaseUrl" class="form-input" placeholder="http://localhost:11434/v1">
-        </div>
-
-        <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 1.5rem;">
-            <button onclick="closeByokModal()" style="background: #1e293b; color: #cbd5e1; border: 1px solid #334155; padding: 8px 14px; border-radius: 6px; cursor: pointer;">
-                Annuler
-            </button>
-            <button onclick="saveByokConfig()" style="background: #0284c7; color: #fff; border: none; padding: 8px 16px; border-radius: 6px; font-weight: 600; cursor: pointer;">
-                Enregistrer la configuration
-            </button>
+        <div style="margin-top: 10px; padding-top: 10px; border-top: 1px solid #1e293b; display: flex; justify-content: space-between; align-items: center;">
+            <span style="color: #475569; font-size: 0.72rem;">Isolation stricte : Aucun compte n'est partagé. Chaque utilisateur reste responsable de ses quotas et coûts.</span>
+            <button onclick="closeByokModal()" style="background: #1e293b; color: #cbd5e1; border: 1px solid #334155; padding: 6px 14px; border-radius: 6px; font-size: 0.8rem; cursor: pointer;">Fermer</button>
         </div>
     </div>
 </div>

@@ -1162,6 +1162,175 @@ NullSessionShares: 1
         self.assertIn("history", r_hist.json)
         self.assertTrue(len(r_hist.json["history"]) > 0)
 
+    # ---------------- 13. INDIVIDUAL USER LLM ACCOUNT ARCHITECTURE ----------------
+
+    def test_63_user_llm_encryption_at_rest(self):
+        """Verifies cryptographic credential encryption, decryption, and secret masking."""
+        from security.sentinel.user_llm_manager import encrypt_secret, decrypt_secret, mask_secret
+
+        raw_key = "sk-proj-test1234567890abcdefghijklmnopqrstuvwxyz"
+        encrypted = encrypt_secret(raw_key)
+
+        # Encrypted ciphertext must NOT contain raw secret
+        self.assertNotEqual(raw_key, encrypted)
+        self.assertNotIn(raw_key, encrypted)
+
+        # Decryption must perfectly recover the plaintext
+        decrypted = decrypt_secret(encrypted)
+        self.assertEqual(raw_key, decrypted)
+
+        # Masking must redact the inner secret
+        masked = mask_secret(raw_key)
+        self.assertTrue(masked.startswith("sk-p"))
+        self.assertTrue(masked.endswith("wxyz"))
+        self.assertIn("****", masked)
+
+    def test_64_user_llm_multi_tenant_isolation(self):
+        """Verifies complete multi-tenant account isolation between User A and User B."""
+        from security.sentinel.user_llm_manager import user_llm_manager
+
+        user_a = "user_alpha_999"
+        user_b = "user_beta_888"
+
+        # User A connects OpenAI
+        res_a = user_llm_manager.connect_provider(
+            user_id=user_a,
+            provider_id="openai",
+            api_key="sk-alpha-super-secret-key-12345",
+            model="gpt-4o"
+        )
+        self.assertTrue(res_a["success"])
+
+        # User B inspects their own overview
+        overview_b = user_llm_manager.get_user_overview(user_id=user_b)
+        openai_b = next(p for p in overview_b["providers"] if p["provider_id"] == "openai")
+
+        # User B must NOT see User A's connection, credentials, or status
+        self.assertFalse(openai_b["is_connected"])
+        self.assertEqual(openai_b["masked_credentials"], "")
+        self.assertEqual(openai_b["usage_count"], 0)
+
+        # User A overview contains their masked credentials
+        overview_a = user_llm_manager.get_user_overview(user_id=user_a)
+        openai_a = next(p for p in overview_a["providers"] if p["provider_id"] == "openai")
+        self.assertTrue(openai_a["is_connected"])
+        self.assertIn("****", openai_a["masked_credentials"])
+        self.assertNotIn("super-secret", openai_a["masked_credentials"])
+
+    def test_65_user_llm_router_resolution_and_usage_tracking(self):
+        """Verifies per-user model router decrypts only the caller's key and tracks usage."""
+        import uuid
+        from security.sentinel.user_llm_manager import user_llm_manager
+
+        user_client = f"client_enterprise_{uuid.uuid4().hex[:8]}"
+        user_llm_manager.connect_provider(
+            user_id=user_client,
+            provider_id="claude",
+            api_key="sk-ant-client-key-8888",
+            model="claude-3-5-sonnet-20241022"
+        )
+        user_llm_manager.set_user_active_provider(user_id=user_client, provider_id="claude")
+
+        # Router resolves for user_client
+        provider_inst, meta = user_llm_manager.resolve_user_llm_instance(user_id=user_client)
+        self.assertTrue(meta["is_user_custom"])
+        self.assertEqual(meta["provider_id"], "claude")
+        self.assertEqual(provider_inst.api_key, "sk-ant-client-key-8888")
+
+        # Usage tracking
+        user_llm_manager.record_usage(user_id=user_client, provider_id="claude")
+        user_llm_manager.record_usage(user_id=user_client, provider_id="claude")
+
+        overview = user_llm_manager.get_user_overview(user_id=user_client)
+        claude_meta = next(p for p in overview["providers"] if p["provider_id"] == "claude")
+        self.assertEqual(claude_meta["usage_count"], 2)
+
+    def test_66_user_llm_disconnect_isolated(self):
+        """Verifies disconnecting an account removes it solely for the calling user."""
+        from security.sentinel.user_llm_manager import user_llm_manager
+
+        u1 = "user_isolation_1"
+        u2 = "user_isolation_2"
+
+        user_llm_manager.connect_provider(user_id=u1, provider_id="mistral", api_key="mis-key-1111")
+        user_llm_manager.connect_provider(user_id=u2, provider_id="mistral", api_key="mis-key-2222")
+
+        # Disconnect u1 only
+        ok = user_llm_manager.disconnect_provider(user_id=u1, provider_id="mistral")
+        self.assertTrue(ok)
+
+        # u1 is disconnected
+        ov_u1 = user_llm_manager.get_user_overview(user_id=u1)
+        m_u1 = next(p for p in ov_u1["providers"] if p["provider_id"] == "mistral")
+        self.assertFalse(m_u1["is_connected"])
+
+        # u2 is completely unaffected
+        ov_u2 = user_llm_manager.get_user_overview(user_id=u2)
+        m_u2 = next(p for p in ov_u2["providers"] if p["provider_id"] == "mistral")
+        self.assertTrue(m_u2["is_connected"])
+
+    def test_67_api_user_llm_endpoints(self):
+        """Verifies REST API endpoints for user LLM catalog, connect, active, and test."""
+        headers = {"X-Sentinel-User-Id": "api_test_user_777"}
+
+        # 1. Get providers catalog for this user
+        r1 = self.client.get("/__sc/security/api/sentinel/user/llm/providers", headers=headers)
+        self.assertEqual(r1.status_code, 200)
+        self.assertEqual(r1.json["user_id"], "api_test_user_777")
+        self.assertTrue(len(r1.json["providers"]) >= 6)
+
+        # 2. Connect a provider
+        r2 = self.client.post("/__sc/security/api/sentinel/user/llm/connect", headers=headers, json={
+            "provider_id": "deepseek",
+            "api_key": "sk-deepseek-test-9999",
+            "model": "deepseek-chat"
+        })
+        self.assertEqual(r2.status_code, 200)
+        self.assertTrue(r2.json["success"])
+        self.assertIn("****", r2.json["masked_key"])
+
+        # 3. Set active provider
+        r3 = self.client.post("/__sc/security/api/sentinel/user/llm/active", headers=headers, json={
+            "provider_id": "deepseek"
+        })
+        self.assertEqual(r3.status_code, 200)
+        self.assertEqual(r3.json["active_provider_id"], "deepseek")
+
+        # 4. Test connectivity endpoint with mock provider
+        r4 = self.client.post("/__sc/security/api/sentinel/user/llm/test", headers=headers, json={
+            "provider_id": "mock"
+        })
+        self.assertEqual(r4.status_code, 200)
+        self.assertTrue(r4.json["healthy"])
+
+        # 5. Disconnect provider
+        r5 = self.client.delete("/__sc/security/api/sentinel/user/llm/disconnect/deepseek", headers=headers)
+        self.assertEqual(r5.status_code, 200)
+        self.assertTrue(r5.json["success"])
+
+    def test_68_admin_telemetry_stats_without_secret_leakage(self):
+        """Verifies admin global telemetry stats aggregate metrics without exposing secrets."""
+        # 1. Non-admin request rejected
+        r_unauth = self.client.get("/__sc/security/api/sentinel/admin/llm-stats")
+        self.assertEqual(r_unauth.status_code, 401)
+
+        # 2. Admin authenticated request
+        with self.client.session_transaction() as sess:
+            sess["admin"] = "admin"
+
+        r_admin = self.client.get("/__sc/security/api/sentinel/admin/llm-stats")
+        self.assertEqual(r_admin.status_code, 200)
+        stats = r_admin.json
+        self.assertIn("total_users_with_llm", stats)
+        self.assertIn("providers", stats)
+
+        # Strictly ensure NO credentials / keys exist in admin telemetry
+        dump_str = json.dumps(stats).lower()
+        self.assertNotIn("api_key", dump_str)
+        self.assertNotIn("encrypted_credentials", dump_str)
+        self.assertNotIn("password", dump_str)
+        self.assertNotIn("super-secret", dump_str)
+
 
 if __name__ == "__main__":
     unittest.main()
