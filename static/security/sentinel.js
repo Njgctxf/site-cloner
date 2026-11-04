@@ -8,6 +8,8 @@ let currentProvider = "mock";
 document.addEventListener("DOMContentLoaded", () => {
     loadConversations();
     loadProviderConfig();
+    loadKaliStatus();
+    loadPentagiStatus();
     setupEventListeners();
 });
 
@@ -55,6 +57,14 @@ function setupEventListeners() {
         openKaliBtn.addEventListener("click", (e) => {
             e.preventDefault();
             openKaliModal();
+        });
+    }
+
+    const openPentagiBtn = document.getElementById("openPentagiBtn");
+    if (openPentagiBtn) {
+        openPentagiBtn.addEventListener("click", (e) => {
+            e.preventDefault();
+            openPentagiModal();
         });
     }
 
@@ -741,6 +751,7 @@ async function openKaliModal() {
         modal.classList.add("active");
         await loadKaliStatus();
         await syncKaliTools();
+        await loadKaliPending();
     }
 }
 
@@ -920,5 +931,361 @@ async function executeKaliToolManual() {
         if (btn) btn.disabled = false;
     }
 }
+
+// ------------------------------------------------------------------------
+// Demandes de l'agent en attente d'approbation humaine (jamais d'exécution
+// automatique : request_execution() ne fait que déposer la demande, c'est
+// approveKaliPending() ici qui déclenche réellement l'exécution).
+// ------------------------------------------------------------------------
+
+async function loadKaliPending() {
+    const list = document.getElementById("kaliPendingList");
+    const countBadge = document.getElementById("kaliPendingCountBadge");
+    if (!list) return;
+
+    try {
+        const res = await fetch("/__sc/security/api/sentinel/kali/pending");
+        if (res.status === 401) {
+            list.innerHTML = `<div style="color: #475569; font-size: 0.78rem; text-align: center; padding: 10px;">Connexion admin requise.</div>`;
+            return;
+        }
+        const data = await res.json();
+        const pending = data.pending || [];
+
+        if (countBadge) countBadge.textContent = `${pending.length} en attente`;
+
+        if (!pending.length) {
+            list.innerHTML = `<div style="color: #475569; font-size: 0.78rem; text-align: center; padding: 10px;">Aucune demande en attente.</div>`;
+            return;
+        }
+
+        list.innerHTML = pending.map(p => {
+            const args = Array.isArray(p.custom_args) ? p.custom_args.join(" ") : "";
+            return `
+                <div style="background: #1a1406; border: 1px solid #ca8a0455; border-radius: 6px; padding: 8px 10px;">
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 8px;">
+                        <div style="font-size: 0.78rem; color: #fde68a;">
+                            <strong>${escapeHtml(p.tool_name)}</strong> sur <strong>${escapeHtml(p.target)}</strong>
+                        </div>
+                        <span style="font-size: 0.65rem; color: #94a3b8; white-space: nowrap;">${escapeHtml(p.created_at || "")}</span>
+                    </div>
+                    ${args ? `<div style="font-size: 0.68rem; color: #94a3b8; margin-top: 2px;">args : ${escapeHtml(args)}</div>` : ""}
+                    ${p.reason ? `<div style="font-size: 0.7rem; color: #cbd5e1; margin-top: 4px;">Raison (agent) : ${escapeHtml(p.reason)}</div>` : ""}
+                    <div style="font-size: 0.65rem; color: #64748b; margin-top: 2px;">Demandé par : ${escapeHtml(p.requested_by || "agent")}</div>
+                    <div style="display: flex; gap: 6px; margin-top: 8px;">
+                        <button onclick="approveKaliPending('${p.id}')" style="flex: 1; background: #059669; color: #ecfdf5; border: none; padding: 5px 10px; border-radius: 5px; font-size: 0.72rem; font-weight: 700; cursor: pointer;">
+                            <i class="fa-solid fa-check"></i> Approuver &amp; exécuter
+                        </button>
+                        <button onclick="denyKaliPending('${p.id}')" style="flex: 1; background: #1e293b; color: #f87171; border: 1px solid #ef444455; padding: 5px 10px; border-radius: 5px; font-size: 0.72rem; font-weight: 700; cursor: pointer;">
+                            <i class="fa-solid fa-xmark"></i> Refuser
+                        </button>
+                    </div>
+                </div>
+            `;
+        }).join("");
+    } catch (e) {
+        console.error("Erreur de chargement des demandes Kali en attente:", e);
+    }
+}
+
+async function approveKaliPending(approvalId) {
+    if (!confirm("Approuver cette demande ? L'outil Kali va s'exécuter réellement sur la cible indiquée.")) return;
+    try {
+        const res = await fetch(`/__sc/security/api/sentinel/kali/approve/${encodeURIComponent(approvalId)}`, {
+            method: "POST",
+            headers: {"Content-Type": "application/json"}
+        });
+        const data = await res.json();
+        if (!res.ok || data.success === false) {
+            alert("Erreur: " + (data.error || "Échec de l'approbation."));
+        }
+        await loadKaliPending();
+
+        // Reflect the result in the execution console too
+        const consoleBox = document.getElementById("kaliOutputConsole");
+        const statusBadge = document.getElementById("kaliExecStatusBadge");
+        if (consoleBox && data.status) {
+            let output = `[APPROUVÉ MANUELLEMENT] : ${data.command || data.tool}\n`;
+            output += `[STATUT] : ${data.status} (Code retour: ${data.returncode})\n`;
+            if (data.stdout) output += `------------------------------------------------------------\n${data.stdout}\n`;
+            if (data.stderr) output += `[STDERR / INFO] : \n${data.stderr}\n`;
+            if (data.error) output += `[ERREUR] : ${data.error}\n`;
+            consoleBox.textContent = output;
+        }
+        if (statusBadge && data.status) {
+            statusBadge.textContent = data.status;
+            statusBadge.style.color = data.success ? "#34d399" : "#f87171";
+        }
+    } catch (e) {
+        alert("Erreur réseau: " + e.message);
+    }
+}
+
+async function denyKaliPending(approvalId) {
+    const reason = prompt("Raison du refus (optionnel) :", "") || "";
+    try {
+        const res = await fetch(`/__sc/security/api/sentinel/kali/deny/${encodeURIComponent(approvalId)}`, {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify({ reason })
+        });
+        const data = await res.json();
+        if (!res.ok || data.success === false) {
+            alert("Erreur: " + (data.error || "Échec du refus."));
+        }
+        await loadKaliPending();
+    } catch (e) {
+        alert("Erreur réseau: " + e.message);
+    }
+}
+
+// ==============================================================================
+// PENTAGI AUTONOMOUS PENTESTING ENGINE UI LOGIC
+// ==============================================================================
+
+let selectedPentagiCampaignId = null;
+
+function openPentagiModal() {
+    const modal = document.getElementById("pentagiModal");
+    if (modal) {
+        modal.classList.add("active");
+        loadPentagiStatus();
+        loadPentagiCampaigns();
+    }
+}
+
+function closePentagiModal() {
+    const modal = document.getElementById("pentagiModal");
+    if (modal) modal.classList.remove("active");
+}
+
+async function loadPentagiStatus() {
+    try {
+        const res = await fetch("/__sc/security/api/sentinel/pentagi/status");
+        const data = await res.json();
+        const cfg = data.config || {};
+        const health = data.health || {};
+
+        const badge = document.getElementById("pentagiConnBadge");
+        const pill = document.getElementById("pentagiStatusPill");
+        const urlDisplay = document.getElementById("pentagiServerUrlDisplay");
+        const workersDisplay = document.getElementById("pentagiWorkersDisplay");
+        const syncDisplay = document.getElementById("pentagiLastSyncDisplay");
+        const urlInput = document.getElementById("pentagiInputUrl");
+
+        if (urlInput && !urlInput.value) {
+            urlInput.value = cfg.server_url || "http://127.0.0.1:8443";
+        }
+        if (urlDisplay) {
+            urlDisplay.innerHTML = `<i class="fa-solid fa-server"></i> URL : ${escapeHtml(cfg.server_url || "http://127.0.0.1:8443")}`;
+        }
+        if (workersDisplay) {
+            workersDisplay.innerHTML = `<i class="fa-solid fa-cubes"></i> Workers Sandbox : ${health.workers_available || 1} actif(s)`;
+        }
+        if (syncDisplay) {
+            syncDisplay.innerHTML = `<i class="fa-solid fa-clock"></i> Synchro : ${escapeHtml(health.checked_at || "N/A")}`;
+        }
+
+        if (health.is_connected) {
+            if (badge) {
+                badge.style.background = "#059669";
+                badge.style.color = "#ecfdf5";
+                badge.textContent = `Connecté (${health.version || "PentAGI Engine"})`;
+            }
+            if (pill) {
+                pill.style.background = "rgba(16, 185, 129, 0.2)";
+                pill.style.borderColor = "rgba(16, 185, 129, 0.5)";
+                pill.style.color = "#34d399";
+                pill.textContent = "ONLINE";
+            }
+        } else {
+            if (badge) {
+                badge.style.background = "#ca8a04";
+                badge.style.color = "#fef9c3";
+                badge.textContent = "Mode Simulation / Sandbox Ulton";
+            }
+            if (pill) {
+                pill.style.background = "rgba(202, 138, 4, 0.2)";
+                pill.style.borderColor = "rgba(202, 138, 4, 0.5)";
+                pill.style.color = "#facc15";
+                pill.textContent = "SANDBOX";
+            }
+        }
+    } catch (e) {
+        console.error("Erreur de chargement du statut PentAGI:", e);
+    }
+}
+
+async function savePentagiConfig() {
+    const url = (document.getElementById("pentagiInputUrl")?.value || "").trim();
+    const token = (document.getElementById("pentagiInputToken")?.value || "").trim();
+
+    try {
+        const payload = { server_url: url };
+        if (token) payload.api_token = token;
+
+        const res = await fetch("/__sc/security/api/sentinel/pentagi/config", {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+        if (data.success) {
+            alert("Configuration PentAGI enregistrée avec succès !");
+            await loadPentagiStatus();
+        } else {
+            alert("Erreur: " + (data.error || "Échec de sauvegarde"));
+        }
+    } catch (e) {
+        alert("Erreur réseau: " + e.message);
+    }
+}
+
+async function launchPentagiCampaign() {
+    const target = (document.getElementById("pentagiTargetInput")?.value || "").trim();
+    const goal = (document.getElementById("pentagiGoalInput")?.value || "").trim();
+    const depth = (document.getElementById("pentagiDepthSelect")?.value || "standard").trim();
+    const btn = document.getElementById("pentagiLaunchBtn");
+
+    if (!target) {
+        alert("Veuillez renseigner un actif autorisé (URL ou domaine).");
+        return;
+    }
+
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Audit en cours sous contrôle Guardian...`;
+    }
+
+    try {
+        const res = await fetch("/__sc/security/api/sentinel/pentagi/campaigns", {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify({ target, goal, depth })
+        });
+        const data = await res.json();
+
+        if (res.ok && data.success) {
+            alert(`Campagne PentAGI ${data.campaign_id} terminée avec succès ! (${data.findings_count} vulnérabilité(s) identifiée(s))`);
+            await loadPentagiCampaigns();
+            selectPentagiCampaign(data.campaign_id);
+        } else {
+            alert(`Opération rejetée : ${data.error || "Échec de lancement de la campagne"}`);
+        }
+    } catch (e) {
+        alert("Erreur réseau: " + e.message);
+    } finally {
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = `<i class="fa-solid fa-rocket"></i> Lancer la Campagne sous Contrôle Guardian`;
+        }
+    }
+}
+
+async function loadPentagiCampaigns() {
+    const list = document.getElementById("pentagiCampaignsList");
+    const countBadge = document.getElementById("pentagiCampaignsCount");
+    if (!list) return;
+
+    try {
+        const res = await fetch("/__sc/security/api/sentinel/pentagi/campaigns");
+        const data = await res.json();
+        const campaigns = data.campaigns || [];
+
+        if (countBadge) countBadge.textContent = `${campaigns.length} campagne(s)`;
+
+        if (campaigns.length === 0) {
+            list.innerHTML = `<div style="color: #64748b; font-size: 0.78rem; text-align: center; padding: 12px;">Aucune campagne récente</div>`;
+            return;
+        }
+
+        list.innerHTML = campaigns.map(c => {
+            const isSelected = c.id === selectedPentagiCampaignId;
+            const statusColor = c.status === "completed" ? "#34d399" : (c.status === "stopped" ? "#f87171" : "#38bdf8");
+            return `
+                <div onclick="selectPentagiCampaign('${escapeHtml(c.id)}')" style="background: ${isSelected ? '#1e293b' : '#0a0f1d'}; border: 1px solid ${isSelected ? '#10b981' : '#1e293b'}; border-radius: 6px; padding: 8px 10px; cursor: pointer; transition: background 0.15s; display: flex; justify-content: space-between; align-items: center;">
+                    <div>
+                        <div style="font-weight: 700; color: #fff; font-size: 0.78rem;">${escapeHtml(c.target)}</div>
+                        <div style="font-size: 0.7rem; color: #64748b;">${escapeHtml(c.created_at)} &bull; ${escapeHtml(c.goal || "")}</div>
+                    </div>
+                    <div style="text-align: right;">
+                        <span style="font-size: 0.68rem; font-weight: 700; color: ${statusColor}; text-transform: uppercase;">${escapeHtml(c.status)}</span>
+                        <div style="font-size: 0.7rem; color: #facc15;">${c.findings_count} faiblesses</div>
+                    </div>
+                </div>
+            `;
+        }).join("");
+    } catch (e) {
+        console.error("Erreur de chargement des campagnes PentAGI:", e);
+    }
+}
+
+async function selectPentagiCampaign(campaignId) {
+    selectedPentagiCampaignId = campaignId;
+    const detailBox = document.getElementById("pentagiDetailFindings");
+    const detailTitle = document.getElementById("pentagiDetailTitle");
+    const remediateBtn = document.getElementById("pentagiRemediateBtn");
+
+    if (!detailBox) return;
+
+    try {
+        const res = await fetch(`/__sc/security/api/sentinel/pentagi/campaigns/${encodeURIComponent(campaignId)}`);
+        const data = await res.json();
+        const camp = data.campaign || {};
+        const findings = camp.findings || [];
+
+        if (detailTitle) {
+            detailTitle.textContent = `Campagne ${camp.id} (${camp.target}) &bull; ${findings.length} découverte(s)`;
+        }
+        if (remediateBtn) {
+            remediateBtn.style.display = findings.length > 0 ? "inline-block" : "none";
+        }
+
+        if (findings.length === 0) {
+            detailBox.innerHTML = `<div style="color: #34d399; text-align: center; padding: 16px;"><i class="fa-solid fa-circle-check"></i> Aucune faiblesse critique identifiée sur cette cible.</div>`;
+            return;
+        }
+
+        detailBox.innerHTML = findings.map(f => {
+            const sev = f.severity || "MEDIUM";
+            const sevColor = sev === "HIGH" ? "#f87171" : (sev === "MEDIUM" ? "#fbbf24" : "#38bdf8");
+            return `
+                <div style="background: #090d16; border-left: 3px solid ${sevColor}; border: 1px solid #1e293b; border-left-width: 3px; border-radius: 4px; padding: 8px 10px; margin-bottom: 6px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2px;">
+                        <span style="font-weight: 700; color: #fff; font-size: 0.78rem;">${escapeHtml(f.title || f.id)}</span>
+                        <span style="font-size: 0.68rem; font-weight: 700; color: ${sevColor}; background: rgba(0,0,0,0.4); padding: 1px 6px; border-radius: 4px;">${sev}</span>
+                    </div>
+                    <p style="margin: 0; font-size: 0.72rem; color: #94a3b8;">${escapeHtml(f.description || "")}</p>
+                </div>
+            `;
+        }).join("");
+
+        await loadPentagiCampaigns();
+    } catch (e) {
+        detailBox.innerHTML = `<div style="color: #f87171; padding: 10px;">Erreur de chargement: ${e.message}</div>`;
+    }
+}
+
+async function remediateSelectedCampaign() {
+    if (!selectedPentagiCampaignId) {
+        alert("Veuillez sélectionner une campagne.");
+        return;
+    }
+
+    try {
+        const res = await fetch(`/__sc/security/api/sentinel/pentagi/campaigns/${encodeURIComponent(selectedPentagiCampaignId)}/remediate`, {
+            method: "POST"
+        });
+        const data = await res.json();
+        if (data.success) {
+            alert(`${data.remediations_created} plan(s) de remédiation formels avec patchs diff générés dans le module de Remédiation Ulton !`);
+        } else {
+            alert("Erreur: " + (data.error || "Échec de génération"));
+        }
+    } catch (e) {
+        alert("Erreur réseau: " + e.message);
+    }
+}
+
 
 

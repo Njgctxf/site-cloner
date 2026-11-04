@@ -140,6 +140,25 @@ def init_kali_tables():
     )
     """)
 
+    # Every Kali call the agent WANTS to make lands here first. Nothing in
+    # PERMITTED_KALI_TOOLS runs until a human calls approve_pending() on it -
+    # this is the gate the user asked for ("il ne sera pas en autonome").
+    c.execute("""
+    CREATE TABLE IF NOT EXISTS sentinel_kali_pending_approvals (
+        id TEXT PRIMARY KEY,
+        created_at TEXT NOT NULL,
+        tool_name TEXT NOT NULL,
+        target TEXT NOT NULL,
+        custom_args TEXT NOT NULL,
+        requested_by TEXT NOT NULL,
+        reason TEXT,
+        status TEXT NOT NULL DEFAULT 'pending',
+        decided_at TEXT,
+        decided_by TEXT,
+        execution_id TEXT
+    )
+    """)
+
     # Seed default configuration if empty
     c.execute("SELECT id FROM sentinel_kali_config WHERE id = 1")
     if not c.fetchone():
@@ -403,12 +422,152 @@ class KaliMCPConnector:
 
         return True, clean_args, "Arguments validés avec succès."
 
+    def request_execution(self, tool_name: str, target: str,
+                          custom_args: Optional[List[str]] = None,
+                          requested_by: str = "sentinel_agent",
+                          reason: str = "") -> Dict[str, Any]:
+        """
+        Entry point for the autonomous LLM agent. It NEVER runs a tool directly -
+        it validates the request (Guardian scope, tool whitelist, argument
+        sanitization) so junk/forbidden requests are rejected immediately, then
+        parks anything valid in sentinel_kali_pending_approvals. Nothing actually
+        touches the network until a human calls approve_pending() from the
+        dashboard. This is the gate requested explicitly: Kali tool use must stay
+        human-guided, not autonomous.
+        """
+        from .guardian import guardian
+
+        init_kali_tables()
+
+        ok_target, target_reason = guardian.validate_target(target, test_type="kali_audit")
+        if not ok_target:
+            log_event("KALI_REQUEST_BLOCKED", "HIGH", "KALI_MCP", f"Demande rejetée (cible) {target}: {target_reason}")
+            return {"success": False, "status": "blocked_by_guardian", "error": target_reason}
+
+        tool_name_clean = tool_name.lower().strip()
+        if tool_name_clean not in PERMITTED_KALI_TOOLS:
+            return {"success": False, "status": "tool_not_permitted",
+                    "error": f"L'outil '{tool_name}' ne fait pas partie des outils Kali autorisés par Sentinel AI."}
+
+        tool_meta = PERMITTED_KALI_TOOLS[tool_name_clean]
+        raw_args = custom_args if custom_args is not None else list(tool_meta["default_args"])
+        ok_args, sanitized_args, args_reason = self.sanitize_arguments(tool_name_clean, raw_args)
+        if not ok_args:
+            log_event("KALI_ARGS_REJECTED", "HIGH", "KALI_MCP", f"Arguments rejetés pour {tool_name_clean}: {args_reason}")
+            return {"success": False, "status": "args_rejected", "error": args_reason}
+
+        approval_id = f"kaliapp_{uuid.uuid4().hex[:12]}"
+        conn = get_connection()
+        c = conn.cursor()
+        c.execute("""
+        INSERT INTO sentinel_kali_pending_approvals
+        (id, created_at, tool_name, target, custom_args, requested_by, reason, status)
+        VALUES (?, ?, ?, ?, ?, ?, ?, 'pending')
+        """, (approval_id, datetime.now().strftime("%Y-%m-%d %H:%M:%S"), tool_name_clean, target,
+              json.dumps(sanitized_args), requested_by, reason))
+        conn.commit()
+        conn.close()
+
+        log_event("KALI_APPROVAL_REQUESTED", "INFO", "KALI_MCP",
+                   f"{requested_by} demande l'exécution de {tool_name_clean} sur {target} (approval_id={approval_id})")
+
+        return {
+            "success": True,
+            "status": "pending_approval",
+            "approval_id": approval_id,
+            "tool": tool_name_clean,
+            "target": target,
+            "message": (
+                f"Demande enregistrée (approval_id={approval_id}). Cet outil ne s'exécutera PAS automatiquement : "
+                f"un humain doit l'approuver depuis le tableau de bord Sentinel avant toute exécution."
+            )
+        }
+
+    def list_pending(self) -> List[Dict[str, Any]]:
+        """Lists Kali executions awaiting a human decision."""
+        init_kali_tables()
+        conn = get_connection()
+        c = conn.cursor()
+        c.execute("SELECT * FROM sentinel_kali_pending_approvals WHERE status = 'pending' ORDER BY created_at DESC")
+        rows = [dict(r) for r in c.fetchall()]
+        conn.close()
+        for r in rows:
+            try:
+                r["custom_args"] = json.loads(r.get("custom_args") or "[]")
+            except Exception:
+                pass
+        return rows
+
+    def approve_pending(self, approval_id: str, decided_by: str = "admin") -> Dict[str, Any]:
+        """Human approval: runs the exact tool/target/args that were validated at request time."""
+        init_kali_tables()
+        conn = get_connection()
+        c = conn.cursor()
+        c.execute("SELECT * FROM sentinel_kali_pending_approvals WHERE id = ?", (approval_id,))
+        row = c.fetchone()
+        conn.close()
+        if not row:
+            return {"success": False, "error": "Demande d'approbation introuvable."}
+        row = dict(row)
+        if row["status"] != "pending":
+            return {"success": False, "error": f"Cette demande est déjà '{row['status']}'."}
+
+        try:
+            custom_args = json.loads(row.get("custom_args") or "[]")
+        except Exception:
+            custom_args = None
+
+        result = self.execute_tool(
+            tool_name=row["tool_name"],
+            target=row["target"],
+            custom_args=custom_args,
+            triggered_by=f"approved_by:{decided_by}"
+        )
+
+        conn = get_connection()
+        c = conn.cursor()
+        c.execute("""
+        UPDATE sentinel_kali_pending_approvals
+        SET status = 'approved', decided_at = ?, decided_by = ?, execution_id = ?
+        WHERE id = ?
+        """, (datetime.now().strftime("%Y-%m-%d %H:%M:%S"), decided_by, result.get("execution_id"), approval_id))
+        conn.commit()
+        conn.close()
+        log_event("KALI_APPROVAL_GRANTED", "INFO", "KALI_MCP", f"{decided_by} a approuvé {approval_id} ({row['tool_name']} sur {row['target']})")
+        return result
+
+    def deny_pending(self, approval_id: str, decided_by: str = "admin", reason: str = "") -> Dict[str, Any]:
+        """Human denial: the request is closed out, nothing ever touches the network."""
+        init_kali_tables()
+        conn = get_connection()
+        c = conn.cursor()
+        c.execute("SELECT status FROM sentinel_kali_pending_approvals WHERE id = ?", (approval_id,))
+        row = c.fetchone()
+        if not row:
+            conn.close()
+            return {"success": False, "error": "Demande d'approbation introuvable."}
+        if row["status"] != "pending":
+            conn.close()
+            return {"success": False, "error": f"Cette demande est déjà '{row['status']}'."}
+        c.execute("""
+        UPDATE sentinel_kali_pending_approvals
+        SET status = 'denied', decided_at = ?, decided_by = ?
+        WHERE id = ?
+        """, (datetime.now().strftime("%Y-%m-%d %H:%M:%S"), decided_by, approval_id))
+        conn.commit()
+        conn.close()
+        log_event("KALI_APPROVAL_DENIED", "INFO", "KALI_MCP", f"{decided_by} a refusé {approval_id}" + (f" ({reason})" if reason else ""))
+        return {"success": True, "status": "denied"}
+
     def execute_tool(self, tool_name: str, target: str,
                      custom_args: Optional[List[str]] = None,
                      triggered_by: str = "sentinel_agent") -> Dict[str, Any]:
         """
         Executes a Kali security tool via the official mcp-kali-server.
         Mandatory Guardian validation is performed prior to sending the request.
+        Called directly only from the human-operated SOC dashboard, or from
+        approve_pending() once a human has signed off on a pending request -
+        never directly by the autonomous agent (see request_execution()).
         """
         from .guardian import guardian
 

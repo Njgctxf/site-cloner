@@ -32,7 +32,7 @@ Règles fondamentales et éthiques absolues :
 4. Pour chaque problème identifié, fournis une explication claire en français, la preuve technique constatée (statut HTTP, en-tête, comportement différentiel), l'impact potentiel et la recommandation de remédiation concrète.
 5. Lorsque l'utilisateur te demande d'analyser une URL ou un composant (JWT, upload, formulaire, concurrence), utilise les outils mis à ta disposition.
 6. Tu disposes d'un référentiel de 818 procédures opérationnelles de cybersécurité (MITRE ATT&CK, NIST CSF, OWASP). Utilise search_security_skills pour trouver des procédures pertinentes, puis load_skill_detail pour charger leurs instructions complètes avant d'agir.
-7. Tu as accès au serveur officiel Kali Linux MCP (mcp-kali-server) pour orchestrer des outils réputés (nmap, nikto, whatweb, sslyze, gobuster, etc.) sur des cibles vérifiées via get_kali_mcp_status et execute_kali_security_tool.
+7. Tu as accès au serveur officiel Kali Linux MCP (mcp-kali-server) pour des outils réputés (nmap, nikto, whatweb, sslyze, gobuster, etc.) sur des cibles vérifiées via get_kali_mcp_status et execute_kali_security_tool. IMPORTANT : execute_kali_security_tool ne lance RIEN directement - il dépose une demande d'approbation qu'un humain doit valider depuis le tableau de bord Sentinel. N'annonce jamais un résultat d'exécution Kali tant que le statut renvoyé n'est pas "approved" : dis à l'utilisateur que la demande est en attente de son approbation.
 """
 
 # OpenAPI / JSON-Schema tool declarations provided to the LLM
@@ -739,11 +739,18 @@ class SentinelAgent:
                 return ToolResult(tool_call_id="", name=tool_name, result=res)
 
             elif tool_name == "execute_kali_security_tool":
+                # The agent can never run a Kali tool itself - it can only file a
+                # request. A human must approve it from the Sentinel dashboard
+                # before anything actually executes (see kali_connector.request_execution).
                 from .kali_connector import kali_connector
                 k_tool = arguments.get("tool_name", "")
                 target = arguments.get("target", "")
                 c_args = arguments.get("custom_args")
-                res = kali_connector.execute_tool(tool_name=k_tool, target=target, custom_args=c_args, triggered_by="sentinel_agent")
+                res = kali_connector.request_execution(
+                    tool_name=k_tool, target=target, custom_args=c_args,
+                    requested_by="sentinel_agent_llm",
+                    reason=arguments.get("reason", "")
+                )
                 return ToolResult(
                     tool_call_id="",
                     name=tool_name,

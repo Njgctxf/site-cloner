@@ -124,6 +124,15 @@ class SentinelGuardian:
                         elif str(a) == dis:
                             return False, f"Option de commande interdite par le Guardian ({a})"
 
+        # Specific PentAGI Autonomous Pentesting Campaign Verification
+        if tool_name in ("launch_pentagi_audit", "execute_pentagi_campaign"):
+            target = arguments.get("target", "")
+            if not target:
+                return False, "Cible d'audit manquante pour PentAGI."
+            ok_target, reason_target = self.validate_target(target, test_type="pentagi_audit")
+            if not ok_target:
+                return False, f"Cible non autorisée pour la campagne PentAGI : {reason_target}"
+
         # Check target URL inside tool arguments if present
         for key in ("url", "target_url", "upload_url", "endpoint", "target"):
             if key in arguments and isinstance(arguments[key], str):

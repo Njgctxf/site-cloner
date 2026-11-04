@@ -760,6 +760,9 @@ from .sentinel.kali_connector import (
 from .sentinel.user_llm_manager import (
     init_user_llm_tables, user_llm_manager, get_current_user_id
 )
+from .sentinel.pentagi_engine import (
+    init_pentagi_tables, pentagi_engine, PENTAGI_CAPABILITIES
+)
 from .sentinel.realtime import (
     init_realtime_tables, provision_agent_key, revoke_agent_key,
     resolve_agent_key, list_agent_keys, ingest_request_event,
@@ -1449,6 +1452,122 @@ def sentinel_kali_history_api():
     return jsonify({"history": kali_connector.list_history(limit=limit)})
 
 
+@bp.route("/api/sentinel/kali/pending", methods=["GET"])
+@admin_owner_required
+def sentinel_kali_pending_api():
+    """Lists Kali tool requests filed by the autonomous agent that are awaiting human approval."""
+    return jsonify({"pending": kali_connector.list_pending()})
+
+
+@bp.route("/api/sentinel/kali/approve/<approval_id>", methods=["POST"])
+@admin_owner_required
+def sentinel_kali_approve_api(approval_id):
+    """Owner-only: approves a pending Kali request and runs it now."""
+    decided_by = session.get("admin_username") or "admin"
+    result = kali_connector.approve_pending(approval_id, decided_by=decided_by)
+    return jsonify(result), (200 if result.get("success") else 400)
+
+
+@bp.route("/api/sentinel/kali/deny/<approval_id>", methods=["POST"])
+@admin_owner_required
+def sentinel_kali_deny_api(approval_id):
+    """Owner-only: denies a pending Kali request. Nothing ever executes."""
+    data = request.get_json(silent=True) or {}
+    decided_by = session.get("admin_username") or "admin"
+    result = kali_connector.deny_pending(approval_id, decided_by=decided_by, reason=data.get("reason", ""))
+    return jsonify(result), (200 if result.get("success") else 400)
+
+
+# ==============================================================================
+# PENTAGI AUTONOMOUS PENTESTING ENGINE INTEGRATION API
+# ==============================================================================
+
+@bp.route("/api/sentinel/pentagi/status", methods=["GET"])
+def sentinel_pentagi_status_api():
+    """Returns connectivity health and capabilities for the PentAGI Multi-Agent engine."""
+    cfg = pentagi_engine.get_config()
+    health = pentagi_engine.health_check()
+    return jsonify({
+        "config": cfg,
+        "health": health,
+        "capabilities": PENTAGI_CAPABILITIES
+    })
+
+
+@bp.route("/api/sentinel/pentagi/config", methods=["POST"])
+def sentinel_pentagi_config_api():
+    """Updates the PentAGI server connection settings."""
+    data = request.get_json(silent=True) or {}
+    server_url = data.get("server_url", "http://127.0.0.1:8443")
+    api_token = data.get("api_token")
+    is_enabled = bool(data.get("is_enabled", True))
+    timeout = int(data.get("timeout_seconds", 120))
+    verify_ssl = bool(data.get("verify_ssl", False))
+
+    cfg = pentagi_engine.update_config(
+        server_url=server_url,
+        api_token=api_token,
+        is_enabled=is_enabled,
+        timeout_seconds=timeout,
+        verify_ssl=verify_ssl
+    )
+    return jsonify({"success": True, "config": cfg})
+
+
+@bp.route("/api/sentinel/pentagi/campaigns", methods=["GET", "POST"])
+def sentinel_pentagi_campaigns_api():
+    """Launches or lists autonomous penetration testing campaigns via PentAGI."""
+    if request.method == "POST":
+        user_id = get_current_user_id()
+        data = request.get_json(silent=True) or {}
+        target = (data.get("target") or "").strip()
+        goal = (data.get("goal") or "Audit de conformité et de sécurité").strip()
+        depth = (data.get("depth") or "standard").strip().lower()
+        options = data.get("options") or {}
+
+        if not target:
+            return jsonify({"error": "target est obligatoire."}), 400
+
+        result = pentagi_engine.create_campaign(
+            user_id=user_id,
+            target=target,
+            goal=goal,
+            depth=depth,
+            options=options,
+            triggered_by="soc_dashboard"
+        )
+        status_code = 200 if result.get("success") else (403 if result.get("status") == "blocked_by_guardian" else 400)
+        return jsonify(result), status_code
+
+    user_id = request.args.get("user_id")
+    limit = min(int(request.args.get("limit", 50)), 100)
+    return jsonify({"campaigns": pentagi_engine.list_campaigns(limit=limit, user_id=user_id)})
+
+
+@bp.route("/api/sentinel/pentagi/campaigns/<campaign_id>", methods=["GET"])
+def sentinel_pentagi_get_campaign_api(campaign_id):
+    """Retrieves details and findings of a specific PentAGI campaign."""
+    camp = pentagi_engine.get_campaign(campaign_id)
+    if not camp:
+        return jsonify({"error": "Campagne introuvable"}), 404
+    return jsonify({"campaign": camp})
+
+
+@bp.route("/api/sentinel/pentagi/campaigns/<campaign_id>/stop", methods=["POST"])
+def sentinel_pentagi_stop_campaign_api(campaign_id):
+    """Terminates an active PentAGI campaign."""
+    stopped_by = session.get("admin_username") or get_current_user_id()
+    res = pentagi_engine.stop_campaign(campaign_id, stopped_by=stopped_by)
+    return jsonify(res), (200 if res.get("success") else 400)
+
+
+@bp.route("/api/sentinel/pentagi/campaigns/<campaign_id>/remediate", methods=["POST"])
+def sentinel_pentagi_remediate_campaign_api(campaign_id):
+    """Bridges PentAGI findings into Sentinel's formal Remediation Engine."""
+    res = pentagi_engine.bridge_to_remediation(campaign_id)
+    return jsonify(res), (200 if res.get("success") else 400)
+
+
 # ==============================================================================
 # INDIVIDUAL USER LLM ACCOUNT ARCHITECTURE (MULTI-TENANT BYOK & OAUTH)
 # ==============================================================================
@@ -1558,6 +1677,8 @@ def init_security(app):
     init_realtime_tables()
     init_kali_tables()
     init_user_llm_tables()
-    from .scheduler import start_background_scheduler
-    start_background_scheduler(interval_seconds=60)
+    init_pentagi_tables()
+    if not app.config.get("TESTING"):
+        from .scheduler import start_background_scheduler
+        start_background_scheduler(interval_seconds=60)
     app.register_blueprint(bp)

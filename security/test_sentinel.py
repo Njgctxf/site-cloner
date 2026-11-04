@@ -24,6 +24,7 @@ from security.sentinel.storage import (
     create_conversation, get_conversation_messages, save_message, delete_conversation
 )
 from security import bp, init_security
+from security.sentinel.pentagi_engine import pentagi_engine, PentAGIIntegrationEngine, PENTAGI_CAPABILITIES
 
 
 class SentinelAITestSuite(unittest.TestCase):
@@ -1330,6 +1331,158 @@ NullSessionShares: 1
         self.assertNotIn("encrypted_credentials", dump_str)
         self.assertNotIn("password", dump_str)
         self.assertNotIn("super-secret", dump_str)
+
+    # ---------------- 13. PENTAGI AUTONOMOUS ENGINE INTEGRATION ----------------
+
+    def test_69_pentagi_connector_config_and_health(self):
+        """Verifies PentAGIIntegrationEngine configuration, update, and health check."""
+        cfg = pentagi_engine.get_config()
+        self.assertIn("server_url", cfg)
+        self.assertTrue(len(cfg["capabilities_catalog"]) >= 5)
+
+        # Update configuration
+        updated = pentagi_engine.update_config(
+            server_url="http://127.0.0.1:8443",
+            api_token="test-pentagi-token-123",
+            is_enabled=True,
+            timeout_seconds=90
+        )
+        self.assertEqual(updated["server_url"], "http://127.0.0.1:8443")
+        self.assertTrue(updated["has_token"])
+
+        # Health check
+        health = pentagi_engine.health_check()
+        self.assertIn("is_connected", health)
+        self.assertIn("capabilities", health)
+        self.assertIn("workers_available", health)
+
+    def test_70_pentagi_guardian_gating_unauthorized_target(self):
+        """Verifies Guardian strictly blocks PentAGI campaigns against unauthorized targets."""
+        res_blocked = pentagi_engine.create_campaign(
+            user_id="test_user_pagi",
+            target="http://evil-attacker-site.com",
+            goal="Comprehensive security audit"
+        )
+        self.assertFalse(res_blocked["success"])
+        self.assertEqual(res_blocked["status"], "blocked_by_guardian")
+        self.assertIn("non autorisé", res_blocked["error"].lower())
+
+    def test_71_pentagi_guardian_permitted_authorized_target(self):
+        """Verifies authorized target passes Guardian and executes structured campaign."""
+        res_ok = pentagi_engine.create_campaign(
+            user_id="test_user_pagi",
+            target="https://innotech-lab.local",
+            goal="Diagnostic surface d'exposition",
+            depth="standard"
+        )
+        self.assertTrue(res_ok["success"])
+        self.assertIn("pagi_camp_", res_ok["campaign_id"])
+        self.assertEqual(res_ok["target"], "https://innotech-lab.local")
+        self.assertTrue(res_ok["findings_count"] >= 2)
+
+    def test_72_pentagi_campaign_lifecycle_and_stop(self):
+        """Verifies retrieving, listing, and stopping PentAGI campaigns."""
+        camp_res = pentagi_engine.create_campaign(
+            user_id="lifecycle_user",
+            target="https://innotech-lab.local",
+            goal="Test lifecycle",
+            depth="surface"
+        )
+        c_id = camp_res["campaign_id"]
+
+        # Get details
+        details = pentagi_engine.get_campaign(c_id)
+        self.assertIsNotNone(details)
+        self.assertEqual(details["id"], c_id)
+        self.assertEqual(details["user_id"], "lifecycle_user")
+
+        # List campaigns
+        c_list = pentagi_engine.list_campaigns(limit=10, user_id="lifecycle_user")
+        self.assertTrue(len(c_list) >= 1)
+        self.assertEqual(c_list[0]["id"], c_id)
+
+        # Stop campaign
+        stop_res = pentagi_engine.stop_campaign(c_id, stopped_by="admin_test")
+        self.assertTrue(stop_res["success"])
+        self.assertEqual(stop_res["status"], "stopped")
+
+        # Verify status in DB
+        stopped_details = pentagi_engine.get_campaign(c_id)
+        self.assertEqual(stopped_details["status"], "stopped")
+
+    def test_73_pentagi_remediation_bridge(self):
+        """Verifies bridging PentAGI findings into Sentinel's Remediation Engine."""
+        camp_res = pentagi_engine.create_campaign(
+            user_id="remed_user",
+            target="https://innotech-lab.local",
+            goal="Remediation bridge test",
+            depth="deep"
+        )
+        c_id = camp_res["campaign_id"]
+
+        bridge_res = pentagi_engine.bridge_to_remediation(c_id)
+        self.assertTrue(bridge_res["success"])
+        self.assertTrue(bridge_res["remediations_created"] >= 2)
+        self.assertTrue(len(bridge_res["plans"]) >= 2)
+        # Verify plans contain diff patches
+        for plan in bridge_res["plans"]:
+            self.assertIn("patch_diff", plan)
+            self.assertIn("title", plan)
+
+    def test_74_pentagi_rest_api_endpoints(self):
+        """Verifies all REST API endpoints for PentAGI status, config, campaigns, and remediation."""
+        # 1. Status API
+        r_status = self.client.get("/__sc/security/api/sentinel/pentagi/status")
+        self.assertEqual(r_status.status_code, 200)
+        self.assertIn("config", r_status.json)
+        self.assertIn("capabilities", r_status.json)
+
+        # 2. Config API
+        r_cfg = self.client.post("/__sc/security/api/sentinel/pentagi/config", json={
+            "server_url": "http://127.0.0.1:8443",
+            "timeout_seconds": 150
+        })
+        self.assertEqual(r_cfg.status_code, 200)
+        self.assertTrue(r_cfg.json["success"])
+
+        # 3. Campaign Launch - Unauthorized target rejected 403
+        r_unauth = self.client.post("/__sc/security/api/sentinel/pentagi/campaigns", json={
+            "target": "https://unauthorized-target.org",
+            "goal": "Recon"
+        })
+        self.assertEqual(r_unauth.status_code, 403)
+        self.assertEqual(r_unauth.json["status"], "blocked_by_guardian")
+
+        # 4. Campaign Launch - Authorized target 200
+        r_launch = self.client.post("/__sc/security/api/sentinel/pentagi/campaigns", json={
+            "target": "https://innotech-lab.local",
+            "goal": "Audit complet via API",
+            "depth": "standard"
+        })
+        self.assertEqual(r_launch.status_code, 200)
+        c_id = r_launch.json["campaign_id"]
+        self.assertTrue(r_launch.json["success"])
+
+        # 5. List campaigns
+        r_list = self.client.get("/__sc/security/api/sentinel/pentagi/campaigns")
+        self.assertEqual(r_list.status_code, 200)
+        self.assertTrue(len(r_list.json["campaigns"]) >= 1)
+
+        # 6. Get campaign item
+        r_get = self.client.get(f"/__sc/security/api/sentinel/pentagi/campaigns/{c_id}")
+        self.assertEqual(r_get.status_code, 200)
+        self.assertEqual(r_get.json["campaign"]["id"], c_id)
+
+        # 7. Stop campaign
+        r_stop = self.client.post(f"/__sc/security/api/sentinel/pentagi/campaigns/{c_id}/stop")
+        self.assertEqual(r_stop.status_code, 200)
+        self.assertTrue(r_stop.json["success"])
+
+        # 8. Remediate campaign
+        r_remed = self.client.post(f"/__sc/security/api/sentinel/pentagi/campaigns/{c_id}/remediate")
+        self.assertEqual(r_remed.status_code, 200)
+        self.assertTrue(r_remed.json["success"])
+        self.assertTrue(r_remed.json["remediations_created"] >= 1)
 
 
 if __name__ == "__main__":

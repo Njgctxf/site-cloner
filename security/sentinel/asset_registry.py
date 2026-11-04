@@ -39,7 +39,8 @@ VALID_TEST_TYPES = {
     "config_audit",
     "system_check",
     "passive_recon",
-    "kali_audit"
+    "kali_audit",
+    "pentagi_audit"
 }
 
 

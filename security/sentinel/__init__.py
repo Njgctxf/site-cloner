@@ -67,6 +67,12 @@ from .reporting import (
     generate_consolidated_soc_report,
     generate_executive_html_report,
 )
+from .pentagi_engine import (
+    pentagi_engine,
+    PentAGIIntegrationEngine,
+    PENTAGI_CAPABILITIES,
+    init_pentagi_tables,
+)
 
 __all__ = [
     "AgentMessage",
@@ -129,4 +135,8 @@ __all__ = [
     "sanitize_secrets",
     "generate_consolidated_soc_report",
     "generate_executive_html_report",
+    "pentagi_engine",
+    "PentAGIIntegrationEngine",
+    "PENTAGI_CAPABILITIES",
+    "init_pentagi_tables",
 ]
