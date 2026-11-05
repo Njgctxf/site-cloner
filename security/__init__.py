@@ -1574,6 +1574,23 @@ def sentinel_pentagi_remediate_campaign_api(campaign_id):
     return jsonify(res), (200 if res.get("success") else 400)
 
 
+@bp.route("/api/sentinel/audit/native", methods=["POST"])
+@admin_owner_required
+def sentinel_audit_native_api():
+    """Executes a 100% Python-native autonomous security audit (Ports, Headers, Sensitive Files, SQLi)."""
+    from .sentinel.native_scanner import native_auditor
+    data = request.get_json(silent=True) or {}
+    target = (data.get("target") or "").strip()
+    depth = (data.get("depth") or "standard").strip().lower()
+
+    if not target:
+        return jsonify({"error": "target est obligatoire."}), 400
+
+    res = native_auditor.audit_target(target, depth=depth)
+    status_code = 200 if res.get("success") else (403 if res.get("status") == "blocked_by_guardian" else 400)
+    return jsonify(res), status_code
+
+
 # ==============================================================================
 # INDIVIDUAL USER LLM ACCOUNT ARCHITECTURE (MULTI-TENANT BYOK & OAUTH)
 # ==============================================================================

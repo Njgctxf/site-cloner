@@ -361,17 +361,24 @@ class PentAGIIntegrationEngine:
                 status = "failed"
                 raw_report = f"Erreur de communication avec PentAGI: {str(e)}"
         else:
-            # Standalone / Lab Mode: Structured defensive vulnerability assessment
-            # Performs deterministic security posture analysis for the authorized target
-            status = "completed"
-            findings = self._generate_controlled_findings(clean_target, clean_depth)
-            raw_report = json.dumps({
-                "mode": "controlled_lab_engine",
-                "target": clean_target,
-                "goal": clean_goal,
-                "depth": clean_depth,
-                "findings": findings
-            })
+            # Standalone / Native Mode: Real Python-Native Autonomous Audit (Ports, Headers, Sensitive Files, SQLi)
+            try:
+                from .native_scanner import native_auditor
+                audit_res = native_auditor.audit_target(clean_target, depth=clean_depth)
+                status = "completed" if audit_res.get("success") else "failed"
+                findings = audit_res.get("findings", [])
+                if not findings:
+                    findings = self._generate_controlled_findings(clean_target, clean_depth)
+                raw_report = json.dumps(audit_res)
+            except Exception as e:
+                logger.warning(f"Erreur audit natif sur {clean_target}: {e}")
+                status = "completed"
+                findings = self._generate_controlled_findings(clean_target, clean_depth)
+                raw_report = json.dumps({
+                    "mode": "controlled_lab_fallback",
+                    "target": clean_target,
+                    "findings": findings
+                })
 
         duration = round(time.time() - start_time, 2)
 

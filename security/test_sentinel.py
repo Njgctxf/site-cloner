@@ -1515,6 +1515,46 @@ NullSessionShares: 1
         self.assertTrue(t_camp.result["success"])
         self.assertIn("pagi_camp_", t_camp.result["campaign_id"])
 
+    def test_76_native_scanner_engine(self):
+        """Verifies pure Python native scanner engine (Ports, Surface, Vulns, SQLi)."""
+        from security.sentinel.native_scanner import native_auditor, PortScanner, SurfaceCrawler, SQLiDetector
+
+        # 1. PortScanner probe
+        ps = PortScanner(timeout=0.2)
+        p_res = ps.scan_port("127.0.0.1", 5050, "SiteCloner")
+        # p_res is either open dict or None, shouldn't raise
+        self.assertTrue(p_res is None or isinstance(p_res, dict))
+
+        # 2. UltonNativeAuditor on authorized target
+        audit_res = native_auditor.audit_target("https://innotech-lab.local", depth="standard")
+        self.assertTrue(audit_res["success"])
+        self.assertEqual(audit_res["target"], "https://innotech-lab.local")
+        self.assertIn("findings", audit_res)
+
+        # 3. Agent tool call execution
+        mock_prov = MockProvider()
+        agent = SentinelAgent(provider=mock_prov)
+        t_native = agent.execute_tool("run_native_autonomous_audit", {
+            "target": "https://innotech-lab.local",
+            "depth": "surface"
+        })
+        self.assertFalse(t_native.is_error)
+        self.assertTrue(t_native.result["success"])
+
+        # 4. REST endpoint
+        # Unauthenticated rejected with 401
+        with self.client.session_transaction() as sess:
+            sess.pop("admin", None)
+        r_unauth = self.client.post("/__sc/security/api/sentinel/audit/native", json={"target": "https://innotech-lab.local"})
+        self.assertEqual(r_unauth.status_code, 401)
+
+        # Authenticated admin
+        with self.client.session_transaction() as sess:
+            sess["admin"] = "admin"
+        r_auth = self.client.post("/__sc/security/api/sentinel/audit/native", json={"target": "https://innotech-lab.local"})
+        self.assertEqual(r_auth.status_code, 200)
+        self.assertTrue(r_auth.json["success"])
+
 
 if __name__ == "__main__":
     unittest.main()

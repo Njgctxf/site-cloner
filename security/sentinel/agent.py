@@ -513,6 +513,28 @@ SENTINEL_TOOLS_SCHEMA = [
                 "required": ["target"]
             }
         }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "run_native_autonomous_audit",
+            "description": "Exécute un audit de sécurité autonome 100% natif en Python (scan de ports socket Nmap, crawler Gobuster, analyse de vulnérabilités Nuclei et tests SQLi Sqlmap) sans nécessiter de serveur externe ni Docker.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "target": {
+                        "type": "string",
+                        "description": "URL ou nom d'hôte de la cible autorisée"
+                    },
+                    "depth": {
+                        "type": "string",
+                        "enum": ["surface", "standard", "deep"],
+                        "description": "Profondeur d'audit : surface, standard ou deep"
+                    }
+                },
+                "required": ["target"]
+            }
+        }
     }
 ]
 
@@ -813,6 +835,18 @@ class SentinelAgent:
                     depth=depth,
                     triggered_by="agent_llm"
                 )
+                return ToolResult(
+                    tool_call_id="",
+                    name=tool_name,
+                    result=res,
+                    is_error=not res.get("success", False)
+                )
+
+            elif tool_name == "run_native_autonomous_audit":
+                from .native_scanner import native_auditor
+                target = arguments.get("target", "")
+                depth = arguments.get("depth", "standard")
+                res = native_auditor.audit_target(target, depth=depth)
                 return ToolResult(
                     tool_call_id="",
                     name=tool_name,
