@@ -1,0 +1,78 @@
+# ==============================================================================
+# PENTAGI AUTONOMOUS MULTI-AGENT PENTESTING DOCKER STACK FOR ULTON AI (SENTINEL)
+# Official repository: https://github.com/vxcontrol/pentagi
+# ==============================================================================
+
+version: '3.8'
+
+services:
+  # 1. Primary Go API & Multi-Agent Lead Orchestrator
+  pentagi-api:
+    image: ghcr.io/vxcontrol/pentagi-api:latest
+    container_name: pentagi-api
+    restart: unless-stopped
+    ports:
+      - "8443:8080"
+    environment:
+      - PORT=8080
+      - DB_HOST=pentagi-postgres
+      - DB_PORT=5432
+      - DB_USER=pentagi
+      - DB_PASSWORD=pentagi_secure_password
+      - DB_NAME=pentagi_db
+      - DOCKER_HOST=unix:///var/run/docker.sock
+      - LLM_PROVIDER=${LLM_PROVIDER:-openai}
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
+      - GEMINI_API_KEY=${GEMINI_API_KEY:-}
+      - DEEPSEEK_API_KEY=${DEEPSEEK_API_KEY:-}
+      - OLLAMA_BASE_URL=${OLLAMA_BASE_URL:-http://host.docker.internal:11434}
+      - SENTINEL_INTEGRATION_URL=http://host.docker.internal:5050/__sc/security
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - pentagi_reports:/app/reports
+    depends_on:
+      - pentagi-postgres
+
+  # 2. Worker Container Sandbox (Ephemeral Execution with Kali & CLI Tools)
+  pentagi-worker:
+    image: ghcr.io/vxcontrol/pentagi-worker:latest
+    container_name: pentagi-worker
+    restart: unless-stopped
+    environment:
+      - API_URL=http://pentagi-api:8080
+    volumes:
+      - pentagi_shared_workspace:/workspace
+    depends_on:
+      - pentagi-api
+
+  # 3. Vector Database (PostgreSQL + pgvector for Agent Long-Term Memory)
+  pentagi-postgres:
+    image: pgvector/pgvector:pg16
+    container_name: pentagi-postgres
+    restart: unless-stopped
+    environment:
+      - POSTGRES_USER=pentagi
+      - POSTGRES_PASSWORD=pentagi_secure_password
+      - POSTGRES_DB=pentagi_db
+    ports:
+      - "5433:5432"
+    volumes:
+      - pentagi_db_data:/var/lib/postgresql/data
+
+  # 4. PentAGI Web Frontend Visualizer
+  pentagi-web:
+    image: ghcr.io/vxcontrol/pentagi-web:latest
+    container_name: pentagi-web
+    restart: unless-stopped
+    ports:
+      - "3030:3000"
+    environment:
+      - NEXT_PUBLIC_API_URL=http://localhost:8443
+    depends_on:
+      - pentagi-api
+
+volumes:
+  pentagi_db_data:
+  pentagi_reports:
+  pentagi_shared_workspace:

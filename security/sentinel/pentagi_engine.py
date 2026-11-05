@@ -23,7 +23,7 @@ logger = logging.getLogger("sentinel.pentagi")
 # Default PentAGI Service Configuration
 DEFAULT_PENTAGI_HOST = "127.0.0.1"
 DEFAULT_PENTAGI_PORT = 8443
-DEFAULT_PENTAGI_BASE_URL = f"http://{DEFAULT_PENTAGI_HOST}:{DEFAULT_PENTAGI_PORT}"
+DEFAULT_PENTAGI_BASE_URL = os.environ.get("PENTAGI_SERVER_URL") or f"http://{DEFAULT_PENTAGI_HOST}:{DEFAULT_PENTAGI_PORT}"
 DEFAULT_TIMEOUT_SECONDS = 120
 
 # Structured Capabilities supported by the PentAGI Multi-Agent Engine
