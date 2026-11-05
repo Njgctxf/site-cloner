@@ -82,6 +82,22 @@ SUPPORTED_PROVIDERS: Dict[str, Dict[str, Any]] = {
         "docs_url": "https://ollama.ai/",
         "icon": "fa-server"
     },
+    "openrouter": {
+        "name": "OpenRouter",
+        "description": "Passerelle multi-modèles avec des modèles gratuits (:free) - clé API gratuite",
+        "auth_methods": ["api_key"],
+        "default_model": "meta-llama/llama-3.1-8b-instruct:free",
+        "available_models": [
+            "meta-llama/llama-3.1-8b-instruct:free",
+            "google/gemini-2.0-flash-exp:free",
+            "deepseek/deepseek-r1:free",
+            "qwen/qwen-2.5-72b-instruct:free",
+            "mistralai/mistral-7b-instruct:free"
+        ],
+        "default_url": "https://openrouter.ai/api/v1",
+        "docs_url": "https://openrouter.ai/keys",
+        "icon": "fa-route"
+    },
     "mock": {
         "name": "Simulation Déterministe",
         "description": "Mode local hors ligne sans clé ni coût API",

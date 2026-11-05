@@ -33,6 +33,7 @@ Règles fondamentales et éthiques absolues :
 5. Lorsque l'utilisateur te demande d'analyser une URL ou un composant (JWT, upload, formulaire, concurrence), utilise les outils mis à ta disposition.
 6. Tu disposes d'un référentiel de 818 procédures opérationnelles de cybersécurité (MITRE ATT&CK, NIST CSF, OWASP). Utilise search_security_skills pour trouver des procédures pertinentes, puis load_skill_detail pour charger leurs instructions complètes avant d'agir.
 7. Tu as accès au serveur officiel Kali Linux MCP (mcp-kali-server) pour des outils réputés (nmap, nikto, whatweb, sslyze, gobuster, etc.) sur des cibles vérifiées via get_kali_mcp_status et execute_kali_security_tool. IMPORTANT : execute_kali_security_tool ne lance RIEN directement - il dépose une demande d'approbation qu'un humain doit valider depuis le tableau de bord Sentinel. N'annonce jamais un résultat d'exécution Kali tant que le statut renvoyé n'est pas "approved" : dis à l'utilisateur que la demande est en attente de son approbation.
+8. Tu disposes du moteur d'audit autonome PentAGI via get_pentagi_status et launch_pentagi_campaign pour lancer des campagnes multi-agents d'exposition et de conformité sur des cibles autorisées sous le contrôle strict du Guardian.
 """
 
 # OpenAPI / JSON-Schema tool declarations provided to the LLM
@@ -475,6 +476,43 @@ SENTINEL_TOOLS_SCHEMA = [
                 "required": ["tool_name", "target"]
             }
         }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "get_pentagi_status",
+            "description": "Consulte l'état de connexion, la version et les capacités du moteur d'audit autonome PentAGI.",
+            "parameters": {
+                "type": "object",
+                "properties": {}
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "launch_pentagi_campaign",
+            "description": "Lance une campagne d'audit et de tests de sécurité automatisés via PentAGI sur une cible autorisée (reconnaissance, surface, faiblesses, corrélation).",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "target": {
+                        "type": "string",
+                        "description": "URL ou nom d'hôte de la cible autorisée"
+                    },
+                    "goal": {
+                        "type": "string",
+                        "description": "Objectif de l'audit (ex: 'Cartographie d'exposition et vérification des faiblesses')"
+                    },
+                    "depth": {
+                        "type": "string",
+                        "enum": ["surface", "standard", "deep"],
+                        "description": "Profondeur de l'audit : surface, standard ou deep"
+                    }
+                },
+                "required": ["target"]
+            }
+        }
     }
 ]
 
@@ -750,6 +788,30 @@ class SentinelAgent:
                     tool_name=k_tool, target=target, custom_args=c_args,
                     requested_by="sentinel_agent_llm",
                     reason=arguments.get("reason", "")
+                )
+                return ToolResult(
+                    tool_call_id="",
+                    name=tool_name,
+                    result=res,
+                    is_error=not res.get("success", False)
+                )
+
+            elif tool_name == "get_pentagi_status":
+                from .pentagi_engine import pentagi_engine
+                res = pentagi_engine.health_check()
+                return ToolResult(tool_call_id="", name=tool_name, result=res)
+
+            elif tool_name == "launch_pentagi_campaign":
+                from .pentagi_engine import pentagi_engine
+                target = arguments.get("target", "")
+                goal = arguments.get("goal", "Audit de sécurité PentAGI")
+                depth = arguments.get("depth", "standard")
+                res = pentagi_engine.create_campaign(
+                    user_id="sentinel_agent",
+                    target=target,
+                    goal=goal,
+                    depth=depth,
+                    triggered_by="agent_llm"
                 )
                 return ToolResult(
                     tool_call_id="",

@@ -1430,7 +1430,18 @@ NullSessionShares: 1
             self.assertIn("title", plan)
 
     def test_74_pentagi_rest_api_endpoints(self):
-        """Verifies all REST API endpoints for PentAGI status, config, campaigns, and remediation."""
+        """Verifies all REST API endpoints for PentAGI require admin auth and work when authenticated."""
+        # 0. Unauthenticated access rejected with 401
+        with self.client.session_transaction() as sess:
+            sess.pop("admin", None)
+
+        r_unauth_probe = self.client.get("/__sc/security/api/sentinel/pentagi/status")
+        self.assertEqual(r_unauth_probe.status_code, 401)
+
+        # Authenticate session as admin owner
+        with self.client.session_transaction() as sess:
+            sess["admin"] = "admin"
+
         # 1. Status API
         r_status = self.client.get("/__sc/security/api/sentinel/pentagi/status")
         self.assertEqual(r_status.status_code, 200)
@@ -1483,6 +1494,26 @@ NullSessionShares: 1
         self.assertEqual(r_remed.status_code, 200)
         self.assertTrue(r_remed.json["success"])
         self.assertTrue(r_remed.json["remediations_created"] >= 1)
+
+    def test_75_agent_pentagi_tools(self):
+        """Verifies the autonomous Sentinel agent can invoke PentAGI tools via schema."""
+        mock_prov = MockProvider()
+        agent = SentinelAgent(provider=mock_prov)
+
+        # 1. Status tool call
+        t_status = agent.execute_tool("get_pentagi_status", {})
+        self.assertFalse(t_status.is_error)
+        self.assertIn("capabilities", t_status.result)
+
+        # 2. Campaign tool call on authorized target
+        t_camp = agent.execute_tool("launch_pentagi_campaign", {
+            "target": "https://innotech-lab.local",
+            "goal": "Test agent invocation",
+            "depth": "surface"
+        })
+        self.assertFalse(t_camp.is_error)
+        self.assertTrue(t_camp.result["success"])
+        self.assertIn("pagi_camp_", t_camp.result["campaign_id"])
 
 
 if __name__ == "__main__":

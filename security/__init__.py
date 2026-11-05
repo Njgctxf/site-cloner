@@ -1479,10 +1479,11 @@ def sentinel_kali_deny_api(approval_id):
 
 
 # ==============================================================================
-# PENTAGI AUTONOMOUS PENTESTING ENGINE INTEGRATION API
+# PENTAGI AUTONOMOUS PENTESTING ENGINE INTEGRATION API (ADMIN ONLY)
 # ==============================================================================
 
 @bp.route("/api/sentinel/pentagi/status", methods=["GET"])
+@admin_owner_required
 def sentinel_pentagi_status_api():
     """Returns connectivity health and capabilities for the PentAGI Multi-Agent engine."""
     cfg = pentagi_engine.get_config()
@@ -1495,6 +1496,7 @@ def sentinel_pentagi_status_api():
 
 
 @bp.route("/api/sentinel/pentagi/config", methods=["POST"])
+@admin_owner_required
 def sentinel_pentagi_config_api():
     """Updates the PentAGI server connection settings."""
     data = request.get_json(silent=True) or {}
@@ -1515,6 +1517,7 @@ def sentinel_pentagi_config_api():
 
 
 @bp.route("/api/sentinel/pentagi/campaigns", methods=["GET", "POST"])
+@admin_owner_required
 def sentinel_pentagi_campaigns_api():
     """Launches or lists autonomous penetration testing campaigns via PentAGI."""
     if request.method == "POST":
@@ -1545,6 +1548,7 @@ def sentinel_pentagi_campaigns_api():
 
 
 @bp.route("/api/sentinel/pentagi/campaigns/<campaign_id>", methods=["GET"])
+@admin_owner_required
 def sentinel_pentagi_get_campaign_api(campaign_id):
     """Retrieves details and findings of a specific PentAGI campaign."""
     camp = pentagi_engine.get_campaign(campaign_id)
@@ -1554,6 +1558,7 @@ def sentinel_pentagi_get_campaign_api(campaign_id):
 
 
 @bp.route("/api/sentinel/pentagi/campaigns/<campaign_id>/stop", methods=["POST"])
+@admin_owner_required
 def sentinel_pentagi_stop_campaign_api(campaign_id):
     """Terminates an active PentAGI campaign."""
     stopped_by = session.get("admin_username") or get_current_user_id()
@@ -1562,6 +1567,7 @@ def sentinel_pentagi_stop_campaign_api(campaign_id):
 
 
 @bp.route("/api/sentinel/pentagi/campaigns/<campaign_id>/remediate", methods=["POST"])
+@admin_owner_required
 def sentinel_pentagi_remediate_campaign_api(campaign_id):
     """Bridges PentAGI findings into Sentinel's formal Remediation Engine."""
     res = pentagi_engine.bridge_to_remediation(campaign_id)

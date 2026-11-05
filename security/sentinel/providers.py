@@ -42,12 +42,19 @@ class OpenAICompatibleProvider(LLMProvider):
         "deepseek": "https://api.deepseek.com/v1",
         "mistral": "https://api.mistral.ai/v1",
         "ollama": "http://localhost:11434/v1",
+        "openrouter": "https://openrouter.ai/api/v1",
         "generic": "https://api.openai.com/v1"
     }
 
     def __init__(self, provider_id: str = "openai", api_key: str = "", model: str = "", base_url: str = ""):
         resolved_url = base_url or self.DEFAULT_BASE_URLS.get(provider_id, "https://api.openai.com/v1")
-        resolved_model = model or ("gpt-4o" if provider_id == "openai" else "deepseek-chat" if provider_id == "deepseek" else "mistral-large-latest" if provider_id == "mistral" else "llama3:latest")
+        resolved_model = model or (
+            "gpt-4o" if provider_id == "openai"
+            else "deepseek-chat" if provider_id == "deepseek"
+            else "mistral-large-latest" if provider_id == "mistral"
+            else "meta-llama/llama-3.1-8b-instruct:free" if provider_id == "openrouter"
+            else "llama3:latest"
+        )
         super().__init__(api_key=api_key, model=resolved_model, base_url=resolved_url)
         self.provider_id = provider_id
 
@@ -446,6 +453,6 @@ def get_provider(provider_id: str, api_key: str = "", model: str = "", base_url:
         return GeminiProvider(api_key=api_key, model=model)
     elif p_id == "claude":
         return ClaudeProvider(api_key=api_key, model=model)
-    elif p_id in ("openai", "deepseek", "mistral", "ollama", "generic"):
+    elif p_id in ("openai", "deepseek", "mistral", "ollama", "openrouter", "generic"):
         return OpenAICompatibleProvider(provider_id=p_id, api_key=api_key, model=model, base_url=base_url)
     return MockProvider(model=model or "mock-sentinel")
