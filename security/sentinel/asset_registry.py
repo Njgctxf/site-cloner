@@ -40,7 +40,8 @@ VALID_TEST_TYPES = {
     "system_check",
     "passive_recon",
     "kali_audit",
-    "pentagi_audit"
+    "pentagi_audit",
+    "external_scan"
 }
 
 

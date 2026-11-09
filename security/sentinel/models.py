@@ -11,6 +11,10 @@ class ToolCall:
     id: str
     name: str
     arguments: Dict[str, Any]
+    # Opaque signature some providers (e.g. Gemini's "thinking" models) attach to a
+    # functionCall part; it must be echoed back unchanged on the next turn or the
+    # API rejects the request. Unused by providers that don't need it.
+    thought_signature: Optional[str] = None
 
 @dataclass
 class ToolResult:

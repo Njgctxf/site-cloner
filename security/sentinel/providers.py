@@ -5,6 +5,7 @@ Supports Google Gemini, Anthropic Claude, OpenAI, DeepSeek, Mistral, Ollama, and
 
 import json
 import logging
+import re
 import requests
 from abc import ABC, abstractmethod
 from typing import List, Dict, Any, Optional
@@ -12,6 +13,32 @@ from typing import List, Dict, Any, Optional
 from .models import AgentMessage, AgentResponse, ToolCall
 
 logger = logging.getLogger("sentinel.providers")
+
+# Some smaller/free models (notably via OpenRouter) are fine-tuned on a Hermes/Llama-style
+# pseudo-XML tool-call syntax instead of emitting the OpenAI tool_calls JSON field, e.g.:
+# <tool_call><function=name><parameter=key>value</parameter></function></tool_call>
+# When the API returns no structured tool_calls but the content matches this pattern,
+# we parse it ourselves so the agent loop still executes the intended tool.
+_XML_TOOL_CALL_RE = re.compile(r"<tool_call>\s*<function=([\w\-\.]+)>(.*?)</function>\s*</tool_call>", re.DOTALL)
+_XML_PARAM_RE = re.compile(r"<parameter=([\w\-\.]+)>\s*(.*?)\s*</parameter>", re.DOTALL)
+
+
+def _parse_xml_style_tool_calls(content: str) -> List[ToolCall]:
+    """Parses Hermes/Llama-style <tool_call> pseudo-XML blocks out of a model's raw text content."""
+    calls = []
+    for i, match in enumerate(_XML_TOOL_CALL_RE.finditer(content or "")):
+        func_name = match.group(1)
+        body = match.group(2)
+        args: Dict[str, Any] = {}
+        for p_match in _XML_PARAM_RE.finditer(body):
+            key = p_match.group(1)
+            raw_val = p_match.group(2).strip()
+            try:
+                args[key] = json.loads(raw_val)
+            except Exception:
+                args[key] = raw_val
+        calls.append(ToolCall(id=f"xmlcall_{i}_{func_name}", name=func_name, arguments=args))
+    return calls
 
 class LLMProvider(ABC):
     """Abstract interface that all LLM backends must implement."""
@@ -30,6 +57,13 @@ class LLMProvider(ABC):
     def health_check(self) -> Dict[str, Any]:
         """Validates API key or endpoint availability."""
         pass
+
+    def embed(self, texts: List[str]) -> Optional[List[List[float]]]:
+        """Optional: one embedding vector per input text, for true semantic
+        similarity (vs. literal/regex matching). Returns None if this backend
+        has no embeddings API (e.g. Anthropic Claude) or the call failed -
+        every caller must treat None as 'fall back to local text similarity'."""
+        return None
 
 
 class OpenAICompatibleProvider(LLMProvider):
@@ -52,7 +86,7 @@ class OpenAICompatibleProvider(LLMProvider):
             "gpt-4o" if provider_id == "openai"
             else "deepseek-chat" if provider_id == "deepseek"
             else "mistral-large-latest" if provider_id == "mistral"
-            else "meta-llama/llama-3.1-8b-instruct:free" if provider_id == "openrouter"
+            else "nvidia/nemotron-3.5-lightning:free" if provider_id == "openrouter"
             else "llama3:latest"
         )
         super().__init__(api_key=api_key, model=resolved_model, base_url=resolved_url)
@@ -124,6 +158,14 @@ class OpenAICompatibleProvider(LLMProvider):
                     arguments=args
                 ))
 
+            # Fallback: some free/small models emit tool calls as raw Hermes/Llama-style
+            # pseudo-XML text instead of the structured tool_calls field. Parse that too.
+            if not parsed_calls and "<tool_call>" in content:
+                xml_calls = _parse_xml_style_tool_calls(content)
+                if xml_calls:
+                    parsed_calls = xml_calls
+                    content = ""
+
             return AgentResponse(
                 content=content,
                 tool_calls=parsed_calls,
@@ -149,6 +191,31 @@ class OpenAICompatibleProvider(LLMProvider):
         except Exception as e:
             return {"healthy": False, "provider": self.provider_id, "error": str(e)}
 
+    # Only providers with a known, reliable embeddings endpoint are listed here.
+    # DeepSeek/Ollama/OpenRouter/generic endpoints vary too much to assume one -
+    # embed() returns None for them, and callers fall back to local similarity.
+    _EMBEDDING_MODELS = {"openai": "text-embedding-3-small", "mistral": "mistral-embed"}
+
+    def embed(self, texts: List[str]) -> Optional[List[List[float]]]:
+        model = self._EMBEDDING_MODELS.get(self.provider_id)
+        if not model or not texts:
+            return None
+        endpoint = f"{self.base_url.rstrip('/')}/embeddings"
+        headers = {"Content-Type": "application/json"}
+        if self.api_key:
+            headers["Authorization"] = f"Bearer {self.api_key}"
+        try:
+            resp = requests.post(endpoint, headers=headers, json={"model": model, "input": texts}, timeout=10)
+            if resp.status_code != 200:
+                return None
+            data = resp.json()
+            items = sorted(data.get("data", []), key=lambda x: x.get("index", 0))
+            vectors = [item.get("embedding") for item in items]
+            return vectors if all(vectors) else None
+        except Exception as e:
+            logger.warning(f"Échec d'embedding ({self.provider_id}): {e}")
+            return None
+
 
 class GeminiProvider(LLMProvider):
     """
@@ -156,7 +223,7 @@ class GeminiProvider(LLMProvider):
     """
 
     def __init__(self, api_key: str = "", model: str = ""):
-        resolved_model = model or "gemini-1.5-flash"
+        resolved_model = model or "gemini-3.5-flash-lite"
         base_url = "https://generativelanguage.googleapis.com/v1beta"
         super().__init__(api_key=api_key, model=resolved_model, base_url=base_url)
 
@@ -178,12 +245,15 @@ class GeminiProvider(LLMProvider):
             
             if m.tool_calls:
                 for tc in m.tool_calls:
-                    parts.append({
+                    part = {
                         "functionCall": {
                             "name": tc.name,
                             "args": tc.arguments
                         }
-                    })
+                    }
+                    if tc.thought_signature:
+                        part["thoughtSignature"] = tc.thought_signature
+                    parts.append(part)
             if m.role == "tool":
                 parts.append({
                     "functionResponse": {
@@ -241,7 +311,8 @@ class GeminiProvider(LLMProvider):
                     parsed_calls.append(ToolCall(
                         id=f"gemini_{fc.get('name')}",
                         name=fc.get("name", ""),
-                        arguments=fc.get("args", {})
+                        arguments=fc.get("args", {}),
+                        thought_signature=part.get("thoughtSignature")
                     ))
 
             return AgentResponse(
@@ -265,6 +336,20 @@ class GeminiProvider(LLMProvider):
             return {"healthy": False, "provider": "gemini", "status": r.status_code, "error": r.text[:200]}
         except Exception as e:
             return {"healthy": False, "provider": "gemini", "error": str(e)}
+
+    def embed(self, texts: List[str]) -> Optional[List[List[float]]]:
+        try:
+            vectors = []
+            for t in texts:
+                endpoint = f"{self.base_url}/models/gemini-embedding-001:embedContent?key={self.api_key}"
+                resp = requests.post(endpoint, json={"content": {"parts": [{"text": t}]}}, timeout=10)
+                if resp.status_code != 200:
+                    return None
+                vectors.append(resp.json().get("embedding", {}).get("values"))
+            return vectors if all(vectors) else None
+        except Exception as e:
+            logger.warning(f"Échec d'embedding (gemini): {e}")
+            return None
 
 
 class ClaudeProvider(LLMProvider):
@@ -442,6 +527,13 @@ class MockProvider(LLMProvider):
 
     def health_check(self) -> Dict[str, Any]:
         return {"healthy": True, "provider": "mock", "message": "Fournisseur local mock actif"}
+
+    def embed(self, texts: List[str]) -> Optional[List[List[float]]]:
+        """Deterministic pseudo-vector for offline testing only - not a real
+        embedding, carries no semantic meaning. Never used when a real provider
+        is connected."""
+        import hashlib
+        return [[b / 255.0 for b in hashlib.sha256(t.encode("utf-8", errors="replace")).digest()] for t in texts]
 
 
 def get_provider(provider_id: str, api_key: str = "", model: str = "", base_url: str = "") -> LLMProvider:

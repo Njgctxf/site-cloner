@@ -19,6 +19,7 @@ from .race_engine import audit_race_condition
 from .logic_engine import audit_price_tampering, audit_role_parameter_tampering
 from ..scanner import scan_target
 from ..dast_engine import run_dast_audit
+from .subagents import get_subagent
 
 logger = logging.getLogger("sentinel.agent")
 
@@ -31,9 +32,11 @@ Règles fondamentales et éthiques absolues :
 3. Toutes les actions techniques sont strictement soumises au Guardian de sécurité (contrôle de scope, anti-SSRF, rate limiting).
 4. Pour chaque problème identifié, fournis une explication claire en français, la preuve technique constatée (statut HTTP, en-tête, comportement différentiel), l'impact potentiel et la recommandation de remédiation concrète.
 5. Lorsque l'utilisateur te demande d'analyser une URL ou un composant (JWT, upload, formulaire, concurrence), utilise les outils mis à ta disposition.
-6. Tu disposes d'un référentiel de 818 procédures opérationnelles de cybersécurité (MITRE ATT&CK, NIST CSF, OWASP). Utilise search_security_skills pour trouver des procédures pertinentes, puis load_skill_detail pour charger leurs instructions complètes avant d'agir.
+6. Tu disposes d'un référentiel de 1774 fiches cybersécurité : 818 procédures opérationnelles (MITRE ATT&CK, NIST CSF, OWASP) + 956 fiches de référence officielles CWE (catégories de faiblesses, détection, mitigations). Utilise search_security_skills pour trouver des procédures pertinentes, puis load_skill_detail pour charger leurs instructions complètes avant d'agir.
 7. Tu as accès au serveur officiel Kali Linux MCP (mcp-kali-server) pour des outils réputés (nmap, nikto, whatweb, sslyze, gobuster, etc.) sur des cibles vérifiées via get_kali_mcp_status et execute_kali_security_tool. IMPORTANT : execute_kali_security_tool ne lance RIEN directement - il dépose une demande d'approbation qu'un humain doit valider depuis le tableau de bord Sentinel. N'annonce jamais un résultat d'exécution Kali tant que le statut renvoyé n'est pas "approved" : dis à l'utilisateur que la demande est en attente de son approbation.
 8. Tu disposes du moteur d'audit autonome PentAGI via get_pentagi_status et launch_pentagi_campaign pour lancer des campagnes multi-agents d'exposition et de conformité sur des cibles autorisées sous le contrôle strict du Guardian.
+9. Tu disposes de scanners open-source externes (Nuclei, OWASP ZAP, Semgrep, Trivy, Gitleaks) via request_external_scanner. IMPORTANT : comme pour Kali, cet outil ne lance RIEN directement - il dépose une demande d'approbation qu'un humain doit valider depuis le tableau de bord Sentinel. Ne confirme jamais un résultat de scan tant que le statut n'est pas "approved".
+9. Tu disposes d'une armée de sous-agents spécialisés auxquels tu peux déléguer des tâches précises via delegate_to_subagent : "web_audit_agent" (surface web, OWASP, logique métier, config serveur/BDD), "auth_agent" (JWT, race conditions), "network_recon_agent" (reconnaissance réseau via Kali, toujours soumise à approbation humaine). Délègue dès qu'une tâche correspond clairement au périmètre d'un sous-agent, puis synthétise ses conclusions dans ta réponse finale.
 """
 
 # OpenAPI / JSON-Schema tool declarations provided to the LLM
@@ -157,7 +160,7 @@ SENTINEL_TOOLS_SCHEMA = [
         "type": "function",
         "function": {
             "name": "search_security_skills",
-            "description": "Recherche parmi les 818 procédures opérationnelles de cybersécurité (MITRE ATT&CK, NIST CSF, OWASP) du référentiel Anthropic-Cybersecurity-Skills. Utilise cet outil automatiquement quand tu as besoin d'une procédure ou guide pour une technique de sécurité spécifique. Retourne les compétences les plus pertinentes avec leur description.",
+            "description": "Recherche parmi les 1774 fiches cybersécurité du référentiel : 818 procédures opérationnelles (MITRE ATT&CK, NIST CSF, OWASP) et 956 fiches de référence officielles CWE (catégories de faiblesses). Utilise cet outil automatiquement quand tu as besoin d'une procédure, d'un guide, ou d'une définition de catégorie de faiblesse. Retourne les compétences les plus pertinentes avec leur description.",
             "parameters": {
                 "type": "object",
                 "properties": {
@@ -480,6 +483,32 @@ SENTINEL_TOOLS_SCHEMA = [
     {
         "type": "function",
         "function": {
+            "name": "request_external_scanner",
+            "description": "Dépose une demande d'exécution d'un scanner open-source (Nuclei, OWASP ZAP, Semgrep, Trivy, Gitleaks) sur une cible ou un chemin local. Comme pour Kali, rien ne s'exécute automatiquement : un humain doit approuver la demande depuis le tableau de bord Sentinel.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "tool_id": {
+                        "type": "string",
+                        "enum": ["nuclei", "zap", "semgrep", "trivy", "gitleaks"],
+                        "description": "Identifiant du scanner à utiliser"
+                    },
+                    "target": {
+                        "type": "string",
+                        "description": "URL/hôte autorisé (nuclei, zap) ou chemin local dans le projet (semgrep, trivy, gitleaks)"
+                    },
+                    "reason": {
+                        "type": "string",
+                        "description": "Raison de la demande, pour information de l'humain qui approuvera"
+                    }
+                },
+                "required": ["tool_id", "target"]
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
             "name": "get_pentagi_status",
             "description": "Consulte l'état de connexion, la version et les capacités du moteur d'audit autonome PentAGI.",
             "parameters": {
@@ -533,6 +562,28 @@ SENTINEL_TOOLS_SCHEMA = [
                     }
                 },
                 "required": ["target"]
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "delegate_to_subagent",
+            "description": "Délègue une tâche précise à un sous-agent spécialisé (Agent Audit Web, Agent Analyse Auth/JWT, ou Agent Recon Réseau) qui l'exécute dans son périmètre restreint puis renvoie une synthèse de ses constatations.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "subagent_id": {
+                        "type": "string",
+                        "enum": ["web_audit_agent", "auth_agent", "network_recon_agent"],
+                        "description": "Identifiant du sous-agent spécialisé à mobiliser"
+                    },
+                    "task": {
+                        "type": "string",
+                        "description": "Description claire et précise de la tâche à déléguer (ex: cible, objectif)"
+                    }
+                },
+                "required": ["subagent_id", "task"]
             }
         }
     }
@@ -735,6 +786,15 @@ class SentinelAgent:
             except Exception as e:
                 return ToolResult(tool_call_id="", name=tool_name, result={"error": str(e)}, is_error=True)
 
+        if tool_name == "delegate_to_subagent":
+            try:
+                subagent_id = arguments.get("subagent_id", "")
+                task = arguments.get("task", "")
+                result = self._run_subagent(subagent_id, task)
+                return ToolResult(tool_call_id="", name=tool_name, result=result, is_error=not result.get("success", False))
+            except Exception as e:
+                return ToolResult(tool_call_id="", name=tool_name, result={"error": str(e)}, is_error=True)
+
         # 1. Guardian Policy Check for all other tools
         is_allowed, reason = guardian.validate_tool_call(tool_name, arguments)
         if not is_allowed:
@@ -818,6 +878,26 @@ class SentinelAgent:
                     is_error=not res.get("success", False)
                 )
 
+            elif tool_name == "request_external_scanner":
+                # Same gate as Kali: the agent can never run a scanner itself -
+                # it can only file a request. A human must approve it from the
+                # Sentinel dashboard before anything actually executes
+                # (see external_scanners.request_execution).
+                from .external_scanners import request_execution as request_scanner_execution
+                tool_id = arguments.get("tool_id", "")
+                target = arguments.get("target", "")
+                res = request_scanner_execution(
+                    tool_id=tool_id, target=target,
+                    requested_by="sentinel_agent_llm",
+                    reason=arguments.get("reason", "")
+                )
+                return ToolResult(
+                    tool_call_id="",
+                    name=tool_name,
+                    result=res,
+                    is_error=not res.get("success", False)
+                )
+
             elif tool_name == "get_pentagi_status":
                 from .pentagi_engine import pentagi_engine
                 res = pentagi_engine.health_check()
@@ -857,6 +937,72 @@ class SentinelAgent:
             return ToolResult(tool_call_id="", name=tool_name, result={"error": f"Outil inconnu: {tool_name}"}, is_error=True)
         except Exception as e:
             return ToolResult(tool_call_id="", name=tool_name, result={"error": str(e)}, is_error=True)
+
+    def _run_subagent(self, subagent_id: str, task: str, max_steps: int = 3) -> Dict[str, Any]:
+        """
+        Runs a bounded tool-calling loop for a specialized, scoped sub-agent.
+        The sub-agent only ever sees the tool schemas on its own whitelist, and every
+        tool call it makes still passes through execute_tool() - so Guardian validation
+        and the Kali human-approval gate apply exactly as they do for the main agent.
+        It never has access to delegate_to_subagent, PentAGI, or the native autonomous
+        scanner, regardless of the task it is given.
+        """
+        subagent = get_subagent(subagent_id)
+        allowed_names = set(subagent["allowed_tools"])
+        filtered_tools = [t for t in SENTINEL_TOOLS_SCHEMA if t["function"]["name"] in allowed_names]
+
+        messages = [
+            AgentMessage(role="system", content=subagent["system_prompt"]),
+            AgentMessage(role="user", content=task)
+        ]
+
+        executed_tool_records = []
+        step = 0
+        while step < max_steps:
+            step += 1
+            response = self.provider.chat(messages, tools=filtered_tools)
+
+            if not response.tool_calls:
+                return {
+                    "success": True,
+                    "subagent_id": subagent_id,
+                    "subagent_name": subagent["name"],
+                    "summary": response.content,
+                    "tools_executed": executed_tool_records
+                }
+
+            messages.append(AgentMessage(
+                role="assistant",
+                content=response.content,
+                tool_calls=response.tool_calls
+            ))
+
+            for tc in response.tool_calls:
+                if tc.name not in allowed_names:
+                    tool_result = ToolResult(
+                        tool_call_id=tc.id,
+                        name=tc.name,
+                        result={"error": f"Outil '{tc.name}' hors du périmètre de ce sous-agent."},
+                        is_error=True
+                    )
+                else:
+                    tool_result = self.execute_tool(tc.name, tc.arguments)
+                    tool_result.tool_call_id = tc.id
+
+                executed_tool_records.append({"tool": tc.name, "result": tool_result.result})
+                messages.append(AgentMessage(
+                    role="tool",
+                    content=json.dumps(tool_result.result, ensure_ascii=False),
+                    tool_call_id=tc.id
+                ))
+
+        return {
+            "success": True,
+            "subagent_id": subagent_id,
+            "subagent_name": subagent["name"],
+            "summary": "Nombre maximal d'étapes atteint - résultats partiels des outils exécutés.",
+            "tools_executed": executed_tool_records
+        }
 
     def process_message(self, conversation_history: List[AgentMessage], max_steps: int = 3) -> Dict[str, Any]:
         """
@@ -910,8 +1056,13 @@ class SentinelAgent:
 
         # Final response if max_steps reached
         final_resp = self.provider.chat(messages, tools=None)
+        reply = final_resp.content or (
+            "J'ai atteint le nombre maximal d'étapes pour cette requête après avoir exécuté "
+            f"{len(executed_tool_records)} outil(s). Dis-moi si tu veux que je continue "
+            "ou que je résume directement les résultats obtenus jusqu'ici."
+        )
         return {
-            "reply": final_resp.content,
+            "reply": reply,
             "tools_executed": executed_tool_records,
             "finish_reason": "completed"
         }

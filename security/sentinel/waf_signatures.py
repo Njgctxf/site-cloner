@@ -71,7 +71,7 @@ SUSPICIOUS_UA_PATTERNS = [
 ]
 
 
-def _scan_text(text: str) -> List[Dict[str, Any]]:
+def _scan_text(text: str, domain: str = "") -> List[Dict[str, Any]]:
     hits = []
     if not text:
         return hits
@@ -80,21 +80,38 @@ def _scan_text(text: str) -> List[Dict[str, Any]]:
             if pat.search(text):
                 hits.append({"category": category, "severity": severity, "pattern": pat.pattern})
                 break  # one hit per category is enough signal
+
+    # Self-learning layer: signatures Sentinel picked up itself, from a real
+    # incident anywhere it's deployed, or taught by a human after a bypass.
+    # Anti-poisoning: a 'provisional' signature (single-domain origin, not yet
+    # independently corroborated) only applies to the domain that produced it -
+    # it can't unilaterally start blocking unrelated protected sites.
+    try:
+        from .learned_signatures import get_active_learned_patterns
+        for sig in get_active_learned_patterns():
+            if sig.get("scope") == "provisional" and sig.get("source_domain") != domain:
+                continue
+            if sig["_compiled"].search(text):
+                hits.append({"category": sig["category"], "severity": sig["severity"],
+                             "pattern": f"learned#{sig['id']}"})
+    except Exception:
+        pass
     return hits
 
 
 def inspect_request(method: str, path: str, query_string: str = "",
-                     body: str = "", headers: Dict[str, str] = None) -> List[Dict[str, Any]]:
+                     body: str = "", headers: Dict[str, str] = None, domain: str = "") -> List[Dict[str, Any]]:
     """
     Passively inspects one incoming HTTP request for known attack signatures.
     Returns a list of findings (empty if nothing suspicious was seen).
     Never makes any outbound network call - pure local pattern matching.
+    `domain` scopes which learned signatures are trusted (see _scan_text).
     """
     headers = headers or {}
     findings: List[Dict[str, Any]] = []
 
     for src_name, src_val in (("path", path), ("query", query_string), ("body", body)):
-        for hit in _scan_text(src_val or ""):
+        for hit in _scan_text(src_val or "", domain=domain):
             findings.append({**hit, "source": src_name})
 
     user_agent = headers.get("User-Agent") or headers.get("user-agent") or ""

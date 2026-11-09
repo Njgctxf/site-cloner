@@ -8,6 +8,7 @@ let currentProvider = "mock";
 document.addEventListener("DOMContentLoaded", () => {
     loadConversations();
     loadProviderConfig();
+    loadUserLlmProviders();
     loadKaliStatus();
     loadPentagiStatus();
     setupEventListeners();
@@ -57,6 +58,22 @@ function setupEventListeners() {
         openKaliBtn.addEventListener("click", (e) => {
             e.preventDefault();
             openKaliModal();
+        });
+    }
+
+    const openScannersBtn = document.getElementById("openScannersBtn");
+    if (openScannersBtn) {
+        openScannersBtn.addEventListener("click", (e) => {
+            e.preventDefault();
+            openScannersModal();
+        });
+    }
+
+    const openShieldBtn = document.getElementById("openShieldBtn");
+    if (openShieldBtn) {
+        openShieldBtn.addEventListener("click", (e) => {
+            e.preventDefault();
+            openShieldModal();
         });
     }
 
@@ -419,6 +436,7 @@ async function loadUserLlmProviders() {
         const mainSelect = document.getElementById("providerSelect");
         if (mainSelect && data.active_provider_id) {
             mainSelect.value = data.active_provider_id;
+            currentProvider = data.active_provider_id;
             const modelTag = document.getElementById("activeModelTag");
             if (modelTag) {
                 const optText = mainSelect.options[mainSelect.selectedIndex]?.text || data.active_provider_id;
@@ -1034,6 +1052,397 @@ async function denyKaliPending(approvalId) {
             alert("Erreur: " + (data.error || "Échec du refus."));
         }
         await loadKaliPending();
+    } catch (e) {
+        alert("Erreur réseau: " + e.message);
+    }
+}
+
+// ==============================================================================
+// EXTERNAL OPEN-SOURCE SCANNERS UI LOGIC (Nuclei, ZAP, Semgrep, Trivy, Gitleaks)
+// ==============================================================================
+
+async function openScannersModal() {
+    const modal = document.getElementById("scannersModal");
+    if (modal) {
+        modal.classList.add("active");
+        await loadScannersTools();
+        await loadScannersPending();
+    }
+}
+
+function closeScannersModal() {
+    const modal = document.getElementById("scannersModal");
+    if (modal) modal.classList.remove("active");
+}
+
+async function loadScannersTools() {
+    const list = document.getElementById("scannersToolsList");
+    const countBadge = document.getElementById("scannersInstalledCountBadge");
+    if (!list) return;
+    try {
+        const res = await fetch("/__sc/security/api/sentinel/scanners/tools");
+        const data = await res.json();
+        const tools = data.tools || [];
+        const installedCount = tools.filter(t => t.is_installed).length;
+        if (countBadge) countBadge.textContent = `${installedCount}/${tools.length} installés`;
+
+        list.innerHTML = tools.map(t => `
+            <div style="background: #111827; border: 1px solid #1e293b; border-radius: 6px; padding: 8px 10px;">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <strong style="font-size: 0.82rem; color: #fff;">${escapeHtml(t.name)}</strong>
+                    <span style="font-size: 0.65rem; padding: 2px 7px; border-radius: 10px; font-weight: 600; background: ${t.is_installed ? 'rgba(16,185,129,0.15)' : 'rgba(239,68,68,0.15)'}; color: ${t.is_installed ? '#34d399' : '#f87171'}; border: 1px solid ${t.is_installed ? '#34d39944' : '#ef444444'};">
+                        ${t.is_installed ? 'Installé' : 'Non installé'}
+                    </span>
+                </div>
+                <div style="font-size: 0.72rem; color: #94a3b8; margin-top: 4px;">${escapeHtml(t.description)}</div>
+                <div style="font-size: 0.65rem; color: #64748b; margin-top: 2px;">Cible : ${t.target_type === 'network' ? 'URL / hôte réseau' : 'chemin local (projet)'}</div>
+            </div>
+        `).join("");
+    } catch (e) {
+        console.error("Erreur chargement catalogue scanners:", e);
+    }
+}
+
+async function executeScannerManual() {
+    const tool = document.getElementById("scannerExecToolSelect")?.value;
+    const target = (document.getElementById("scannerExecTarget")?.value || "").trim();
+    const consoleBox = document.getElementById("scannerOutputConsole");
+    const statusBadge = document.getElementById("scannerExecStatusBadge");
+    const btn = document.getElementById("scannerExecBtn");
+
+    if (!target) {
+        alert("Veuillez saisir une cible (URL autorisée ou chemin local).");
+        return;
+    }
+
+    if (consoleBox) consoleBox.textContent = `// Transmission de l'opération ${tool} vers le Guardian...\n// Validation en cours...\n`;
+    if (statusBadge) statusBadge.textContent = "Exécution...";
+    if (btn) btn.disabled = true;
+
+    try {
+        const res = await fetch("/__sc/security/api/sentinel/scanners/execute", {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify({ tool_id: tool, target: target })
+        });
+        const data = await res.json();
+
+        if (statusBadge) {
+            statusBadge.textContent = data.status || (data.success ? "Succès" : "Erreur");
+            statusBadge.style.color = data.success ? "#34d399" : "#f87171";
+        }
+
+        if (consoleBox) {
+            let output = `[OUTIL] : ${tool} sur ${target}\n`;
+            output += `[STATUT] : ${data.status} (${data.findings_count || 0} résultat(s), ${data.duration_seconds || 0}s)\n`;
+            output += `------------------------------------------------------------\n`;
+            if (data.findings && data.findings.length) {
+                output += JSON.stringify(data.findings, null, 2);
+            } else if (data.error) {
+                output += `[ERREUR] : ${data.error}`;
+            } else {
+                output += "Aucun résultat retourné.";
+            }
+            consoleBox.textContent = output;
+        }
+    } catch (e) {
+        if (consoleBox) consoleBox.textContent = `// Erreur réseau : ${e.message}`;
+    } finally {
+        if (btn) btn.disabled = false;
+    }
+}
+
+async function loadScannersPending() {
+    const list = document.getElementById("scannersPendingList");
+    const countBadge = document.getElementById("scannersPendingCountBadge");
+    if (!list) return;
+
+    try {
+        const res = await fetch("/__sc/security/api/sentinel/scanners/pending");
+        if (res.status === 401) {
+            list.innerHTML = `<div style="color: #475569; font-size: 0.78rem; text-align: center; padding: 10px;">Connexion admin requise.</div>`;
+            return;
+        }
+        const data = await res.json();
+        const pending = data.pending || [];
+
+        if (countBadge) countBadge.textContent = `${pending.length} en attente`;
+
+        if (!pending.length) {
+            list.innerHTML = `<div style="color: #475569; font-size: 0.78rem; text-align: center; padding: 10px;">Aucune demande en attente.</div>`;
+            return;
+        }
+
+        list.innerHTML = pending.map(p => `
+            <div style="background: #1a1406; border: 1px solid #ca8a0455; border-radius: 6px; padding: 8px 10px;">
+                <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 8px;">
+                    <div style="font-size: 0.78rem; color: #fde68a;">
+                        <strong>${escapeHtml(p.tool_id)}</strong> sur <strong>${escapeHtml(p.target)}</strong>
+                    </div>
+                    <span style="font-size: 0.65rem; color: #94a3b8; white-space: nowrap;">${escapeHtml(p.created_at || "")}</span>
+                </div>
+                ${p.reason ? `<div style="font-size: 0.7rem; color: #cbd5e1; margin-top: 4px;">Raison (agent) : ${escapeHtml(p.reason)}</div>` : ""}
+                <div style="font-size: 0.65rem; color: #64748b; margin-top: 2px;">Demandé par : ${escapeHtml(p.requested_by || "agent")}</div>
+                <div style="display: flex; gap: 6px; margin-top: 8px;">
+                    <button onclick="approveScannerPending('${p.id}')" style="flex: 1; background: #059669; color: #ecfdf5; border: none; padding: 5px 10px; border-radius: 5px; font-size: 0.72rem; font-weight: 700; cursor: pointer;">
+                        <i class="fa-solid fa-check"></i> Approuver &amp; exécuter
+                    </button>
+                    <button onclick="denyScannerPending('${p.id}')" style="flex: 1; background: #1e293b; color: #f87171; border: 1px solid #ef444455; padding: 5px 10px; border-radius: 5px; font-size: 0.72rem; font-weight: 700; cursor: pointer;">
+                        <i class="fa-solid fa-xmark"></i> Refuser
+                    </button>
+                </div>
+            </div>
+        `).join("");
+    } catch (e) {
+        console.error("Erreur de chargement des demandes scanners en attente:", e);
+    }
+}
+
+async function approveScannerPending(approvalId) {
+    if (!confirm("Approuver cette demande ? Le scanner va s'exécuter réellement sur la cible indiquée.")) return;
+    try {
+        const res = await fetch(`/__sc/security/api/sentinel/scanners/approve/${encodeURIComponent(approvalId)}`, {
+            method: "POST",
+            headers: {"Content-Type": "application/json"}
+        });
+        const data = await res.json();
+        if (!res.ok || data.success === false) {
+            alert("Erreur: " + (data.error || "Échec de l'approbation."));
+        }
+        await loadScannersPending();
+
+        const consoleBox = document.getElementById("scannerOutputConsole");
+        const statusBadge = document.getElementById("scannerExecStatusBadge");
+        if (consoleBox && data.status) {
+            let output = `[APPROUVÉ MANUELLEMENT] : ${data.tool} sur ${data.target}\n`;
+            output += `[STATUT] : ${data.status} (${data.findings_count || 0} résultat(s))\n`;
+            if (data.findings && data.findings.length) output += `------------------------------------------------------------\n${JSON.stringify(data.findings, null, 2)}\n`;
+            if (data.error) output += `[ERREUR] : ${data.error}\n`;
+            consoleBox.textContent = output;
+        }
+        if (statusBadge && data.status) {
+            statusBadge.textContent = data.status;
+            statusBadge.style.color = data.success ? "#34d399" : "#f87171";
+        }
+    } catch (e) {
+        alert("Erreur réseau: " + e.message);
+    }
+}
+
+async function denyScannerPending(approvalId) {
+    const reason = prompt("Raison du refus (optionnel) :", "") || "";
+    try {
+        const res = await fetch(`/__sc/security/api/sentinel/scanners/deny/${encodeURIComponent(approvalId)}`, {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify({ reason })
+        });
+        const data = await res.json();
+        if (!res.ok || data.success === false) {
+            alert("Erreur: " + (data.error || "Échec du refus."));
+        }
+        await loadScannersPending();
+    } catch (e) {
+        alert("Erreur réseau: " + e.message);
+    }
+}
+
+// ==============================================================================
+// REAL-TIME SELF-LEARNING SHIELD UI LOGIC
+// ==============================================================================
+
+async function openShieldModal() {
+    const modal = document.getElementById("shieldModal");
+    if (modal) {
+        modal.classList.add("active");
+        await Promise.all([loadShieldStatus(), loadShieldAgentKeys(), loadShieldIncidents(), loadShieldSignatures()]);
+    }
+}
+
+function closeShieldModal() {
+    const modal = document.getElementById("shieldModal");
+    if (modal) modal.classList.remove("active");
+}
+
+const SHIELD_TIER_COLORS = {
+    NORMAL: "#059669", ALERT: "#d97706", DEFENSIVE: "#dc2626", EMERGENCY: "#991b1b"
+};
+
+async function loadShieldStatus() {
+    try {
+        const res = await fetch("/__sc/security/api/sentinel/shield/status");
+        if (res.status === 401) return;
+        const data = await res.json();
+        const tier = data.tier || "NORMAL";
+        const color = SHIELD_TIER_COLORS[tier] || "#059669";
+        const badge = document.getElementById("shieldTierBadge");
+        if (badge) { badge.textContent = tier; badge.style.background = color; }
+        const pill = document.getElementById("shieldTierPill");
+        if (pill) { pill.textContent = tier; pill.style.borderColor = color + "55"; pill.style.background = color + "22"; }
+    } catch (e) {
+        console.error("Erreur chargement statut bouclier:", e);
+    }
+}
+
+async function provisionShieldAgent() {
+    const domain = (document.getElementById("shieldProvisionDomain")?.value || "").trim();
+    const box = document.getElementById("shieldNewKeyBox");
+    if (!domain) { alert("Veuillez saisir un domaine."); return; }
+    try {
+        const res = await fetch("/__sc/security/api/sentinel/agent/provision", {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify({ domain })
+        });
+        const data = await res.json();
+        if (!data.success) {
+            alert("Erreur: " + (data.error || "Échec de l'émission de la clé."));
+            return;
+        }
+        if (box) {
+            box.style.display = "block";
+            box.innerHTML = `Clé d'agent pour <strong>${escapeHtml(data.domain)}</strong> :<br><code>${escapeHtml(data.api_key)}</code><br><small style="color:#64748b;">Copie-la dans le snippet middleware installé sur ce site - elle ne sera plus affichée en clair.</small>`;
+        }
+        await loadShieldAgentKeys();
+    } catch (e) {
+        alert("Erreur réseau: " + e.message);
+    }
+}
+
+async function loadShieldAgentKeys() {
+    const list = document.getElementById("shieldAgentKeysList");
+    if (!list) return;
+    try {
+        const res = await fetch("/__sc/security/api/sentinel/agent/keys");
+        if (res.status === 401) return;
+        const data = await res.json();
+        const keys = data.keys || [];
+        if (!keys.length) {
+            list.innerHTML = `<div style="color: #475569; font-size: 0.78rem; text-align: center; padding: 10px;">Aucun site protégé pour le moment.</div>`;
+            return;
+        }
+        list.innerHTML = keys.map(k => `
+            <div style="background: #111827; border: 1px solid #1e293b; border-radius: 6px; padding: 7px 10px; display:flex; justify-content:space-between; align-items:center;">
+                <div>
+                    <strong style="font-size: 0.8rem; color: #fff;">${escapeHtml(k.domain)}</strong>
+                    <div style="font-size: 0.65rem; color: #64748b;">${k.is_active ? 'Actif' : 'Révoqué'} &bull; dernier contact: ${escapeHtml(k.last_seen_at || 'jamais')}</div>
+                </div>
+                ${k.is_active ? `<button onclick="revokeShieldAgent('${escapeHtml(k.domain)}')" style="background:#1e293b; color:#f87171; border:1px solid #ef444455; padding:4px 8px; border-radius:5px; font-size:0.68rem; cursor:pointer;">Révoquer</button>` : ""}
+            </div>
+        `).join("");
+    } catch (e) {
+        console.error("Erreur chargement des clés d'agent:", e);
+    }
+}
+
+async function revokeShieldAgent(domain) {
+    if (!confirm(`Révoquer la clé d'agent pour ${domain} ? Ce site ne sera plus protégé.`)) return;
+    try {
+        await fetch("/__sc/security/api/sentinel/agent/revoke", {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify({ domain })
+        });
+        await loadShieldAgentKeys();
+    } catch (e) {
+        alert("Erreur réseau: " + e.message);
+    }
+}
+
+async function loadShieldIncidents() {
+    const list = document.getElementById("shieldIncidentsList");
+    const countBadge = document.getElementById("shieldIncidentsCountBadge");
+    if (!list) return;
+    try {
+        const res = await fetch("/__sc/security/api/sentinel/incidents");
+        if (res.status === 401) return;
+        const data = await res.json();
+        const incidents = data.incidents || [];
+        if (countBadge) countBadge.textContent = `${incidents.length} incident(s)`;
+        if (!incidents.length) {
+            list.innerHTML = `<div style="color: #475569; font-size: 0.78rem; text-align: center; padding: 10px;">Aucune attaque détectée.</div>`;
+            return;
+        }
+        list.innerHTML = incidents.map(i => `
+            <div style="background: #1a0a0a; border: 1px solid #ef444444; border-radius: 6px; padding: 7px 10px;">
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <strong style="font-size: 0.78rem; color: #fca5a5;">${escapeHtml(i.severity)} &bull; ${escapeHtml(i.source_ip)}</strong>
+                    <span style="font-size: 0.62rem; color: #64748b;">${escapeHtml(i.updated_at || "")}</span>
+                </div>
+                <div style="font-size: 0.72rem; color: #cbd5e1; margin-top: 3px;">${escapeHtml(i.summary)}</div>
+                <div style="font-size: 0.65rem; color: #64748b; margin-top: 2px;">Action : ${escapeHtml(i.action_taken)} &bull; Domaine : ${escapeHtml(i.domain)}</div>
+            </div>
+        `).join("");
+    } catch (e) {
+        console.error("Erreur chargement threat feed:", e);
+    }
+}
+
+async function loadShieldSignatures() {
+    const list = document.getElementById("shieldSignaturesList");
+    const countBadge = document.getElementById("shieldSignaturesCountBadge");
+    if (!list) return;
+    try {
+        const res = await fetch("/__sc/security/api/sentinel/signatures/learned");
+        if (res.status === 401) return;
+        const data = await res.json();
+        const sigs = data.signatures || [];
+        if (countBadge) countBadge.textContent = sigs.length;
+        if (!sigs.length) {
+            list.innerHTML = `<div style="color: #475569; font-size: 0.78rem; text-align: center; padding: 10px;">Rien appris pour l'instant.</div>`;
+            return;
+        }
+        list.innerHTML = sigs.map(s => `
+            <div style="background: #111827; border: 1px solid #1e293b; border-radius: 6px; padding: 7px 10px;">
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <strong style="font-size: 0.76rem; color: ${s.is_active ? '#fff' : '#64748b'};">${escapeHtml(s.category)}</strong>
+                    <span style="font-size: 0.62rem; color: ${s.origin === 'human_taught' ? '#a78bfa' : '#f87171'};">${s.origin === 'human_taught' ? 'Enseignée' : 'Auto-apprise'}</span>
+                </div>
+                <div style="font-size: 0.68rem; color: #94a3b8; margin-top: 2px; font-family: monospace; word-break: break-all;">${escapeHtml(s.example_payload || "")}</div>
+                <div style="font-size: 0.6rem; color: #64748b; margin-top: 2px; display:flex; justify-content:space-between;">
+                    <span>${s.hit_count} occurrence(s) &bull; ${s.is_active ? 'active' : 'désactivée'}</span>
+                    <a href="#" onclick="event.preventDefault(); ${s.is_active ? `deactivateShieldSignature(${s.id})` : `reactivateShieldSignature(${s.id})`}" style="color:#64748b;">${s.is_active ? 'Désactiver' : 'Réactiver'}</a>
+                </div>
+            </div>
+        `).join("");
+    } catch (e) {
+        console.error("Erreur chargement signatures apprises:", e);
+    }
+}
+
+async function deactivateShieldSignature(id) {
+    const reason = prompt("Pourquoi cette règle est-elle une erreur ? (ex: trop large, a bloqué du trafic légitime) - gardé en mémoire pour ne pas répéter l'erreur :", "") || "";
+    await fetch(`/__sc/security/api/sentinel/signatures/${id}/deactivate`, {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({ reason })
+    });
+    await loadShieldSignatures();
+}
+
+async function reactivateShieldSignature(id) {
+    await fetch(`/__sc/security/api/sentinel/signatures/${id}/reactivate`, { method: "POST" });
+    await loadShieldSignatures();
+}
+
+async function teachShieldSignature() {
+    const category = (document.getElementById("teachCategory")?.value || "").trim();
+    const payload = (document.getElementById("teachPayload")?.value || "").trim();
+    if (!payload) { alert("Colle le payload exact qui a contourné le bouclier."); return; }
+    try {
+        const res = await fetch("/__sc/security/api/sentinel/signatures/teach", {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify({ category, severity: "HIGH", example_payload: payload })
+        });
+        const data = await res.json();
+        if (!data.success) {
+            alert("Erreur: " + (data.error || "Échec de l'apprentissage."));
+            return;
+        }
+        document.getElementById("teachCategory").value = "";
+        document.getElementById("teachPayload").value = "";
+        await loadShieldSignatures();
     } catch (e) {
         alert("Erreur réseau: " + e.message);
     }

@@ -6,3 +6,5 @@ __pycache__/
 cloned_sites/**/_edited/_backup/
 
 data/
+security/sentinel/tools_bin/
+.claude/

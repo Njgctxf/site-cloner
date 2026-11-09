@@ -31,9 +31,21 @@ from site_server import resolve, resolve_post, make_server
 from admin import init_admin
 from shop import init_shop
 from studio import init_studio
-from security import init_security
+from security import init_security, self_protect_check
 
 app = Flask(__name__, template_folder="templates", static_folder="static", static_url_path="/__sc/static")
+
+@app.before_request
+def ultron_self_shield():
+    """Ultron protège sa propre app avec le même bouclier temps réel qu'il offre
+    à n'importe quel site/app/outil externe - détection, apprentissage, blocage."""
+    try:
+        directive = self_protect_check(request)
+        if directive.get("block"):
+            return Response("Accès bloqué par Ultron Sentinel : activité suspecte détectée.", 403)
+    except Exception:
+        pass  # le bouclier ne doit jamais faire tomber l'app lui-même
+    return None
 
 BASE_DIR = Path(__file__).resolve().parent
 CLONED_DIR = BASE_DIR / "cloned_sites"
@@ -429,4 +441,4 @@ if __name__ == "__main__":
             port = find_free_port(5000, 6000)
 
     print(f"[SiteCloner SaaS v2] starting on http://localhost:{port} ...")
-    app.run(host="0.0.0.0", port=port, debug=False)
+    app.run(host="0.0.0.0", port=port, debug=False, threaded=True)

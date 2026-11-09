@@ -33,6 +33,29 @@ BASE = "/__sc/security"
 bp = Blueprint("security", __name__, url_prefix=BASE)
 
 
+def self_protect_check(req) -> dict:
+    """Ultron protects its own host app the exact same way it protects any
+    external site/app/tool that installs its agent - same detection, same
+    learning, same blocklist. Called from app.py's before_request, in-process
+    (no API key hop needed: it's the same process protecting itself)."""
+    from .sentinel.realtime import ingest_request_event
+    body = ""
+    try:
+        if req.method in ("POST", "PUT", "PATCH") and (req.content_length or 0) < 50000:
+            body = req.get_data(as_text=True, parse_form_data=False) or ""
+    except Exception:
+        body = ""
+    return ingest_request_event(
+        domain=req.host or "ultron_self",
+        source_ip=req.remote_addr or "unknown",
+        method=req.method,
+        path=req.path,
+        query_string=(req.query_string or b"").decode("utf-8", errors="replace"),
+        body=body[:4000],
+        headers=dict(req.headers)
+    )
+
+
 def lab_url():
     """The sandboxed practice target ("InnoTech" intranet) served by this module."""
     return request.host_url.rstrip("/") + BASE + "/lab"
@@ -909,7 +932,7 @@ def sentinel_chat_api():
 
     # Process step
     try:
-        res = agent.process_message(conversation_history=history)
+        res = agent.process_message(conversation_history=history, max_steps=6)
         reply_text = res.get("reply", "")
         tools_executed = res.get("tools_executed", [])
 
@@ -1014,6 +1037,55 @@ def sentinel_agent_blocklist_api():
     if not domain:
         return jsonify({"error": "Clé d'agent invalide ou révoquée."}), 401
     return jsonify({"domain": domain, "blocked_ips": get_active_blocklist(domain)})
+
+
+@bp.route("/api/sentinel/signatures/learned", methods=["GET"])
+@admin_owner_required
+def sentinel_learned_signatures_api():
+    """Lists every signature Ultron learned itself (auto_incident) or was taught (human_taught)."""
+    from .sentinel.learned_signatures import list_learned_signatures
+    rows = list_learned_signatures()
+    for r in rows:
+        r.pop("_compiled", None)
+    return jsonify({"signatures": rows})
+
+
+@bp.route("/api/sentinel/signatures/teach", methods=["POST"])
+@admin_owner_required
+def sentinel_teach_signature_api():
+    """Owner-only: feed in a technique that defeated the shield (authorized pentest/
+    red-team drill, or reported by a protected client). Activated immediately
+    everywhere Ultron is deployed."""
+    from .sentinel.learned_signatures import teach_signature
+    data = request.get_json(silent=True) or {}
+    result = teach_signature(
+        category=(data.get("category") or "").strip(),
+        severity=(data.get("severity") or "HIGH").strip().upper(),
+        example_payload=data.get("example_payload") or "",
+        taught_by=session.get("admin_username") or "admin",
+        notes=data.get("notes") or "",
+        user_id=get_current_user_id()
+    )
+    return jsonify(result), (200 if result.get("success") else 400)
+
+
+@bp.route("/api/sentinel/signatures/<int:signature_id>/deactivate", methods=["POST"])
+@admin_owner_required
+def sentinel_deactivate_signature_api(signature_id):
+    """Deactivating is also how a mistake becomes a permanent lesson: the reason
+    given here is kept forever and fed into future AI generalizations so the
+    same over-broad rule doesn't get re-learned later."""
+    from .sentinel.learned_signatures import deactivate_signature
+    data = request.get_json(silent=True) or {}
+    reason = (data.get("reason") or "").strip()
+    return jsonify({"success": deactivate_signature(signature_id, reason=reason)})
+
+
+@bp.route("/api/sentinel/signatures/<int:signature_id>/reactivate", methods=["POST"])
+@admin_owner_required
+def sentinel_reactivate_signature_api(signature_id):
+    from .sentinel.learned_signatures import reactivate_signature
+    return jsonify({"success": reactivate_signature(signature_id)})
 
 
 @bp.route("/api/sentinel/incidents", methods=["GET"])
@@ -1475,6 +1547,101 @@ def sentinel_kali_deny_api(approval_id):
     data = request.get_json(silent=True) or {}
     decided_by = session.get("admin_username") or "admin"
     result = kali_connector.deny_pending(approval_id, decided_by=decided_by, reason=data.get("reason", ""))
+    return jsonify(result), (200 if result.get("success") else 400)
+
+
+# ==============================================================================
+# EXTERNAL OPEN-SOURCE SCANNERS (Nuclei, OWASP ZAP, Semgrep, Trivy, Gitleaks)
+# Same human-approval gate as Kali - see external_scanners.py
+# ==============================================================================
+
+@bp.route("/api/sentinel/scanners/tools", methods=["GET"])
+def sentinel_scanners_tools_api():
+    """Catalog of registered external scanners with live installation status."""
+    from .sentinel.external_scanners import list_tools
+    return jsonify({"tools": list_tools()})
+
+
+@bp.route("/api/sentinel/scanners/history", methods=["GET"])
+def sentinel_scanners_history_api():
+    """Lists past external scanner executions."""
+    from .sentinel.external_scanners import list_history
+    limit = min(int(request.args.get("limit", 50)), 100)
+    return jsonify({"history": list_history(limit=limit)})
+
+
+@bp.route("/api/sentinel/scanners/execute", methods=["POST"])
+@admin_owner_required
+def sentinel_scanners_execute_api():
+    """Owner-only: manually runs an external scanner immediately (the human IS the approval)."""
+    from .sentinel.external_scanners import execute_tool, TOOL_REGISTRY, _resolve_local_path
+    data = request.get_json(silent=True) or {}
+    tool_id = (data.get("tool_id") or "").strip().lower()
+    target = (data.get("target") or "").strip()
+
+    if not tool_id or not target:
+        return jsonify({"error": "tool_id et target sont obligatoires."}), 400
+    if tool_id not in TOOL_REGISTRY:
+        return jsonify({"error": f"Outil '{tool_id}' inconnu."}), 400
+
+    if TOOL_REGISTRY[tool_id]["target_type"] == "local_path":
+        resolved = _resolve_local_path(target)
+        if not resolved:
+            return jsonify({"error": f"Chemin local refusé : '{target}' sort du périmètre du projet."}), 400
+        target = resolved
+
+    decided_by = session.get("admin_username") or "admin"
+    result = execute_tool(tool_id=tool_id, target=target, triggered_by=f"manual_dashboard:{decided_by}",
+                          user_id=get_current_user_id())
+    return jsonify(result), (200 if result.get("success") else 400)
+
+
+@bp.route("/api/sentinel/scanners/signatures", methods=["GET"])
+def sentinel_scanners_signatures_api():
+    """Shows the last signature/database update status for each scanner that needs one."""
+    from .sentinel.external_scanners import get_last_signature_update
+    return jsonify({
+        "signatures": {t: get_last_signature_update(t) for t in ("nuclei", "trivy", "semgrep")}
+    })
+
+
+@bp.route("/api/sentinel/scanners/signatures/update", methods=["POST"])
+@admin_owner_required
+def sentinel_scanners_signatures_update_api():
+    """Owner-only: forces an immediate signature update instead of waiting for the daily scheduler check."""
+    from .sentinel.external_scanners import update_signatures
+    data = request.get_json(silent=True) or {}
+    tool_id = (data.get("tool_id") or "nuclei").strip().lower()
+    result = update_signatures(tool_id)
+    return jsonify(result), (200 if result.get("success") else 400)
+
+
+@bp.route("/api/sentinel/scanners/pending", methods=["GET"])
+@admin_owner_required
+def sentinel_scanners_pending_api():
+    """Lists external scanner requests filed by the autonomous agent that are awaiting human approval."""
+    from .sentinel.external_scanners import list_pending
+    return jsonify({"pending": list_pending()})
+
+
+@bp.route("/api/sentinel/scanners/approve/<approval_id>", methods=["POST"])
+@admin_owner_required
+def sentinel_scanners_approve_api(approval_id):
+    """Owner-only: approves a pending external scanner request and runs it now."""
+    from .sentinel.external_scanners import approve_pending
+    decided_by = session.get("admin_username") or "admin"
+    result = approve_pending(approval_id, decided_by=decided_by, user_id=get_current_user_id())
+    return jsonify(result), (200 if result.get("success") else 400)
+
+
+@bp.route("/api/sentinel/scanners/deny/<approval_id>", methods=["POST"])
+@admin_owner_required
+def sentinel_scanners_deny_api(approval_id):
+    """Owner-only: denies a pending external scanner request. Nothing ever executes."""
+    from .sentinel.external_scanners import deny_pending
+    data = request.get_json(silent=True) or {}
+    decided_by = session.get("admin_username") or "admin"
+    result = deny_pending(approval_id, decided_by=decided_by, reason=data.get("reason", ""))
     return jsonify(result), (200 if result.get("success") else 400)
 
 

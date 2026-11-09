@@ -106,6 +106,11 @@ def _scheduler_loop(interval_seconds: int = 60):
             run_scheduler_cycle()
         except Exception as e:
             print(f"[CyberLab Scheduler] Erreur de cycle: {e}")
+        try:
+            from .sentinel.external_scanners import run_due_signature_updates
+            run_due_signature_updates()
+        except Exception as e:
+            print(f"[CyberLab Scheduler] Erreur de mise à jour des signatures: {e}")
         time.sleep(interval_seconds)
 
 def start_background_scheduler(interval_seconds: int = 60):

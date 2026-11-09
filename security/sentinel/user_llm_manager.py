@@ -40,8 +40,8 @@ SUPPORTED_PROVIDERS: Dict[str, Dict[str, Any]] = {
         "name": "Google Gemini",
         "description": "Modèles Gemini 1.5 Flash, Gemini 1.5 Pro",
         "auth_methods": ["api_key", "oauth_token"],
-        "default_model": "gemini-1.5-flash",
-        "available_models": ["gemini-1.5-flash", "gemini-1.5-pro", "gemini-1.0-pro"],
+        "default_model": "gemini-3.5-flash-lite",
+        "available_models": ["gemini-3.5-flash-lite", "gemini-3.5-flash", "gemini-flash-latest"],
         "docs_url": "https://aistudio.google.com/app/apikey",
         "icon": "fa-google"
     },
@@ -86,13 +86,13 @@ SUPPORTED_PROVIDERS: Dict[str, Dict[str, Any]] = {
         "name": "OpenRouter",
         "description": "Passerelle multi-modèles avec des modèles gratuits (:free) - clé API gratuite",
         "auth_methods": ["api_key"],
-        "default_model": "meta-llama/llama-3.1-8b-instruct:free",
+        "default_model": "nvidia/nemotron-3.5-lightning:free",
         "available_models": [
-            "meta-llama/llama-3.1-8b-instruct:free",
-            "google/gemini-2.0-flash-exp:free",
-            "deepseek/deepseek-r1:free",
-            "qwen/qwen-2.5-72b-instruct:free",
-            "mistralai/mistral-7b-instruct:free"
+            "nvidia/nemotron-3.5-lightning:free",
+            "google/gemma-4-26b-a4b-it:free",
+            "google/gemma-4-31b-it:free",
+            "nvidia/nemotron-3-ultra-550b-a55b:free",
+            "liquid/lfm-2.5-2.6b:free"
         ],
         "default_url": "https://openrouter.ai/api/v1",
         "docs_url": "https://openrouter.ai/keys",
