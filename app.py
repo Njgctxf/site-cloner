@@ -39,6 +39,9 @@ app = Flask(__name__, template_folder="templates", static_folder="static", stati
 def ultron_self_shield():
     """Ultron protège sa propre app avec le même bouclier temps réel qu'il offre
     à n'importe quel site/app/outil externe - détection, apprentissage, blocage."""
+    # Ne bloque jamais l'administrateur local / développeur sur localhost
+    if request.remote_addr in ("127.0.0.1", "::1"):
+        return None
     try:
         directive = self_protect_check(request)
         if directive.get("block"):

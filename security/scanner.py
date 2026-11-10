@@ -402,8 +402,14 @@ def scan_target(target_url, auth_headers_user_b=None, categories=None):
     session = build_safe_session(allow_local_lab=True)
     session.headers.update({"User-Agent": UA})
 
+    # Route internal lab mock hostnames to local lab endpoint on Windows/development
+    parsed_in = urllib.parse.urlparse(target_url)
+    effective_url = target_url
+    if (parsed_in.hostname or "").lower() in ("innotech-lab.local", "cyberlab.local"):
+        effective_url = "http://127.0.0.1:5050/__sc/security/lab"
+
     try:
-        resp = session.get(target_url, timeout=TIMEOUT, allow_redirects=True)
+        resp = session.get(effective_url, timeout=TIMEOUT, allow_redirects=True)
     except Exception as e:
         return {"success": False, "error": f"Impossible de joindre la cible: {str(e)}"}
 

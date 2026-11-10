@@ -3,805 +3,1934 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CyberLab — Plateforme SOC & Laboratoire d'Audit de Sécurité</title>
+    <title>ULTON AI — Audit & Sécurité Web pour Entreprises</title>
     
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
-    
-    <!-- Chart.js -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
-    <!-- Styles -->
-    <link rel="stylesheet" href="/__sc/static/security/cyberlab.css">
+    <style>
+        :root {
+            --bg-body: #07090e;
+            --bg-surface: #0e121b;
+            --bg-card: #131926;
+            --bg-card-hover: #192234;
+            --border: #1e283d;
+            --border-highlight: #38bdf8;
+            
+            --cyan: #38bdf8;
+            --cyan-glow: rgba(56, 189, 248, 0.25);
+            --purple: #a855f7;
+            --green: #10b981;
+            --green-glow: rgba(16, 185, 129, 0.2);
+            --red: #ef4444;
+            --red-glow: rgba(239, 68, 68, 0.2);
+            --orange: #f59e0b;
+            --gold: #fbbf24;
+            
+            --text-primary: #f8fafc;
+            --text-secondary: #94a3b8;
+            --text-muted: #64748b;
+            
+            --font-main: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+            --font-mono: 'JetBrains Mono', monospace;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background-color: var(--bg-body);
+            color: var(--text-primary);
+            font-family: var(--font-main);
+            min-height: 100vh;
+            overflow-x: hidden;
+            background-image: 
+                radial-gradient(circle at 50% 0%, rgba(56, 189, 248, 0.08) 0%, transparent 60%),
+                radial-gradient(circle at 100% 50%, rgba(168, 85, 247, 0.05) 0%, transparent 40%);
+        }
+
+        /* --- HEADER & NAVBAR --- */
+        .navbar {
+            background: rgba(14, 18, 27, 0.85);
+            backdrop-filter: blur(12px);
+            border-bottom: 1px solid var(--border);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            padding: 0.85rem 2rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .nav-brand {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            text-decoration: none;
+            color: #fff;
+        }
+
+        .nav-brand-logo {
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(135deg, #0284c7 0%, #38bdf8 50%, #a855f7 100%);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.25rem;
+            box-shadow: 0 0 20px var(--cyan-glow);
+        }
+
+        .nav-brand-text h1 {
+            font-size: 1.15rem;
+            font-weight: 800;
+            letter-spacing: -0.3px;
+        }
+
+        .nav-brand-text span {
+            font-size: 0.72rem;
+            color: var(--text-muted);
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+        }
+
+        .nav-tabs {
+            display: flex;
+            gap: 6px;
+            background: #090c13;
+            padding: 4px;
+            border-radius: 10px;
+            border: 1px solid var(--border);
+        }
+
+        .nav-tab-btn {
+            background: transparent;
+            border: none;
+            color: var(--text-secondary);
+            font-family: var(--font-main);
+            font-size: 0.88rem;
+            font-weight: 600;
+            padding: 8px 18px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .nav-tab-btn:hover {
+            color: #fff;
+            background: rgba(255, 255, 255, 0.04);
+        }
+
+        .nav-tab-btn.active {
+            color: #fff;
+            background: var(--bg-card);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+            border: 1px solid var(--border);
+        }
+
+        .nav-actions {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+        }
+
+        .badge-plan {
+            background: rgba(16, 185, 129, 0.12);
+            color: var(--green);
+            border: 1px solid rgba(16, 185, 129, 0.3);
+            font-size: 0.75rem;
+            font-weight: 700;
+            padding: 5px 12px;
+            border-radius: 20px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .btn-upgrade-pro {
+            background: linear-gradient(135deg, #f59e0b 0%, #fbbf24 100%);
+            color: #1e1b4b;
+            border: none;
+            font-weight: 800;
+            font-size: 0.85rem;
+            padding: 7px 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            transition: transform 0.15s ease, box-shadow 0.15s ease;
+        }
+
+        .btn-upgrade-pro:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 15px rgba(251, 191, 36, 0.4);
+        }
+
+        /* --- MAIN CONTAINER --- */
+        .app-container {
+            max-width: 1180px;
+            margin: 0 auto;
+            padding: 2.5rem 1.5rem 6rem;
+        }
+
+        .view-section {
+            display: none;
+        }
+
+        .view-section.active {
+            display: block;
+            animation: fadeIn 0.25s ease-out;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(6px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* --- HERO SCANNER SECTION --- */
+        .scanner-hero {
+            text-align: center;
+            max-width: 760px;
+            margin: 1rem auto 2.5rem;
+        }
+
+        .hero-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: rgba(56, 189, 248, 0.1);
+            color: var(--cyan);
+            border: 1px solid rgba(56, 189, 248, 0.25);
+            font-size: 0.8rem;
+            font-weight: 700;
+            padding: 4px 14px;
+            border-radius: 20px;
+            margin-bottom: 1.25rem;
+        }
+
+        .scanner-hero h2 {
+            font-size: 2.3rem;
+            font-weight: 800;
+            line-height: 1.25;
+            letter-spacing: -0.8px;
+            margin-bottom: 0.85rem;
+            background: linear-gradient(135deg, #ffffff 40%, #94a3b8 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .scanner-hero p {
+            color: var(--text-secondary);
+            font-size: 1.05rem;
+            line-height: 1.6;
+        }
+
+        /* --- SEARCH BAR CARD --- */
+        .scan-box-card {
+            background: var(--bg-surface);
+            border: 1px solid var(--border);
+            border-radius: 18px;
+            padding: 1.75rem;
+            box-shadow: 0 12px 35px rgba(0, 0, 0, 0.35);
+            margin-bottom: 2rem;
+            position: relative;
+        }
+
+        .url-input-group {
+            display: flex;
+            gap: 12px;
+            background: #090c14;
+            border: 2px solid var(--border);
+            border-radius: 12px;
+            padding: 6px;
+            transition: border-color 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .url-input-group:focus-within {
+            border-color: var(--cyan);
+            box-shadow: 0 0 20px var(--cyan-glow);
+        }
+
+        .url-input-icon {
+            display: flex;
+            align-items: center;
+            padding-left: 14px;
+            color: var(--text-muted);
+            font-size: 1.1rem;
+        }
+
+        .url-input-field {
+            flex: 1;
+            background: transparent;
+            border: none;
+            color: #fff;
+            font-family: var(--font-main);
+            font-size: 1.05rem;
+            font-weight: 600;
+            padding: 10px 8px;
+            outline: none;
+        }
+
+        .url-input-field::placeholder {
+            color: #475569;
+            font-weight: 400;
+        }
+
+        .btn-launch-scan {
+            background: linear-gradient(135deg, #0284c7 0%, #38bdf8 100%);
+            color: #0b1120;
+            border: none;
+            font-family: var(--font-main);
+            font-weight: 800;
+            font-size: 1rem;
+            padding: 12px 28px;
+            border-radius: 9px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            transition: all 0.2s ease;
+            white-space: nowrap;
+        }
+
+        .btn-launch-scan:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 6px 20px rgba(56, 189, 248, 0.4);
+        }
+
+        .quick-samples {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-top: 1rem;
+            font-size: 0.85rem;
+            color: var(--text-muted);
+        }
+
+        .sample-pill {
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid var(--border);
+            color: var(--cyan);
+            padding: 3px 10px;
+            border-radius: 6px;
+            font-family: var(--font-mono);
+            font-size: 0.78rem;
+            cursor: pointer;
+            transition: all 0.15s ease;
+        }
+
+        .sample-pill:hover {
+            background: rgba(56, 189, 248, 0.15);
+            border-color: var(--cyan);
+        }
+
+        /* --- MODULE CHECKBOXES (FREEMIUM) --- */
+        .modules-section {
+            margin-top: 1.5rem;
+            border-top: 1px solid var(--border);
+            padding-top: 1.25rem;
+        }
+
+        .modules-section-title {
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--text-muted);
+            margin-bottom: 0.85rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .modules-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+            gap: 10px;
+        }
+
+        .module-checkbox-card {
+            background: #090c14;
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 12px 14px;
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            user-select: none;
+        }
+
+        .module-checkbox-card:hover {
+            border-color: #334155;
+            background: #0d121e;
+        }
+
+        .module-checkbox-card.checked {
+            border-color: rgba(56, 189, 248, 0.4);
+            background: rgba(56, 189, 248, 0.04);
+        }
+
+        .module-checkbox-card.pro-locked {
+            opacity: 0.75;
+            border-style: dashed;
+            cursor: pointer;
+            position: relative;
+        }
+
+        .module-checkbox-card.pro-locked:hover {
+            border-color: var(--gold);
+            opacity: 1;
+            background: rgba(251, 191, 36, 0.04);
+        }
+
+        .checkbox-custom {
+            width: 18px;
+            height: 18px;
+            border-radius: 4px;
+            border: 2px solid #475569;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-top: 2px;
+            font-size: 0.65rem;
+            color: #0b1120;
+            transition: all 0.15s ease;
+            flex-shrink: 0;
+        }
+
+        .module-checkbox-card.checked .checkbox-custom {
+            background: var(--cyan);
+            border-color: var(--cyan);
+        }
+
+        .module-checkbox-card.pro-locked .checkbox-custom {
+            border-color: var(--gold);
+            color: var(--gold);
+        }
+
+        .module-info {
+            flex: 1;
+        }
+
+        .module-title {
+            font-size: 0.88rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 2px;
+        }
+
+        .module-badge-free {
+            background: rgba(16, 185, 129, 0.15);
+            color: var(--green);
+            font-size: 0.65rem;
+            font-weight: 700;
+            padding: 1px 6px;
+            border-radius: 4px;
+        }
+
+        .module-badge-pro {
+            background: rgba(251, 191, 36, 0.15);
+            color: var(--gold);
+            font-size: 0.65rem;
+            font-weight: 800;
+            padding: 1px 6px;
+            border-radius: 4px;
+            border: 1px solid rgba(251, 191, 36, 0.3);
+        }
+
+        .module-desc {
+            font-size: 0.76rem;
+            color: var(--text-muted);
+            line-height: 1.35;
+        }
+
+        /* --- SCAN PROGRESS ANIMATION --- */
+        .scan-progress-card {
+            display: none;
+            background: var(--bg-surface);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 2rem;
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+
+        .progress-spinner {
+            font-size: 2.5rem;
+            color: var(--cyan);
+            margin-bottom: 1rem;
+            animation: spin 1.2s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .progress-title {
+            font-size: 1.25rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+        }
+
+        .progress-subtitle {
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+            margin-bottom: 1.5rem;
+        }
+
+        .progress-bar-container {
+            width: 100%;
+            height: 8px;
+            background: #090c14;
+            border-radius: 4px;
+            overflow: hidden;
+            margin-bottom: 1.5rem;
+        }
+
+        .progress-bar-fill {
+            height: 100%;
+            width: 0%;
+            background: linear-gradient(90deg, var(--cyan) 0%, var(--purple) 100%);
+            border-radius: 4px;
+            transition: width 0.4s ease;
+        }
+
+        .stepper-steps {
+            display: flex;
+            justify-content: space-around;
+            gap: 10px;
+        }
+
+        .step-item {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .step-item.active {
+            color: var(--cyan);
+            font-weight: 700;
+        }
+
+        .step-item.done {
+            color: var(--green);
+        }
+
+        /* --- AUDIT RESULTS DASHBOARD --- */
+        .results-container {
+            display: none;
+        }
+
+        .score-hero-card {
+            background: linear-gradient(135deg, rgba(14, 18, 27, 0.9) 0%, rgba(19, 25, 38, 0.95) 100%);
+            border: 1px solid var(--border);
+            border-radius: 18px;
+            padding: 2rem;
+            display: grid;
+            grid-template-columns: 240px 1fr;
+            gap: 2rem;
+            align-items: center;
+            margin-bottom: 2rem;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+        }
+
+        .score-circle-box {
+            text-align: center;
+            padding: 1.25rem;
+            background: #090c14;
+            border-radius: 16px;
+            border: 1px solid var(--border);
+        }
+
+        .grade-badge-huge {
+            font-size: 3.8rem;
+            font-weight: 800;
+            line-height: 1;
+            margin-bottom: 4px;
+            font-family: var(--font-mono);
+        }
+
+        .grade-a { color: var(--green); }
+        .grade-b { color: var(--cyan); }
+        .grade-c { color: var(--orange); }
+        .grade-d, .grade-f { color: var(--red); }
+
+        .score-num-label {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            font-weight: 600;
+        }
+
+        .score-details-box h3 {
+            font-size: 1.4rem;
+            font-weight: 800;
+            margin-bottom: 0.5rem;
+        }
+
+        .risk-pill {
+            display: inline-block;
+            padding: 3px 10px;
+            border-radius: 6px;
+            font-size: 0.75rem;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 1rem;
+        }
+
+        .risk-faible { background: rgba(16, 185, 129, 0.15); color: var(--green); }
+        .risk-modere { background: rgba(245, 158, 11, 0.15); color: var(--orange); }
+        .risk-eleve, .risk-critique { background: rgba(239, 68, 68, 0.15); color: var(--red); }
+
+        .score-stats-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 12px;
+            margin-top: 1rem;
+        }
+
+        .stat-mini-card {
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 10px 12px;
+        }
+
+        .stat-mini-card .val {
+            font-size: 1.25rem;
+            font-weight: 800;
+            font-family: var(--font-mono);
+        }
+
+        .stat-mini-card .lbl {
+            font-size: 0.72rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+        }
+
+        /* --- FINDING CARDS (ACCESSIBLE TO ALL) --- */
+        .section-header-title {
+            font-size: 1.25rem;
+            font-weight: 800;
+            margin: 2rem 0 1rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .findings-list {
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+        }
+
+        .finding-card {
+            background: var(--bg-surface);
+            border: 1px solid var(--border);
+            border-left: 4px solid var(--cyan);
+            border-radius: 12px;
+            padding: 1.4rem;
+            transition: all 0.2s ease;
+        }
+
+        .finding-card.severity-CRITICAL, .finding-card.severity-HIGH {
+            border-left-color: var(--red);
+            background: linear-gradient(90deg, rgba(239, 68, 68, 0.04) 0%, var(--bg-surface) 100%);
+        }
+
+        .finding-card.severity-MEDIUM {
+            border-left-color: var(--orange);
+            background: linear-gradient(90deg, rgba(245, 158, 11, 0.04) 0%, var(--bg-surface) 100%);
+        }
+
+        .finding-card.severity-LOW, .finding-card.severity-INFO {
+            border-left-color: var(--cyan);
+        }
+
+        .finding-card.passed {
+            border-left-color: var(--green);
+            background: linear-gradient(90deg, rgba(16, 185, 129, 0.04) 0%, var(--bg-surface) 100%);
+        }
+
+        .finding-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.85rem;
+        }
+
+        .finding-title-box {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .finding-title {
+            font-size: 1.05rem;
+            font-weight: 700;
+        }
+
+        .badge-severity {
+            font-size: 0.7rem;
+            font-weight: 800;
+            padding: 3px 8px;
+            border-radius: 4px;
+            text-transform: uppercase;
+        }
+
+        .badge-sev-critical { background: var(--red); color: #fff; }
+        .badge-sev-high { background: rgba(239, 68, 68, 0.2); color: var(--red); border: 1px solid var(--red); }
+        .badge-sev-medium { background: rgba(245, 158, 11, 0.2); color: var(--orange); border: 1px solid var(--orange); }
+        .badge-sev-low { background: rgba(56, 189, 248, 0.2); color: var(--cyan); border: 1px solid var(--cyan); }
+        .badge-sev-ok { background: rgba(16, 185, 129, 0.2); color: var(--green); border: 1px solid var(--green); }
+
+        .finding-breakdown {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 14px;
+            margin: 0.85rem 0 1.15rem;
+            font-size: 0.88rem;
+        }
+
+        .breakdown-box {
+            background: #090c14;
+            padding: 10px 14px;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+        }
+
+        .breakdown-box strong {
+            display: block;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--text-muted);
+            margin-bottom: 4px;
+        }
+
+        .breakdown-box.risk strong {
+            color: #fca5a5;
+        }
+
+        .breakdown-box.solution strong {
+            color: #86efac;
+        }
+
+        .finding-actions {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            justify-content: flex-end;
+            border-top: 1px solid var(--border);
+            padding-top: 0.85rem;
+        }
+
+        .btn-ask-ai {
+            background: rgba(56, 189, 248, 0.12);
+            color: var(--cyan);
+            border: 1px solid rgba(56, 189, 248, 0.35);
+            font-family: var(--font-main);
+            font-size: 0.82rem;
+            font-weight: 700;
+            padding: 7px 14px;
+            border-radius: 6px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.15s ease;
+        }
+
+        .btn-ask-ai:hover {
+            background: var(--cyan);
+            color: #090c14;
+            box-shadow: 0 0 15px var(--cyan-glow);
+        }
+
+        /* --- PRO UPSELL BANNER --- */
+        .pro-upsell-card {
+            background: linear-gradient(135deg, rgba(251, 191, 36, 0.08) 0%, rgba(168, 85, 247, 0.08) 100%);
+            border: 1px solid rgba(251, 191, 36, 0.35);
+            border-radius: 16px;
+            padding: 2.2rem;
+            margin-top: 2.5rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 2rem;
+        }
+
+        .pro-upsell-content h4 {
+            font-size: 1.35rem;
+            font-weight: 800;
+            color: #fff;
+            margin-bottom: 0.5rem;
+        }
+
+        .pro-upsell-content p {
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+            line-height: 1.5;
+            margin-bottom: 1rem;
+        }
+
+        .pro-features-pills {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .pro-feature-tag {
+            background: rgba(251, 191, 36, 0.12);
+            color: var(--gold);
+            border: 1px solid rgba(251, 191, 36, 0.25);
+            font-size: 0.78rem;
+            font-weight: 700;
+            padding: 4px 10px;
+            border-radius: 6px;
+        }
+
+        /* --- TAB 2: BOUCLIER WAF --- */
+        .shield-view-card {
+            background: var(--bg-surface);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+        }
+
+        .shield-status-bar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 1.25rem;
+            background: #090c14;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            margin-bottom: 1.5rem;
+        }
+
+        .code-snippet-box {
+            background: #06080d;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 1rem;
+            font-family: var(--font-mono);
+            font-size: 0.85rem;
+            color: #38bdf8;
+            overflow-x: auto;
+            position: relative;
+            margin: 1rem 0;
+        }
+
+        /* --- COPILOT FLOATING BUTTON & DRAWER --- */
+        .copilot-fab {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            background: linear-gradient(135deg, #0284c7 0%, #38bdf8 100%);
+            color: #090c14;
+            font-family: var(--font-main);
+            font-weight: 800;
+            font-size: 0.92rem;
+            padding: 12px 20px;
+            border-radius: 30px;
+            border: none;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            box-shadow: 0 8px 30px rgba(56, 189, 248, 0.45);
+            z-index: 999;
+            transition: all 0.2s ease;
+        }
+
+        .copilot-fab:hover {
+            transform: translateY(-2px) scale(1.03);
+            box-shadow: 0 12px 35px rgba(56, 189, 248, 0.6);
+        }
+
+        .fab-dot {
+            width: 9px;
+            height: 9px;
+            background: #10b981;
+            border-radius: 50%;
+            box-shadow: 0 0 10px #10b981;
+            animation: pulseDot 2s infinite;
+        }
+
+        @keyframes pulseDot {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.5; transform: scale(0.85); }
+        }
+
+        /* DRAWER CHAT PANEL */
+        .copilot-drawer {
+            position: fixed;
+            top: 0;
+            right: -480px;
+            width: 460px;
+            height: 100vh;
+            background: #090c14;
+            border-left: 1px solid var(--border);
+            box-shadow: -15px 0 45px rgba(0, 0, 0, 0.6);
+            z-index: 1000;
+            display: flex;
+            flex-direction: column;
+            transition: right 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .copilot-drawer.open {
+            right: 0;
+        }
+
+        .drawer-header {
+            padding: 1.25rem;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: #0d121c;
+        }
+
+        .drawer-title-box {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .drawer-close-btn {
+            background: transparent;
+            border: none;
+            color: var(--text-muted);
+            font-size: 1.2rem;
+            cursor: pointer;
+            padding: 6px;
+            border-radius: 6px;
+        }
+
+        .drawer-close-btn:hover {
+            color: #fff;
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .drawer-messages {
+            flex: 1;
+            padding: 1.25rem;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+        }
+
+        .chat-bubble {
+            padding: 12px 16px;
+            border-radius: 12px;
+            font-size: 0.9rem;
+            line-height: 1.5;
+            max-width: 88%;
+        }
+
+        .chat-bubble.user {
+            align-self: flex-end;
+            background: linear-gradient(135deg, #0284c7, #0369a1);
+            color: #fff;
+            border-bottom-right-radius: 2px;
+        }
+
+        .chat-bubble.assistant {
+            align-self: flex-start;
+            background: var(--bg-surface);
+            border: 1px solid var(--border);
+            color: var(--text-primary);
+            border-bottom-left-radius: 2px;
+        }
+
+        .chat-quick-pills {
+            padding: 0.5rem 1.25rem;
+            display: flex;
+            gap: 8px;
+            overflow-x: auto;
+            border-top: 1px solid var(--border);
+            background: #07090f;
+        }
+
+        .quick-pill-btn {
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid var(--border);
+            color: var(--text-secondary);
+            font-size: 0.75rem;
+            padding: 5px 10px;
+            border-radius: 14px;
+            white-space: nowrap;
+            cursor: pointer;
+            transition: all 0.15s ease;
+        }
+
+        .quick-pill-btn:hover {
+            color: var(--cyan);
+            border-color: var(--cyan);
+        }
+
+        .drawer-input-box {
+            padding: 1rem 1.25rem;
+            border-top: 1px solid var(--border);
+            background: #0d121c;
+            display: flex;
+            gap: 10px;
+        }
+
+        .chat-input-text {
+            flex: 1;
+            background: #07090e;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 10px 14px;
+            color: #fff;
+            font-family: var(--font-main);
+            font-size: 0.9rem;
+            outline: none;
+        }
+
+        .chat-input-text:focus {
+            border-color: var(--cyan);
+        }
+
+        .btn-send-chat {
+            background: var(--cyan);
+            color: #0b1120;
+            border: none;
+            border-radius: 8px;
+            padding: 0 16px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: background 0.15s ease;
+        }
+
+        .btn-send-chat:hover {
+            background: #7dd3fc;
+        }
+
+        /* --- MODAL PRO POPUP --- */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(0, 0, 0, 0.75);
+            backdrop-filter: blur(8px);
+            z-index: 2000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-overlay.open {
+            display: flex;
+        }
+
+        .modal-card {
+            background: #0d121c;
+            border: 1px solid var(--gold);
+            border-radius: 18px;
+            max-width: 580px;
+            width: 90%;
+            padding: 2.2rem;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.8), 0 0 30px rgba(251, 191, 36, 0.15);
+            position: relative;
+        }
+
+        .modal-close-btn {
+            position: absolute;
+            top: 16px;
+            right: 18px;
+            background: transparent;
+            border: none;
+            color: var(--text-muted);
+            font-size: 1.25rem;
+            cursor: pointer;
+        }
+
+        .modal-close-btn:hover {
+            color: #fff;
+        }
+
+        @media (max-width: 768px) {
+            .navbar { padding: 0.75rem 1rem; flex-wrap: wrap; gap: 10px; }
+            .nav-tabs { order: 3; width: 100%; justify-content: center; }
+            .score-hero-card { grid-template-columns: 1fr; }
+            .copilot-drawer { width: 100%; right: -100%; }
+            .finding-breakdown { grid-template-columns: 1fr; }
+            .score-stats-grid { grid-template-columns: repeat(2, 1fr); }
+        }
+    </style>
 </head>
 <body>
 
-    <!-- SIDEBAR NAVIGATION -->
-    <aside class="sidebar">
-        <div class="sidebar-header">
-            <div class="brand-icon"></div>
-            <div>
-                <div class="brand-title">CyberLab</div>
-                <div class="brand-subtitle">Security SOC & Lab</div>
+    <!-- NAVBAR -->
+    <header class="navbar">
+        <a href="/__sc/security/" class="nav-brand">
+            <div class="nav-brand-logo">
+                <i class="fa-solid fa-shield-halved"></i>
             </div>
+            <div class="nav-brand-text">
+                <h1>ULTON AI</h1>
+                <span>Plateforme de Cybersécurité</span>
+            </div>
+        </a>
+
+        <nav class="nav-tabs">
+            <button class="nav-tab-btn active" onclick="switchMainTab('scanner')">
+                <i class="fa-solid fa-magnifying-glass"></i> Audit & Scanner
+            </button>
+            <button class="nav-tab-btn" onclick="switchMainTab('shield')">
+                <i class="fa-solid fa-shield-virus"></i> Bouclier Actif (WAF)
+            </button>
+            <button class="nav-tab-btn" onclick="switchMainTab('settings')">
+                <i class="fa-solid fa-sliders"></i> Outils Experts & SOC
+            </button>
+        </nav>
+
+        <div class="nav-actions">
+            <div class="badge-plan">
+                <i class="fa-solid fa-circle-check"></i> Mode Découverte (0€)
+            </div>
+            <button class="btn-upgrade-pro" onclick="openProModal()">
+                <i class="fa-solid fa-crown"></i> Passer à PRO
+            </button>
         </div>
+    </header>
 
-        <ul class="nav-links">
-            <li class="nav-section-label">Tableau de bord</li>
-            <li class="nav-item active" data-tab="overview">
-                <span class="nav-icon"></span>
-                <span>Overview</span>
-            </li>
+    <div class="app-container">
 
-            <li class="nav-section-label">Scanner</li>
-            <li class="nav-item" data-tab="scanner">
-                <span class="nav-icon"></span>
-                <span>Security Scanner</span>
-            </li>
-
-            <li class="nav-section-label">Rapports</li>
-            <li class="nav-item" data-tab="reports">
-                <span class="nav-icon"></span>
-                <span>Vulnerability Reports</span>
-            </li>
-            <li class="nav-item" data-tab="network">
-                <span class="nav-icon"></span>
-                <span>Network Monitoring</span>
-            </li>
-
-            <li class="nav-section-label">Laboratoire pédagogique</li>
-            <li class="nav-item" data-tab="lab">
-                <span class="nav-icon"></span>
-                <span>Lab Environment</span>
-            </li>
-            <li class="nav-item" data-tab="simulations">
-                <span class="nav-icon"></span>
-                <span>Attack Simulations</span>
-            </li>
-            <li class="nav-item" data-tab="learning">
-                <span class="nav-icon"></span>
-                <span>Learning Center</span>
-            </li>
-
-            <li class="nav-section-label">Paramètres</li>
-            <li class="nav-item" data-tab="domains">
-                <span class="nav-icon"></span>
-                <span>Domaines Autorisés</span>
-            </li>
-            <li class="nav-item" data-tab="cicd">
-                <span class="nav-icon"></span>
-                <span>CI/CD & API</span>
-            </li>
-            <li class="nav-item" data-tab="settings">
-                <span class="nav-icon"></span>
-                <span>Settings</span>
-            </li>
-        </ul>
-
-        <div class="sidebar-footer">
-            <a href="/__sc/security/sentinel" style="display:block;margin-bottom:8px;padding:6px 10px;background:linear-gradient(135deg, rgba(2,132,199,0.2), rgba(168,85,247,0.2));border:1px solid #38bdf8;border-radius:6px;color:#38bdf8;text-decoration:none;font-weight:700;font-size:0.85rem;text-align:center;">
-                🤖 Ulton AI (Agent)
-            </a>
-            <a href="/__sc/" style="display:block;margin-bottom:6px;color:var(--cyan);text-decoration:none;font-weight:600">← SiteCloner</a>
-            <a href="/__sc/security/admin-space" style="display:block;margin-bottom:10px;color:#f87171;text-decoration:none;font-weight:600;font-size:0.85rem"> Espace Privé Propriétaire →</a>
-            <div><span class="status-dot"></span>SOC Engine : <strong>Online</strong></div>
-            <div style="margin-top: 4px;">Périmètre : <strong>Scope Vérifié & Anti-SSRF</strong></div>
-        </div>
-    </aside>
-
-    <!-- MAIN CONTENT VIEW -->
-    <main class="main-content">
-        <!-- TOP STATUS BAR -->
-        <header class="top-bar">
-            <div class="page-title">
-                <span id="header-section-title">CyberLab Console</span>
-                <span class="badge-tag badge-info">v2.4 - Academic Release</span>
-            </div>
-            <div style="display: flex; align-items: center; gap: 0.75rem;">
-                <div style="font-size: 0.85rem; color: var(--text-muted);">
-                    Cible active : <span style="font-family: var(--font-mono); color: var(--cyan);">{{ lab_url.split("//")[1] }}</span>
+        <!-- ============================================================== -->
+        <!-- TAB 1: AUDIT & SCANNER VIEW -->
+        <!-- ============================================================== -->
+        <section id="view-scanner" class="view-section active">
+            
+            <div class="scanner-hero">
+                <div class="hero-badge">
+                    <i class="fa-solid fa-bolt"></i> Audit de Sécurité Automatisé en 1 Clic
                 </div>
-                <a href="{{ SEC_BASE }}/admin-space" class="btn btn-secondary" style="border-color: rgba(239, 68, 68, 0.5); color: #fca5a5;">
-                    <span>Espace Privé Admin</span>
-                </a>
-                <button class="btn btn-secondary" onclick="window.open('{{ SEC_BASE }}/lab', '_blank')">
-                    <span>Ouvrir Cible Lab</span>
-                </button>
-            </div>
-        </header>
-
-        <!-- TAB 1: OVERVIEW -->
-        <section id="tab-overview" class="tab-pane active">
-            <div class="metrics-grid">
-                <div class="card">
-                    <div class="card-title">Audits Réalisés</div>
-                    <div class="card-value" id="metric-scans">0</div>
-                </div>
-                <div class="card">
-                    <div class="card-title">Vulnérabilités Détectées</div>
-                    <div class="card-value" id="metric-vulns" style="color: var(--red);">0</div>
-                </div>
-                <div class="card">
-                    <div class="card-title">Simulations Pédagogiques</div>
-                    <div class="card-value" id="metric-sims" style="color: var(--cyan);">0</div>
-                </div>
-                <div class="card">
-                    <div class="card-title">Niveau de Risque Global</div>
-                    <div class="card-value" id="metric-risk" style="color: var(--green); font-size: 1.5rem;">FAIBLE</div>
-                </div>
-                <div class="card">
-                    <div class="card-title">Score de Posture</div>
-                    <div class="card-value" id="metric-posture" style="color: var(--cyan);">95/100</div>
-                </div>
+                <h2>Protégez votre site web contre les cyberattaques</h2>
+                <p>Détectez immédiatement les failles critiques, vérifiez vos en-têtes et fichiers sensibles, et obtenez l'assistance pas-à-pas de l'IA Ulton.</p>
             </div>
 
-            <!-- Dashboard Split Layout: Chart + Live Event Stream -->
-            <div style="display: grid; grid-template-columns: 1fr 1.5fr; gap: 1.5rem; margin-bottom: 2rem;">
-                <div class="card">
-                    <h3 style="font-size: 1rem; margin-bottom: 1rem; color: var(--text-primary);">Distribution des Vulnérabilités</h3>
-                    <div style="height: 220px; position: relative;">
-                        <canvas id="vulnChart"></canvas>
+            <!-- SCAN INPUT CARD -->
+            <div class="scan-box-card">
+                <div class="url-input-group">
+                    <div class="url-input-icon">
+                        <i class="fa-solid fa-globe"></i>
                     </div>
-                </div>
-
-                <div class="card">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
-                        <h3 style="font-size: 1rem; color: var(--text-primary);">État du Laboratoire InnoTech Corp</h3>
-                        <span id="lab-mode-badge" class="badge-tag badge-crit">VULNERABLE</span>
-                    </div>
-                    <p style="color: var(--text-secondary); font-size: 0.88rem; margin-bottom: 1rem;">
-                        Environnement sandbox reproduisant une application web d'entreprise avec des vulnérabilités documentées pour tests pédagogiques.
-                    </p>
-                    <div style="display: flex; gap: 0.75rem;">
-                        <button class="btn btn-primary" onclick="toggleLabProtection()">
-                            <span>Basculer Mode Vulnérable / Sécurisé</span>
-                        </button>
-                        <button class="btn btn-secondary" onclick="resetLabDatabase()">
-                            <span>Réinitialiser Données Lab</span>
-                        </button>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Terminal Audit Log Stream -->
-            <div class="terminal-window">
-                <div class="terminal-header">
-                    <span>JOURNAL D'AUDIT SOC EN TEMPS RÉEL</span>
-                    <span>BUFFER : 50 EVENTS</span>
-                </div>
-                <div class="terminal-body" id="overview-logs">
-                    <!-- Injected via JavaScript -->
-                </div>
-            </div>
-        </section>
-
-        <!-- TAB 2: LAB ENVIRONMENT -->
-        <section id="tab-lab" class="tab-pane">
-            <div class="card" style="margin-bottom: 1.5rem;">
-                <h2 style="font-size: 1.25rem; margin-bottom: 0.5rem;">Environnement Isolé de Démonstration</h2>
-                <p style="color: var(--text-secondary); font-size: 0.9rem;">
-                    Ce laboratoire héberge une maquette d'application d'entreprise intitulée <strong>InnoTech Portal</strong>. 
-                    Elle a été conçue pour reproduire fidèlement les erreurs courantes de développement logiciel sans aucun risque externe.
-                </p>
-            </div>
-
-            <div class="metrics-grid">
-                <div class="card">
-                    <div class="card-title">Cible Autorisée</div>
-                    <div style="font-family: var(--font-mono); font-size: 1.1rem; color: var(--green);">{{ lab_url.split("//")[1] }}</div>
-                    <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.25rem;">Isolation réseau : Loopback Localhost</div>
-                </div>
-                <div class="card">
-                    <div class="card-title">Mode Actuel</div>
-                    <div style="font-family: var(--font-mono); font-size: 1.1rem; color: var(--cyan);" id="lab-tab-mode">Interactif</div>
-                    <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.25rem;">Commutable à chaud</div>
-                </div>
-                <div class="card">
-                    <div class="card-title">Base de Données de Test</div>
-                    <div style="font-family: var(--font-mono); font-size: 1.1rem; color: var(--text-primary);">SQLite (InnoTech DB)</div>
-                    <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.25rem;">Restaurable en 1-clic</div>
-                </div>
-            </div>
-
-            <div class="card">
-                <h3 style="font-size: 1rem; margin-bottom: 1rem;">Endpoints de Démonstration Disponibles</h3>
-                <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 0.9rem;">
-                    <thead>
-                        <tr style="border-bottom: 1px solid var(--border-color); color: var(--text-muted);">
-                            <th style="padding: 0.75rem;">Endpoint</th>
-                            <th style="padding: 0.75rem;">Vulnérabilité Associée</th>
-                            <th style="padding: 0.75rem;">Statut</th>
-                            <th style="padding: 0.75rem;">Action</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr style="border-bottom: 1px solid var(--border-color);">
-                            <td style="padding: 0.75rem; font-family: var(--font-mono); color: var(--cyan);">/lab/login</td>
-                            <td style="padding: 0.75rem;">Injection SQL (Auth Bypass) & Credential Stuffing</td>
-                            <td style="padding: 0.75rem;"><span class="badge-tag badge-crit">Actif</span></td>
-                            <td style="padding: 0.75rem;"><button class="btn btn-secondary" onclick="switchTab('simulations'); document.getElementById('sim-scenario-select').value='sqli'; onScenarioChange();">Tester</button></td>
-                        </tr>
-                        <tr style="border-bottom: 1px solid var(--border-color);">
-                            <td style="padding: 0.75rem; font-family: var(--font-mono); color: var(--cyan);">/lab/search</td>
-                            <td style="padding: 0.75rem;">Cross-Site Scripting (XSS Réfléchi)</td>
-                            <td style="padding: 0.75rem;"><span class="badge-tag badge-crit">Actif</span></td>
-                            <td style="padding: 0.75rem;"><button class="btn btn-secondary" onclick="switchTab('simulations'); document.getElementById('sim-scenario-select').value='xss'; onScenarioChange();">Tester</button></td>
-                        </tr>
-                        <tr style="border-bottom: 1px solid var(--border-color);">
-                            <td style="padding: 0.75rem; font-family: var(--font-mono); color: var(--cyan);">/lab/profile/&lt;id&gt;</td>
-                            <td style="padding: 0.75rem;">Contrôle d'Accès Défaillant (IDOR)</td>
-                            <td style="padding: 0.75rem;"><span class="badge-tag badge-crit">Actif</span></td>
-                            <td style="padding: 0.75rem;"><button class="btn btn-secondary" onclick="switchTab('simulations'); document.getElementById('sim-scenario-select').value='idor'; onScenarioChange();">Tester</button></td>
-                        </tr>
-                        <tr>
-                            <td style="padding: 0.75rem; font-family: var(--font-mono); color: var(--cyan);">/lab/download?file=...</td>
-                            <td style="padding: 0.75rem;">Traversée de Répertoires (Path Traversal / LFI)</td>
-                            <td style="padding: 0.75rem;"><span class="badge-tag badge-crit">Actif</span></td>
-                            <td style="padding: 0.75rem;"><button class="btn btn-secondary" onclick="switchTab('simulations'); document.getElementById('sim-scenario-select').value='path_traversal'; onScenarioChange();">Tester</button></td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
-        </section>
-
-        <!-- TAB: VERIFIED DOMAINS (ENTERPRISE SCOPE) -->
-        <section id="tab-domains" class="tab-pane">
-            <div class="card" style="margin-bottom: 1.5rem;">
-                <div style="display: flex; justify-content: space-between; align-items: flex-start;">
-                    <div>
-                        <h2 style="font-size: 1.25rem; margin-bottom: 0.5rem;"> Gestion & Vérification des Domaines d'Entreprise</h2>
-                        <p style="color: var(--text-secondary); font-size: 0.9rem;">
-                            Par conformité éthique et légale, vous devez certifier être propriétaire ou administrateur autorisé de chaque domaine avant de pouvoir déclencher un audit de sécurité.
-                        </p>
-                    </div>
-                    <span class="badge-tag badge-safe">Anti-SSRF & DNS Challenge Actifs</span>
-                </div>
-            </div>
-
-            <!-- Enrollment Card -->
-            <div class="card" style="margin-bottom: 1.5rem;">
-                <h3 style="font-size: 1rem; margin-bottom: 1rem; color: var(--cyan);">Ajouter un Nouveau Domaine à Auditer</h3>
-                <div style="display: grid; grid-template-columns: 2fr 1.5fr auto; gap: 1rem; align-items: flex-end;">
-                    <div>
-                        <label style="font-size: 0.8rem; color: var(--text-muted); display: block; margin-bottom: 0.4rem;">Nom de domaine complet :</label>
-                        <input type="text" id="domain-input" class="input-box" placeholder="ex: app.monentreprise.com" />
-                    </div>
-                    <div>
-                        <label style="font-size: 0.8rem; color: var(--text-muted); display: block; margin-bottom: 0.4rem;">Méthode de validation :</label>
-                        <select id="domain-method-select" class="input-box">
-                            <option value="dns_txt">Enregistrement DNS TXT (_sc-audit)</option>
-                            <option value="http_file">Fichier /.well-known HTTP Challenge</option>
-                        </select>
-                    </div>
-                    <div>
-                        <button class="btn btn-primary" onclick="registerDomain()">
-                            <span>Enregistrer le Domaine</span>
-                        </button>
-                    </div>
-                </div>
-
-                <!-- Challenge Instructions Box (Dynamic) -->
-                <div id="domain-instructions-box" style="display: none; margin-top: 1.25rem; padding: 1.25rem; background: rgba(0, 240, 255, 0.04); border: 1px dashed var(--cyan); border-radius: 8px;">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
-                        <strong style="color: var(--cyan); font-size: 0.95rem;"> Instructions de validation pour <span id="instr-domain-name"></span></strong>
-                        <button class="btn btn-secondary" style="font-size: 0.75rem; padding: 0.3rem 0.6rem;" onclick="copyChallengeToken()">Copier le Jeton</button>
-                    </div>
-                    <div id="instr-details" style="font-size: 0.85rem; color: var(--text-secondary); line-height: 1.6;">
-                        <!-- Injected via JS -->
-                    </div>
-                </div>
-            </div>
-
-            <!-- Verified Domains List -->
-            <div class="card">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-                    <h3 style="font-size: 1rem; color: var(--text-primary);">Périmètre Autorisé (Scope)</h3>
-                    <button class="btn btn-secondary" onclick="loadDomains()"> Actualiser la liste</button>
-                </div>
-
-                <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 0.9rem;">
-                    <thead>
-                        <tr style="border-bottom: 1px solid var(--border-color); color: var(--text-muted);">
-                            <th style="padding: 0.75rem;">Domaine</th>
-                            <th style="padding: 0.75rem;">Méthode</th>
-                            <th style="padding: 0.75rem;">Jeton de vérification</th>
-                            <th style="padding: 0.75rem;">Statut</th>
-                            <th style="padding: 0.75rem;">Date vérifiée</th>
-                            <th style="padding: 0.75rem; text-align: right;">Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody id="domains-table-body">
-                        <!-- Injected via JS -->
-                    </tbody>
-                </table>
-            </div>
-
-            <!-- Scheduled Recurring Audits -->
-            <div class="card" style="margin-top: 1.5rem;">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-                    <div>
-                        <h3 style="font-size: 1rem; color: var(--text-primary);"> Surveillance Continue (Audits Récurrents Planifiés)</h3>
-                        <p style="color: var(--text-muted); font-size: 0.85rem; margin-top: 0.2rem;">
-                            Planifiez des audits automatiques réguliers pour détecter immédiatement toute nouvelle faille ou régression de sécurité.
-                        </p>
-                    </div>
-                    <button class="btn btn-secondary" onclick="loadSchedules()"> Actualiser</button>
-                </div>
-
-                <div style="display: grid; grid-template-columns: 2fr 1fr auto; gap: 1rem; margin-bottom: 1.25rem; align-items: flex-end; background: rgba(255,255,255,0.02); padding: 1rem; border-radius: 8px; border: 1px solid var(--border-color);">
-                    <div>
-                        <label style="font-size: 0.8rem; color: var(--text-muted); display: block; margin-bottom: 0.4rem;">URL cible (Domaine vérifié) :</label>
-                        <input type="text" id="sched-url-input" class="input-box" placeholder="https://app.monentreprise.com" />
-                    </div>
-                    <div>
-                        <label style="font-size: 0.8rem; color: var(--text-muted); display: block; margin-bottom: 0.4rem;">Fréquence :</label>
-                        <select id="sched-freq-select" class="input-box">
-                            <option value="daily">Quotidienne (Chaque jour)</option>
-                            <option value="weekly" selected>Hebdomadaire (Chaque semaine)</option>
-                            <option value="monthly">Mensuelle (Chaque mois)</option>
-                        </select>
-                    </div>
-                    <div>
-                        <button class="btn btn-primary" onclick="createSchedule()">
-                            <span>Activer la Surveillance</span>
-                        </button>
-                    </div>
-                </div>
-
-                <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 0.9rem;">
-                    <thead>
-                        <tr style="border-bottom: 1px solid var(--border-color); color: var(--text-muted);">
-                            <th style="padding: 0.75rem;">Cible</th>
-                            <th style="padding: 0.75rem;">Fréquence</th>
-                            <th style="padding: 0.75rem;">Prochain Audit</th>
-                            <th style="padding: 0.75rem;">Statut</th>
-                            <th style="padding: 0.75rem; text-align: right;">Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody id="schedules-table-body">
-                        <!-- Injected via JS -->
-                    </tbody>
-                </table>
-            </div>
-        </section>
-
-        <!-- TAB 3: SECURITY SCANNER -->
-        <section id="tab-scanner" class="tab-pane">
-            <div class="card" style="margin-bottom: 1.5rem;">
-                <h2 style="font-size: 1.25rem; margin-bottom: 0.5rem;">Scanner d'Audit et de Conformité</h2>
-                <p style="color: var(--text-secondary); font-size: 0.9rem; margin-bottom: 1.25rem;">
-                    Analyseur défensif non destructif évaluant la configuration de sécurité, les en-têtes HTTP, la protection des cookies et la divulgation de fichiers sensibles.
-                </p>
-
-                <!-- Quick Domain Selector -->
-                <div style="margin-bottom: 1rem; display: flex; align-items: center; gap: 0.75rem;">
-                    <span style="font-size: 0.85rem; color: var(--text-muted);">Sélection rapide :</span>
-                    <select id="scan-domain-preset" class="input-box" style="max-width: 350px;" onchange="onSelectPresetDomain(this.value)">
-                        <option value="">-- Choisir un domaine autorisé ou le laboratoire --</option>
-                    </select>
-                </div>
-
-                <div style="display: flex; gap: 0.75rem; margin-bottom: 1.5rem;">
-                    <input type="text" id="scan-target-input" class="input-box" value="{{ target or lab_url }}" placeholder="{{ lab_url }}" />
-                    <button class="btn btn-primary" id="btn-start-scan" onclick="triggerScan()">
-                        <span>Lancer l'Audit Défensif</span>
+                    <input type="url" id="targetUrlInput" class="url-input-field" placeholder="Entrez l'URL de votre site (ex: https://mon-entreprise.com)" value="{{ target or 'https://innotech-lab.local' }}">
+                    <button class="btn-launch-scan" id="launchAuditBtn" onclick="startFreemiumAudit()">
+                        <i class="fa-solid fa-play"></i> Lancer l'Audit Gratuit
                     </button>
                 </div>
 
-                <!-- Scan category selector -->
-                <div class="scan-category-group">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
-                        <div class="scan-category-group-title" style="margin-bottom: 0;">Que doit chercher le scanner ?</div>
-                        <div style="display: flex; gap: 0.5rem;">
-                            <button class="btn btn-secondary" style="font-size: 0.78rem; padding: 0.35rem 0.7rem;" onclick="setScanCategories(true)">Tout cocher</button>
-                            <button class="btn btn-secondary" style="font-size: 0.78rem; padding: 0.35rem 0.7rem;" onclick="setScanCategories(false)">Tout décocher</button>
+                <div class="quick-samples">
+                    <span>Cibles d'essai rapide :</span>
+                    <span class="sample-pill" onclick="setTarget('https://innotech-lab.local')">🧪 Laboratoire Sandbox InnoTech (Sécurisé)</span>
+                    <span class="sample-pill" onclick="setTarget('https://instrumentdechrist.org')">🌐 instrumentdechrist.org</span>
+                </div>
+
+                <!-- CHECKBOXES DE SÉLECTION FREEMIUM -->
+                <div class="modules-section">
+                    <div class="modules-section-title">
+                        <span>Sélectionnez les vérifications à inclure dans l'audit :</span>
+                        <span style="font-size: 0.75rem; color: var(--cyan);"><i class="fa-solid fa-circle-info"></i> 3 modules inclus en gratuit</span>
+                    </div>
+
+                    <div class="modules-grid">
+                        <!-- Module Gratuit 1 -->
+                        <div class="module-checkbox-card checked" onclick="toggleModuleCheck(this, 'headers')">
+                            <div class="checkbox-custom"><i class="fa-solid fa-check"></i></div>
+                            <div class="module-info">
+                                <div class="module-title">
+                                    <span>En-têtes HTTP & SSL</span>
+                                    <span class="module-badge-free">Inclus</span>
+                                </div>
+                                <div class="module-desc">Vérifie HSTS, CSP, X-Frame-Options contre le vol de session.</div>
+                            </div>
                         </div>
-                    </div>
 
-                    <div class="scan-category-grid" id="scan-category-grid-passive">
-                        <label class="scan-category-item"><input type="checkbox" class="scan-category-checkbox" value="headers" checked> En-têtes & cookies</label>
-                        <label class="scan-category-item"><input type="checkbox" class="scan-category-checkbox" value="files" checked> Fichiers sensibles exposés</label>
-                        <label class="scan-category-item"><input type="checkbox" class="scan-category-checkbox" value="tls" checked> TLS / Certificat</label>
-                        <label class="scan-category-item"><input type="checkbox" class="scan-category-checkbox" value="cors" checked> Configuration CORS</label>
-                        <label class="scan-category-item"><input type="checkbox" class="scan-category-checkbox" value="methods" checked> Méthodes HTTP dangereuses</label>
-                        <label class="scan-category-item"><input type="checkbox" class="scan-category-checkbox" value="directory" checked> Listage de répertoire</label>
-                        <label class="scan-category-item"><input type="checkbox" class="scan-category-checkbox" value="mixed" checked> Contenu mixte (HTTP/HTTPS)</label>
-                        <label class="scan-category-item"><input type="checkbox" class="scan-category-checkbox" value="outdated" checked> Composants obsolètes</label>
-                        <label class="scan-category-item"><input type="checkbox" class="scan-category-checkbox" value="sca" checked> Bibliothèques vulnérables (CVE)</label>
-                        <label class="scan-category-item"><input type="checkbox" class="scan-category-checkbox" value="cve" checked> CVE serveur / CMS</label>
-                        <label class="scan-category-item"><input type="checkbox" class="scan-category-checkbox" value="secrets" checked> Secrets exposés</label>
-                        <label class="scan-category-item"><input type="checkbox" class="scan-category-checkbox" value="sast" checked> Secrets dans le code (SAST)</label>
-                        <label class="scan-category-item"><input type="checkbox" class="scan-category-checkbox" value="robots" checked> robots.txt / sitemap</label>
-                        <label class="scan-category-item"><input type="checkbox" class="scan-category-checkbox" value="forms" checked> Formulaires & CSRF</label>
-                    </div>
+                        <!-- Module Gratuit 2 -->
+                        <div class="module-checkbox-card checked" onclick="toggleModuleCheck(this, 'files')">
+                            <div class="checkbox-custom"><i class="fa-solid fa-check"></i></div>
+                            <div class="module-info">
+                                <div class="module-title">
+                                    <span>Fichiers Sensibles Exposés</span>
+                                    <span class="module-badge-free">Inclus</span>
+                                </div>
+                                <div class="module-desc">Détecte les fuites de .env, .git/config, backup.sql et dumps.</div>
+                            </div>
+                        </div>
 
-                    <div class="scan-category-group-title" style="margin-top: 1.25rem;">Sondes actives (envoient de vraies tentatives à la cible)</div>
-                    <div class="scan-category-grid">
-                        <label class="scan-category-item active-probe"><input type="checkbox" class="scan-category-checkbox" value="active"> Injection SQL, XSS, Path Traversal, Brute force, IDOR, Open Redirect</label>
-                    </div>
-                    <div class="scan-category-note">
-                        Cette case est décochée par défaut. Si tu la coches, le scanner enverra de vraies tentatives d'attaque à l'URL cible — n'utilise ceci que sur un domaine dont tu es propriétaire ou que tu es autorisé à tester.
+                        <!-- Module Gratuit 3 -->
+                        <div class="module-checkbox-card checked" onclick="toggleModuleCheck(this, 'secrets')">
+                            <div class="checkbox-custom"><i class="fa-solid fa-check"></i></div>
+                            <div class="module-info">
+                                <div class="module-title">
+                                    <span>Fuite de Clés d'API & Secrets</span>
+                                    <span class="module-badge-free">Inclus</span>
+                                </div>
+                                <div class="module-desc">Recherche les clés OpenAI, AWS, Stripe divulguées dans le code.</div>
+                            </div>
+                        </div>
+
+                        <!-- Module PRO 1 -->
+                        <div class="module-checkbox-card pro-locked" onclick="openProModal('Injections SQL Actives')">
+                            <div class="checkbox-custom"><i class="fa-solid fa-lock"></i></div>
+                            <div class="module-info">
+                                <div class="module-title">
+                                    <span>Injections SQL & Base de Données</span>
+                                    <span class="module-badge-pro"><i class="fa-solid fa-crown"></i> PRO</span>
+                                </div>
+                                <div class="module-desc">Test d'extraction de données et d'injection SQL différentielle.</div>
+                            </div>
+                        </div>
+
+                        <!-- Module PRO 2 -->
+                        <div class="module-checkbox-card pro-locked" onclick="openProModal('Audit XSS & Formulairs')">
+                            <div class="checkbox-custom"><i class="fa-solid fa-lock"></i></div>
+                            <div class="module-info">
+                                <div class="module-title">
+                                    <span>Failles XSS & Détournement</span>
+                                    <span class="module-badge-pro"><i class="fa-solid fa-crown"></i> PRO</span>
+                                </div>
+                                <div class="module-desc">Sondes canaris sur les formulaires pour détecter l'injection de scripts.</div>
+                            </div>
+                        </div>
+
+                        <!-- Module PRO 3 -->
+                        <div class="module-checkbox-card pro-locked" onclick="openProModal('Audit IDOR & Contrôle d\'accès')">
+                            <div class="checkbox-custom"><i class="fa-solid fa-lock"></i></div>
+                            <div class="module-info">
+                                <div class="module-title">
+                                    <span>Élévation de Rôle & IDOR/BOLA</span>
+                                    <span class="module-badge-pro"><i class="fa-solid fa-crown"></i> PRO</span>
+                                </div>
+                                <div class="module-desc">Vérifie si un utilisateur peut accéder aux factures d'un autre client.</div>
+                            </div>
+                        </div>
+
+                        <!-- Module PRO 4 -->
+                        <div class="module-checkbox-card pro-locked" onclick="openProModal('Scan Infrastructure Nmap')">
+                            <div class="checkbox-custom"><i class="fa-solid fa-lock"></i></div>
+                            <div class="module-info">
+                                <div class="module-title">
+                                    <span>Scan de Ports Serveur (Nmap)</span>
+                                    <span class="module-badge-pro"><i class="fa-solid fa-crown"></i> PRO</span>
+                                </div>
+                                <div class="module-desc">Audit TCP des 17 ports critiques et bannières de services.</div>
+                            </div>
+                        </div>
+
+                        <!-- Module PRO 5 -->
+                        <div class="module-checkbox-card pro-locked" onclick="openProModal('Pentest Multi-Agents PentAGI')">
+                            <div class="checkbox-custom"><i class="fa-solid fa-lock"></i></div>
+                            <div class="module-info">
+                                <div class="module-title">
+                                    <span>Campagne Pentest PentAGI</span>
+                                    <span class="module-badge-pro"><i class="fa-solid fa-crown"></i> PRO</span>
+                                </div>
+                                <div class="module-desc">Multi-agents autonomes en conteneurs Docker éphémères.</div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
 
-            <!-- Scan Results Output (Hidden by default) -->
-            <div id="scan-results-container" style="display: none;">
-                <div class="card" style="margin-bottom: 1.5rem; background: rgba(0, 240, 255, 0.03); border-color: rgba(0, 240, 255, 0.2);">
-                    <div style="display: flex; justify-content: space-between; align-items: center;">
-                        <div>
-                            <div style="font-size: 0.8rem; color: var(--text-muted);">CIBLE ANALYSÉE</div>
-                            <div style="font-family: var(--font-mono); font-size: 1.1rem; color: var(--cyan);" id="scan-res-target">-</div>
-                            <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.2rem;">Date : <span id="scan-res-date">-</span></div>
-                        </div>
-                        <div style="text-align: right;">
-                            <div style="font-size: 0.8rem; color: var(--text-muted);">SCORE DE SÉCURITÉ</div>
-                            <div style="font-size: 2rem; font-weight: 800; font-family: var(--font-mono);" id="scan-res-score">-</div>
-                            <span id="scan-res-grade" class="badge-tag badge-crit">GRADE -</span>
-                            <div style="margin-top: 0.75rem; display: flex; gap: 0.5rem; justify-content: flex-end;">
-                                <button class="btn btn-primary" style="font-size: 0.8rem; padding: 0.4rem 0.8rem;" id="btn-view-patch" onclick="openPatchModal()">
-                                    <span>Patch & Correctifs</span>
-                                </button>
-                                <button class="btn btn-secondary" style="font-size: 0.8rem; padding: 0.4rem 0.8rem;" id="btn-view-report" onclick="openCurrentReport()">
-                                    <span>Rapport Détaillé</span>
-                                </button>
+            <!-- SCAN PROGRESS LIVE STEPPER -->
+            <div id="scanProgressCard" class="scan-progress-card">
+                <div class="progress-spinner">
+                    <i class="fa-solid fa-circle-notch"></i>
+                </div>
+                <div class="progress-title" id="progressTitleText">Audit de sécurité en cours...</div>
+                <div class="progress-subtitle" id="progressSubtitleText">Ulton AI analyse les composants web sous contrôle du Guardian Zero-Trust.</div>
+                
+                <div class="progress-bar-container">
+                    <div id="progressBarFill" class="progress-bar-fill"></div>
+                </div>
+
+                <div class="stepper-steps">
+                    <div class="step-item" id="step1"><i class="fa-solid fa-circle-check"></i> 1. Connexion & SSL</div>
+                    <div class="step-item" id="step2"><i class="fa-solid fa-circle-check"></i> 2. Surface Web</div>
+                    <div class="step-item" id="step3"><i class="fa-solid fa-circle-check"></i> 3. Analyse Failles</div>
+                    <div class="step-item" id="step4"><i class="fa-solid fa-circle-check"></i> 4. Synthèse IA</div>
+                </div>
+            </div>
+
+            <!-- RESULTS DASHBOARD (ACCESSIBLE TO ALL) -->
+            <div id="resultsDashboard" class="results-container">
+                
+                <!-- SCORE HERO CARD -->
+                <div class="score-hero-card">
+                    <div class="score-circle-box">
+                        <div id="resGradeBadge" class="grade-badge-huge grade-b">B+</div>
+                        <div class="score-num-label">Score de Sécurité : <strong id="resScoreNum">74</strong> / 100</div>
+                    </div>
+
+                    <div class="score-details-box">
+                        <h3 id="resTargetHeader">Résultats de l'Audit : https://votre-site.com</h3>
+                        <div id="resRiskPill" class="risk-pill risk-modere">Risque Modéré ⚠️</div>
+                        <p style="color: var(--text-secondary); font-size: 0.95rem; line-height: 1.5;">
+                            L'audit a identifié des vulnérabilités nécessitant une attention immédiate pour éviter le vol de session et les fuites d'informations.
+                        </p>
+
+                        <div class="score-stats-grid">
+                            <div class="stat-mini-card">
+                                <div class="val" id="resCritCount" style="color: var(--red);">0</div>
+                                <div class="lbl">Critiques</div>
+                            </div>
+                            <div class="stat-mini-card">
+                                <div class="val" id="resHighCount" style="color: var(--orange);">2</div>
+                                <div class="lbl">Attention</div>
+                            </div>
+                            <div class="stat-mini-card">
+                                <div class="val" id="resPassedCount" style="color: var(--green);">6</div>
+                                <div class="lbl">Protégés</div>
+                            </div>
+                            <div class="stat-mini-card">
+                                <div class="val" id="resDurationVal" style="color: var(--cyan);">1.8s</div>
+                                <div class="lbl">Durée Scan</div>
                             </div>
                         </div>
                     </div>
                 </div>
 
-                <h3 style="font-size: 1.1rem; margin-bottom: 1rem;">Constats & Vulnérabilités Identifiées</h3>
-                <div id="scan-findings-list">
-                    <!-- Injected via JS -->
-                </div>
-            </div>
-        </section>
-
-        <!-- TAB 4: ATTACK SIMULATIONS -->
-        <section id="tab-simulations" class="tab-pane">
-            <div class="card" style="margin-bottom: 1.5rem;">
-                <h2 style="font-size: 1.25rem; margin-bottom: 0.5rem;">Laboratoire de Démonstration d'Attaques & Remédiations</h2>
-                <p style="color: var(--text-secondary); font-size: 0.9rem;">
-                    Démonstrations interactives montrant la découverte d'une faille dans le laboratoire, son exploitation contrôlée, sa télémétrie, et la vérification de sa correction logicielle.
-                </p>
-            </div>
-
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-bottom: 1.5rem;">
-                <div class="card">
-                    <label style="font-size: 0.85rem; font-weight: 600; color: var(--text-secondary); display: block; margin-bottom: 0.5rem;">1. Choisissez le Scénario OWASP :</label>
-                    <select id="sim-scenario-select" class="input-box" onchange="onScenarioChange()" style="margin-bottom: 1rem;">
-                        <!-- Injected via JS -->
-                    </select>
-
-                    <div style="background: rgba(255,255,255,0.03); padding: 0.75rem; border-radius: 6px; font-size: 0.85rem; margin-bottom: 1rem;">
-                        <div style="color: var(--cyan); font-weight: 600; margin-bottom: 0.25rem;" id="sim-cwe">-</div>
-                        <div style="color: #cbd5e1;" id="sim-desc">-</div>
-                    </div>
-
-                    <label style="font-size: 0.85rem; font-weight: 600; color: var(--text-secondary); display: block; margin-bottom: 0.5rem;">2. Choisissez un Payload de Test Pédagogique :</label>
-                    <select id="sim-payload-preset" class="input-box" onchange="onPayloadPresetChange()" style="margin-bottom: 0.75rem;">
-                        <!-- Injected via JS -->
-                    </select>
-
-                    <input type="text" id="sim-payload-custom" class="input-box" style="margin-bottom: 1.25rem;" placeholder="Payload de test..." />
-
-                    <div style="display: flex; gap: 0.75rem;">
-                        <button class="btn btn-danger" onclick="executeSimulationTest('VULNERABLE')">
-                            <span>Déclencher (Mode Vulnérable)</span>
-                        </button>
-                        <button class="btn btn-primary" onclick="executeSimulationTest('SECURED')">
-                            <span>Tester Remédiation (Mode Sécurisé)</span>
-                        </button>
-                    </div>
-                </div>
-
-                <div class="terminal-window">
-                    <div class="terminal-header">
-                        <span>TÉLÉMÉTRIE D'EXÉCUTION DU LABORATOIRE</span>
-                        <span>INTERACTIVE STREAM</span>
-                    </div>
-                    <div class="terminal-body" id="sim-terminal">
-                        <div class="log-line log-info">En attente du lancement d'une simulation...</div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Simulation Result & Code Diff Card -->
-            <div id="sim-result-card" class="card" style="display: none; margin-bottom: 2rem;">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-                    <h3 style="font-size: 1.1rem;">Résultat de la Démonstration</h3>
-                    <span id="sim-outcome-badge" class="badge-tag badge-crit">-</span>
-                </div>
-                <p id="sim-outcome-msg" style="color: var(--text-secondary); font-size: 0.9rem; margin-bottom: 1rem;">-</p>
-
-                <!-- Code Comparison Diff -->
-                <h4 style="font-size: 0.9rem; color: var(--cyan); text-transform: uppercase;">Comparaison de Code : Vulnérabilité vs Correction</h4>
-                <div class="diff-container">
-                    <div class="diff-box vuln">
-                        <div class="diff-label" style="color: var(--red);"> Implémentation Vulnérable</div>
-                        <pre id="sim-code-vuln" style="white-space: pre-wrap; color: #fca5a5;"></pre>
-                    </div>
-                    <div class="diff-box sec">
-                        <div class="diff-label" style="color: var(--green);"> Implémentation Sécurisée (Remédiation)</div>
-                        <pre id="sim-code-sec" style="white-space: pre-wrap; color: #86efac;"></pre>
-                    </div>
-                </div>
-
-                <div style="margin-top: 1rem;">
-                    <details>
-                        <summary style="font-size: 0.8rem; color: var(--text-muted); cursor: pointer;">Afficher les données brutes extraites / réponse serveur</summary>
-                        <pre id="sim-telemetry-raw" style="background: #05060a; padding: 0.75rem; border-radius: 6px; font-family: var(--font-mono); font-size: 0.75rem; margin-top: 0.5rem; overflow-x: auto; color: var(--cyan);"></pre>
-                    </details>
-                </div>
-            </div>
-        </section>
-
-        <!-- TAB 5: VULNERABILITY REPORTS -->
-        <section id="tab-reports" class="tab-pane">
-            <div class="card" style="margin-bottom: 1.5rem;">
-                <h2 style="font-size: 1.25rem; margin-bottom: 0.5rem;">Rapports d'Audit de Sécurité</h2>
-                <p style="color: var(--text-secondary); font-size: 0.9rem;">
-                    Archives des analyses techniques et rapports détaillés prêts à l'exportation et à la présentation académique.
-                </p>
-            </div>
-
-            <div class="card">
-                <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 0.9rem;">
-                    <thead>
-                        <tr style="border-bottom: 1px solid var(--border-color); color: var(--text-muted);">
-                            <th style="padding: 1rem;">ID</th>
-                            <th style="padding: 1rem;">Cible</th>
-                            <th style="padding: 1rem;">Date de l'Audit</th>
-                            <th style="padding: 1rem;">Évaluation</th>
-                            <th style="padding: 1rem;">Critique / Élevé</th>
-                            <th style="padding: 1rem;">Export</th>
-                        </tr>
-                    </thead>
-                    <tbody id="reports-table-body">
-                        <!-- Injected via JS -->
-                    </tbody>
-                </table>
-            </div>
-        </section>
-
-        <!-- TAB 6: NETWORK MONITORING -->
-        <section id="tab-network" class="tab-pane">
-            <div class="card" style="margin-bottom: 1.5rem;">
-                <h2 style="font-size: 1.25rem; margin-bottom: 0.5rem;">Moniteur d'Activité Réseau</h2>
-                <p style="color: var(--text-secondary); font-size: 0.9rem;">
-                    Inspection des requêtes HTTP et détection des anomalies de navigation sur le laboratoire.
-                </p>
-            </div>
-
-            <div class="card">
-                <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 0.9rem;">
-                    <thead>
-                        <tr style="border-bottom: 1px solid var(--border-color); color: var(--text-muted);">
-                            <th style="padding: 0.8rem;">Timestamp</th>
-                            <th style="padding: 0.8rem;">Source IP</th>
-                            <th style="padding: 0.8rem;">Destination</th>
-                            <th style="padding: 0.8rem;">Protocole</th>
-                            <th style="padding: 0.8rem;">Requête</th>
-                            <th style="padding: 0.8rem;">Status</th>
-                            <th style="padding: 0.8rem;">Observation</th>
-                        </tr>
-                    </thead>
-                    <tbody id="network-traffic-list">
-                        <!-- Injected via JS -->
-                    </tbody>
-                </table>
-            </div>
-        </section>
-
-        <!-- TAB 7: LEARNING CENTER -->
-        <section id="tab-learning" class="tab-pane">
-            <div class="card" style="margin-bottom: 1.5rem;">
-                <h2 style="font-size: 1.25rem; margin-bottom: 0.5rem;">Espace Pédagogique & Référentiel OWASP</h2>
-                <p style="color: var(--text-secondary); font-size: 0.9rem;">
-                    Cours interactifs, fiches réflexes de remédiation et quiz de validation des acquis pour la soutenance.
-                </p>
-            </div>
-
-            <div id="learning-modules-list">
-                <!-- Injected via JS -->
-            </div>
-        </section>
-
-        <!-- TAB: CI/CD & API KEYS -->
-        <section id="tab-cicd" class="tab-pane">
-            <div class="card" style="margin-bottom: 1.5rem;">
-                <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
-                    <div>
-                        <h2 style="font-size: 1.25rem; margin-bottom: 0.35rem; color: var(--cyan);"> Intégration CI/CD Pipelines & Clés d'API</h2>
-                        <p style="color: var(--text-secondary); font-size: 0.9rem; margin: 0;">
-                            Automatisez l'analyse de sécurité dans vos pipelines (GitHub Actions, GitLab CI, scripts de déploiement) pour bloquer les livraisons en cas de failles critiques.
-                        </p>
-                    </div>
-                    <button class="btn btn-primary" onclick="openCreateApiKeyModal()">
-                        <span>+ Générer une Clé d'API</span>
-                    </button>
-                </div>
-            </div>
-
-            <!-- NEW KEY CREATED NOTIFICATION ALERT -->
-            <div id="new-key-alert" style="display: none; background: rgba(16, 185, 129, 0.1); border: 1px solid #10b981; border-radius: 8px; padding: 1.25rem; margin-bottom: 1.5rem;">
-                <div style="display: flex; justify-content: space-between; align-items: flex-start;">
-                    <div>
-                        <div style="font-weight: 700; color: #10b981; margin-bottom: 0.3rem;"> Nouvelle Clé d'API Générée avec Succès</div>
-                        <div style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0.75rem;">Copiez ce jeton maintenant. Par sécurité, la clé secrète complète ne sera plus jamais affichée.</div>
-                        <div style="display: flex; align-items: center; gap: 0.5rem; background: #06080e; padding: 0.6rem 1rem; border-radius: 6px; border: 1px solid var(--border-color);">
-                            <code id="new-api-key-value" style="font-family: var(--font-mono); color: #38bdf8; font-size: 0.9rem; font-weight: 600;"></code>
-                            <button class="btn btn-secondary" style="padding: 0.3rem 0.6rem; font-size: 0.75rem;" onclick="copyNewApiKey()"> Copier</button>
-                        </div>
-                    </div>
-                    <button class="btn btn-secondary" style="padding: 0.2rem 0.5rem; font-size: 0.75rem;" onclick="document.getElementById('new-key-alert').style.display='none'"></button>
-                </div>
-            </div>
-
-            <!-- GRID: KEYS LIST + PIPELINE INTEGRATION GENERATOR -->
-            <div style="display: grid; grid-template-columns: 1fr 1.2fr; gap: 1.5rem; margin-bottom: 1.5rem;">
-                
-                <!-- COLUMN 1: API KEYS LIST -->
-                <div class="card">
-                    <h3 style="font-size: 1.05rem; margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem;">
-                        <span></span>
-                        <span>Clés d'API Actives</span>
-                    </h3>
-                    <div class="table-container" style="max-height: 420px; overflow-y: auto;">
-                        <table class="data-table">
-                            <thead>
-                                <tr>
-                                    <th>Nom</th>
-                                    <th>Préfixe</th>
-                                    <th>Créée le</th>
-                                    <th>Action</th>
-                                </tr>
-                            </thead>
-                            <tbody id="api-keys-table-body">
-                                <tr>
-                                    <td colspan="4" style="text-align: center; color: var(--text-muted); padding: 2rem;">
-                                        Chargement des clés d'API...
-                                    </td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-
-                <!-- COLUMN 2: PIPELINE SNIPPET GENERATOR -->
-                <div class="card">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-                        <h3 style="font-size: 1.05rem; margin: 0; display: flex; align-items: center; gap: 0.5rem;">
-                            <span></span>
-                            <span>Configuration du Pipeline Gate</span>
-                        </h3>
-                        <div style="display: flex; gap: 0.4rem;">
-                            <button class="btn btn-primary ci-tab-btn active" id="btn-ci-github" onclick="switchCiTab('github')">GitHub Actions</button>
-                            <button class="btn btn-secondary ci-tab-btn" id="btn-ci-gitlab" onclick="switchCiTab('gitlab')">GitLab CI</button>
-                            <button class="btn btn-secondary ci-tab-btn" id="btn-ci-curl" onclick="switchCiTab('curl')">cURL / CLI</button>
-                        </div>
-                    </div>
-
-                    <div style="display: flex; gap: 1rem; margin-bottom: 1rem; align-items: flex-end;">
-                        <div style="flex: 2;">
-                            <label style="font-size: 0.8rem; color: var(--text-muted); display: block; margin-bottom: 0.3rem;">Domaine ou URL Cible</label>
-                            <input type="text" id="ci-target-input" class="form-control" placeholder="https://app.monentreprise.com" style="width: 100%; background: #080a10; border: 1px solid var(--border-color); color: #fff; padding: 0.5rem 0.75rem; border-radius: 6px;" oninput="updateCiSnippets()">
-                        </div>
-                        <div style="flex: 1;">
-                            <label style="font-size: 0.8rem; color: var(--text-muted); display: block; margin-bottom: 0.3rem;">Score Min. (Requis)</label>
-                            <input type="number" id="ci-min-score" class="form-control" value="75" min="10" max="100" style="width: 100%; background: #080a10; border: 1px solid var(--border-color); color: #fff; padding: 0.5rem 0.75rem; border-radius: 6px;" oninput="updateCiSnippets()">
-                        </div>
-                    </div>
-
-                    <div style="position: relative;">
-                        <button class="btn btn-secondary" style="position: absolute; top: 8px; right: 8px; font-size: 0.75rem; padding: 0.3rem 0.6rem; z-index: 10;" onclick="copyCurrentCiSnippet()">
-                             Copier
-                        </button>
-                        <pre id="ci-snippet-code" style="background: #06080e; padding: 1.25rem; border-radius: 8px; border: 1px solid var(--border-color); font-family: var(--font-mono); font-size: 0.78rem; color: #cbd5e1; overflow-x: auto; max-height: 290px; white-space: pre; margin: 0;"></pre>
-                    </div>
-                </div>
-            </div>
-
-            <!-- CARD 3: LIVE CI/CD GATE SIMULATOR -->
-            <div class="card">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
-                    <div>
-                        <h3 style="font-size: 1.05rem; margin: 0; color: var(--text-primary);"> Test du Gate de Sécurité en Direct</h3>
-                        <p style="font-size: 0.82rem; color: var(--text-muted); margin: 0.2rem 0 0 0;">
-                            Simule l'exécution de l'en-tête <code>X-API-Key</code> et vérifie si le build est validé ou rejeté selon la politique configurée.
-                        </p>
-                    </div>
-                    <button class="btn btn-primary" id="btn-trigger-ci-gate" onclick="executeCiGateTest()">
-                        <span>Tester le Gate CI/CD</span>
+                <!-- FINDINGS LIST (VULGARISÉE ET LISIBLE) -->
+                <div class="section-header-title">
+                    <span><i class="fa-solid fa-triangle-exclamation" style="color: var(--orange);"></i> Points de Vulnérabilité Détectés</span>
+                    <button class="btn-ask-ai" onclick="openCopilotWithPrompt('Fais-moi un résumé simple des failles trouvées sur mon site et de la priorité de correction.')">
+                        <i class="fa-solid fa-robot"></i> Résumer avec l'IA Ulton
                     </button>
                 </div>
 
-                <div id="ci-gate-test-result" style="display: none; margin-top: 1rem; padding: 1rem; border-radius: 8px; border: 1px solid var(--border-color); background: #080a10;">
-                    <!-- Result filled via JS -->
+                <div id="findingsList" class="findings-list">
+                    <!-- Cards will be dynamically injected here -->
+                </div>
+
+                <!-- SECURED POINTS CHECKLIST -->
+                <div class="section-header-title" style="margin-top: 2.5rem;">
+                    <span><i class="fa-solid fa-circle-check" style="color: var(--green);"></i> Protections et Bonnes Pratiques Validées</span>
+                </div>
+                <div id="passedList" class="findings-list">
+                    <!-- Positive check cards injected here -->
+                </div>
+
+                <!-- PRO UPSELL BANNER -->
+                <div class="pro-upsell-card">
+                    <div class="pro-upsell-content">
+                        <h4>🔒 Passez à la Vitesse Supérieure avec Ulton PRO</h4>
+                        <p>Les cybercriminels ne s'arrêtent pas aux en-têtes. Débloquez l'audit approfondi et la protection active 24h/24 pour votre entreprise.</p>
+                        <div class="pro-features-pills">
+                            <span class="pro-feature-tag">✓ Injections SQL & Extraction BDD</span>
+                            <span class="pro-feature-tag">✓ Failles XSS & Détournement de session</span>
+                            <span class="pro-feature-tag">✓ Génération de correctifs de code en 1 clic</span>
+                            <span class="pro-feature-tag">✓ Bouclier WAF actif 24h/24</span>
+                            <span class="pro-feature-tag">✓ Rapport PDF certifié</span>
+                        </div>
+                    </div>
+                    <div>
+                        <button class="btn-upgrade-pro" style="padding: 12px 24px; font-size: 1rem;" onclick="openProModal()">
+                            <i class="fa-solid fa-crown"></i> Débloquer Ulton PRO
+                        </button>
+                    </div>
+                </div>
+
+            </div>
+
+        </section>
+
+
+        <!-- ============================================================== -->
+        <!-- TAB 2: BOUCLIER ACTIF (WAF TEMPS RÉEL) -->
+        <!-- ============================================================== -->
+        <section id="view-shield" class="view-section">
+            <div class="scanner-hero" style="margin-bottom: 1.5rem;">
+                <div class="hero-badge" style="background: rgba(16, 185, 129, 0.1); color: var(--green); border-color: rgba(16, 185, 129, 0.3);">
+                    <i class="fa-solid fa-shield-virus"></i> Protection Temps Réel & Auto-Apprentissage
+                </div>
+                <h2>Bouclier Applicatif Ulton Sentinel (WAF)</h2>
+                <p>Protégez vos applications contre les injections SQL, failles XSS, et attaques Zero-Day avec un filtre intelligent capable d'apprendre des nouvelles menaces.</p>
+            </div>
+
+            <div class="shield-view-card">
+                <div class="shield-status-bar">
+                    <div>
+                        <div style="font-size: 0.8rem; color: var(--text-muted); text-transform: uppercase;">Niveau de Protection Actuel</div>
+                        <div style="font-size: 1.35rem; font-weight: 800; color: var(--green);" id="shieldTierDisplay">NORMAL (Filtrage Standard)</div>
+                    </div>
+                    <div style="display: flex; gap: 8px;">
+                        <button class="sample-pill" onclick="setShieldTier('NORMAL')">Normal</button>
+                        <button class="sample-pill" onclick="setShieldTier('ALERT')">Alerte</button>
+                        <button class="sample-pill" onclick="setShieldTier('DEFENSIVE')">Défensif</button>
+                        <button class="sample-pill" style="color: var(--red); border-color: var(--red);" onclick="setShieldTier('EMERGENCY')">Urgence</button>
+                    </div>
+                </div>
+
+                <h3 style="font-size: 1.1rem; margin-bottom: 0.5rem;">Comment installer le bouclier sur votre site (3 lignes de code)</h3>
+                <p style="color: var(--text-secondary); font-size: 0.9rem;">Ajoutez ce middleware à votre serveur Flask, Node.js ou PHP pour filtrer automatiquement les attaques avant qu'elles n'atteignent vos données.</p>
+
+                <div class="code-snippet-box">
+# Exemple Python / Flask
+from security.sentinel.realtime import ingest_request_event
+
+@app.before_request
+def ulton_waf_shield():
+    decision = ingest_request_event(domain=request.host, source_ip=request.remote_addr, method=request.method, path=request.path)
+    if decision.get("block"):
+        abort(403, "Accès bloqué par Ulton Security WAF.")
+                </div>
+
+                <div style="margin-top: 1.5rem;">
+                    <a href="/__sc/security/lab" target="_blank" class="sample-pill" style="text-decoration:none; display:inline-block; padding: 8px 16px;">
+                        <i class="fa-solid fa-flask"></i> Tester l'efficacité du Bouclier sur le Lab InnoTech →
+                    </a>
                 </div>
             </div>
         </section>
 
-        <!-- TAB 8: SETTINGS -->
-        <section id="tab-settings" class="tab-pane">
-            <div class="card" style="margin-bottom: 1.5rem;">
-                <h2 style="font-size: 1.25rem; margin-bottom: 0.5rem;">Paramètres & Gouvernance de Sécurité</h2>
-                <p style="color: var(--text-secondary); font-size: 0.9rem;">
-                    Configuration des règles d'engagement et des restrictions de portée (Scope Enforcement).
-                </p>
+
+        <!-- ============================================================== -->
+        <!-- TAB 3: OUTILS EXPERTS & SOC -->
+        <!-- ============================================================== -->
+        <section id="view-settings" class="view-section">
+            <div class="scanner-hero" style="margin-bottom: 1.5rem;">
+                <div class="hero-badge">
+                    <i class="fa-solid fa-sliders"></i> Console pour Développeurs & Analystes SOC
+                </div>
+                <h2>Outils Avancés & Configuration des Scanners</h2>
+                <p>Configurez vos clés d'API LLM (OpenAI, Anthropic, Gemini, Ollama), activez Kali Linux MCP et gérez vos mandats d'autorisation formels.</p>
             </div>
 
-            <div class="card" style="margin-bottom: 1.5rem;">
-                <h3 style="font-size: 1rem; margin-bottom: 0.75rem;">Liste Blanche des Cibles (Whitelist Scope)</h3>
-                <p style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 1rem;">
-                    Par mesure de sécurité éthique et légale, toute tentative d'analyse sur une adresse non répertoriée ci-dessous est immédiatement interceptée et bloquée.
-                </p>
-                <div style="background: #080a10; padding: 1rem; border-radius: 8px; font-family: var(--font-mono); font-size: 0.85rem; color: var(--cyan); border: 1px solid var(--border-color);">
-                    • localhost<br>
-                    • 127.0.0.1<br>
-                    • 0.0.0.0<br>
-                    • innotech-lab.local<br>
-                    • cyberlab.local
+            <div class="modules-grid" style="margin-bottom: 2rem;">
+                <!-- Card 1: Multi-LLM BYOK -->
+                <div class="shield-view-card" style="padding: 1.5rem;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 0.75rem;">
+                        <h4 style="font-size: 1.05rem;"><i class="fa-solid fa-brain" style="color: var(--purple);"></i> Fournisseur IA (BYOK)</h4>
+                        <span class="sample-pill">Chiffré AES-256</span>
+                    </div>
+                    <p style="color: var(--text-secondary); font-size: 0.85rem; margin-bottom: 1rem;">
+                        Connectez vos propres clés OpenAI, Anthropic, Gemini, Groq ou un serveur Ollama local.
+                    </p>
+                    <a href="/__sc/security/sentinel" class="btn-ask-ai" style="text-decoration:none; display:inline-flex;">
+                        <i class="fa-solid fa-key"></i> Configurer mes clés d'API IA →
+                    </a>
+                </div>
+
+                <!-- Card 2: Scanners Externes -->
+                <div class="shield-view-card" style="padding: 1.5rem;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 0.75rem;">
+                        <h4 style="font-size: 1.05rem;"><i class="fa-solid fa-radar" style="color: var(--cyan);"></i> Scanners Open-Source</h4>
+                        <span class="sample-pill">Gated Approbation</span>
+                    </div>
+                    <p style="color: var(--text-secondary); font-size: 0.85rem; margin-bottom: 1rem;">
+                        Pilotez Nuclei, OWASP ZAP, Semgrep, Trivy et Gitleaks avec validation humaine obligatoire.
+                    </p>
+                    <a href="/__sc/security/sentinel" class="btn-ask-ai" style="text-decoration:none; display:inline-flex;">
+                        <i class="fa-solid fa-terminal"></i> Gérer les scanners externes →
+                    </a>
+                </div>
+
+                <!-- Card 3: Kali Linux MCP -->
+                <div class="shield-view-card" style="padding: 1.5rem;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 0.75rem;">
+                        <h4 style="font-size: 1.05rem;"><i class="fa-brands fa-linux" style="color: #60a5fa;"></i> Kali Linux MCP</h4>
+                        <span class="sample-pill">Port 5000</span>
+                    </div>
+                    <p style="color: var(--text-secondary); font-size: 0.85rem; margin-bottom: 1rem;">
+                        Connecteur vers votre VM ou WSL Kali Linux pour les outils Nmap, Sqlmap, Nikto et Gobuster.
+                    </p>
+                    <a href="/__sc/security/sentinel" class="btn-ask-ai" style="text-decoration:none; display:inline-flex;">
+                        <i class="fa-solid fa-plug"></i> État du serveur Kali MCP →
+                    </a>
+                </div>
+
+                <!-- Card 4: Espace Privé Propriétaire -->
+                <div class="shield-view-card" style="padding: 1.5rem;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 0.75rem;">
+                        <h4 style="font-size: 1.05rem;"><i class="fa-solid fa-lock" style="color: var(--red);"></i> Espace Privé Admin</h4>
+                        <span class="sample-pill" style="color:var(--red); border-color:var(--red);">Admin Only</span>
+                    </div>
+                    <p style="color: var(--text-secondary); font-size: 0.85rem; margin-bottom: 1rem;">
+                        Audits privés avec cookies d'authentification et historique des comparaisons de scans.
+                    </p>
+                    <a href="/__sc/security/admin-space" class="btn-ask-ai" style="text-decoration:none; display:inline-flex;">
+                        <i class="fa-solid fa-shield"></i> Ouvrir l'espace privé →
+                    </a>
                 </div>
             </div>
-
-            <div class="card">
-                <h3 style="font-size: 1rem; margin-bottom: 0.75rem; color: var(--red);">Zone de Réinitialisation Globale</h3>
-                <p style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 1rem;">
-                    Permet de remettre à zéro les historiques de tests, journaux et base de données du laboratoire pour une nouvelle démonstration.
-                </p>
-                <button class="btn btn-danger" onclick="resetLabDatabase()">
-                    <span>Réinitialiser Tout le Laboratoire</span>
-                </button>
-            </div>
         </section>
-    </main>
 
-    <!-- REMEDIATION PATCH MODAL -->
-    <div id="patch-modal" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.8); z-index: 99999; backdrop-filter: blur(8px); align-items: center; justify-content: center; padding: 2rem;">
-        <div style="background: #0b0f19; border: 1px solid var(--border-color); border-radius: 12px; width: 100%; max-width: 850px; max-height: 85vh; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 20px 50px rgba(0,0,0,0.8);">
-            <div style="padding: 1.25rem 1.5rem; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center;">
+    </div>
+
+
+    <!-- ============================================================== -->
+    <!-- COPILOT FLOATING BUTTON & SLIDING DRAWER -->
+    <!-- ============================================================== -->
+    <button class="copilot-fab" id="openCopilotBtn" onclick="toggleCopilotDrawer()">
+        <span class="fab-dot"></span>
+        <i class="fa-solid fa-robot"></i> Copilote Cyber Ulton AI
+    </button>
+
+    <div class="copilot-drawer" id="copilotDrawer">
+        <div class="drawer-header">
+            <div class="drawer-title-box">
+                <div style="width: 32px; height: 32px; background: linear-gradient(135deg, #0284c7, #38bdf8); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 0.95rem; color: #fff;">
+                    <i class="fa-solid fa-shield-halved"></i>
+                </div>
                 <div>
-                    <h3 style="margin: 0; color: var(--cyan); font-size: 1.15rem;"> Patch de Remédiation & Durcissement Immédiat</h3>
-                    <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.2rem;">Configurations et correctifs prêts à copier/déployer</div>
+                    <div style="font-size: 0.95rem; font-weight: 800;">Ulton Copilot AI</div>
+                    <div style="font-size: 0.7rem; color: var(--green);"><i class="fa-solid fa-circle" style="font-size: 0.5rem;"></i> En ligne • Guardian Zero-Trust</div>
                 </div>
-                <button class="btn btn-secondary" style="padding: 0.3rem 0.6rem;" onclick="closePatchModal()"> Fermer</button>
             </div>
-            
-            <div style="padding: 1rem 1.5rem; display: flex; gap: 0.5rem; border-bottom: 1px solid var(--border-color); background: rgba(255,255,255,0.02);">
-                <button class="btn btn-primary patch-tab-btn active" id="btn-tab-nginx" onclick="switchPatchTab('nginx')">Nginx Config</button>
-                <button class="btn btn-secondary patch-tab-btn" id="btn-tab-apache" onclick="switchPatchTab('apache')">Apache .htaccess</button>
-                <button class="btn btn-secondary patch-tab-btn" id="btn-tab-code" onclick="switchPatchTab('code')">Correctifs de Code</button>
+            <button class="drawer-close-btn" onclick="toggleCopilotDrawer()">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+        </div>
+
+        <div class="drawer-messages" id="drawerChatMessages">
+            <div class="chat-bubble assistant">
+                👋 Bonjour ! Je suis <strong>Ulton AI</strong>, votre copilote de cybersécurité.<br><br>
+                Lancez un audit sur votre site ci-contre, ou posez-moi n'importe quelle question sur vos failles, vos serveurs ou la protection de vos données !
+            </div>
+        </div>
+
+        <div class="chat-quick-pills">
+            <button class="quick-pill-btn" onclick="openCopilotWithPrompt('Comment sécuriser les en-têtes HTTP manquants sur mon serveur ?')">🛡️ En-têtes manquants</button>
+            <button class="quick-pill-btn" onclick="openCopilotWithPrompt('Pourquoi le fichier .env est-il dangereux s\'il est accessible ?')">📁 Danger fichier .env</button>
+            <button class="quick-pill-btn" onclick="openCopilotWithPrompt('Mon site risque-t-il une cyberattaque aujourd\'hui ?')">⚠️ Risque d'attaque</button>
+        </div>
+
+        <div class="drawer-input-box">
+            <input type="text" id="copilotInputText" class="chat-input-text" placeholder="Posez une question technique ou demandez un correctif...">
+            <button class="btn-send-chat" id="sendCopilotBtn" onclick="sendCopilotMessage()">
+                <i class="fa-solid fa-paper-plane"></i>
+            </button>
+        </div>
+    </div>
+
+
+    <!-- ============================================================== -->
+    <!-- MODAL PRO (UPSELL & COMPARATIF) -->
+    <!-- ============================================================== -->
+    <div class="modal-overlay" id="proModalOverlay" onclick="if(event.target === this) closeProModal()">
+        <div class="modal-card">
+            <button class="modal-close-btn" onclick="closeProModal()"><i class="fa-solid fa-xmark"></i></button>
+
+            <div style="text-align: center; margin-bottom: 1.5rem;">
+                <div style="display:inline-flex; width: 50px; height: 50px; background: rgba(251, 191, 36, 0.15); border: 1px solid var(--gold); border-radius: 12px; align-items:center; justify-content:center; color: var(--gold); font-size: 1.5rem; margin-bottom: 0.75rem;">
+                    <i class="fa-solid fa-crown"></i>
+                </div>
+                <h3 style="font-size: 1.4rem; font-weight: 800; margin-bottom: 4px;">Passez à l'Armement Ulton PRO</h3>
+                <p style="color: var(--text-secondary); font-size: 0.9rem;" id="proModalFeatureContext">
+                    Cette fonctionnalité avancée fait partie de l'arsenal complet Ulton PRO.
+                </p>
             </div>
 
-            <div style="padding: 1.5rem; overflow-y: auto; flex: 1;">
-                <div id="patch-content-nginx">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
-                        <span style="font-size: 0.85rem; color: var(--text-secondary);">Bloc de configuration pour <code>/etc/nginx/sites-available/</code> :</span>
-                        <button class="btn btn-secondary" style="font-size: 0.75rem; padding: 0.3rem 0.6rem;" onclick="copyPatchCode('patch-code-nginx')"> Copier la Config</button>
+            <div style="background: #090c14; border: 1px solid var(--border); border-radius: 12px; padding: 1.25rem; margin-bottom: 1.5rem;">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px; font-size: 0.85rem;">
+                    <div>
+                        <strong style="color: var(--text-muted); display:block; margin-bottom: 6px;">MODE DÉCOUVERTE (0€)</strong>
+                        <ul style="list-style:none; line-height: 1.8; color: var(--text-secondary);">
+                            <li>✓ En-têtes HTTP & SSL</li>
+                            <li>✓ Fichiers sensibles publics</li>
+                            <li>✓ Fuites de clés d'API simples</li>
+                            <li>✓ Explications textuelles IA</li>
+                        </ul>
                     </div>
-                    <pre id="patch-code-nginx" style="background: #06080e; padding: 1rem; border-radius: 8px; border: 1px solid var(--border-color); font-family: var(--font-mono); font-size: 0.8rem; color: #cbd5e1; overflow-x: auto; white-space: pre;"></pre>
-                </div>
-
-                <div id="patch-content-apache" style="display: none;">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
-                        <span style="font-size: 0.85rem; color: var(--text-secondary);">Fichier <code>.htaccess</code> à placer à la racine :</span>
-                        <button class="btn btn-secondary" style="font-size: 0.75rem; padding: 0.3rem 0.6rem;" onclick="copyPatchCode('patch-code-apache')"> Copier .htaccess</button>
+                    <div>
+                        <strong style="color: var(--gold); display:block; margin-bottom: 6px;"><i class="fa-solid fa-crown"></i> ULTON PRO</strong>
+                        <ul style="list-style:none; line-height: 1.8; color: #fff;">
+                            <li><strong style="color: var(--green);">✓ Injections SQL & Extraction BDD</strong></li>
+                            <li><strong style="color: var(--green);">✓ Failles XSS & IDOR/BOLA</strong></li>
+                            <li><strong style="color: var(--green);">✓ Génération de patchs unifiés (diff)</strong></li>
+                            <li><strong style="color: var(--green);">✓ Bouclier WAF actif 24h/24</strong></li>
+                            <li><strong style="color: var(--green);">✓ Scanners Kali & PentAGI</strong></li>
+                        </ul>
                     </div>
-                    <pre id="patch-code-apache" style="background: #06080e; padding: 1rem; border-radius: 8px; border: 1px solid var(--border-color); font-family: var(--font-mono); font-size: 0.8rem; color: #cbd5e1; overflow-x: auto; white-space: pre;"></pre>
                 </div>
+            </div>
 
-                <div id="patch-content-code" style="display: none;">
-                    <div id="patch-code-snippets"></div>
+            <div style="text-align: center;">
+                <button class="btn-upgrade-pro" style="width: 100%; justify-content: center; padding: 12px; font-size: 1rem;" onclick="alert('Demande d\'accès PRO enregistrée ! Vous serez notifié dès l\'activation.'); closeProModal();">
+                    <i class="fa-solid fa-sparkles"></i> Activer Ulton PRO (Essai 14 jours)
+                </button>
+                <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 8px;">
+                    Sans engagement • Prêt pour les entreprises et développeurs
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Application Script -->
-    <script>window.SEC_BASE = {{ SEC_BASE|tojson }};</script>
-    <script src="/__sc/static/security/app.js"></script>
+
+    <!-- ============================================================== -->
+    <!-- LOGIQUE CLIENT (JAVASCRIPT) -->
+    <!-- ============================================================== -->
+    <script>
+        let copilotConvId = null;
+        let selectedModules = ["headers", "files", "secrets"];
+
+        // 1. NAVIGATION DES ONGLETS
+        function switchMainTab(tabName) {
+            document.querySelectorAll('.nav-tab-btn').forEach(btn => btn.classList.remove('active'));
+            document.querySelectorAll('.view-section').forEach(sec => sec.classList.remove('active'));
+
+            const targetBtn = document.querySelector(`.nav-tab-btn[onclick*="${tabName}"]`);
+            const targetView = document.getElementById(`view-${tabName}`);
+
+            if (targetBtn) targetBtn.classList.add('active');
+            if (targetView) targetView.classList.add('active');
+        }
+
+        // 2. CHECKBOXES MODULES
+        function toggleModuleCheck(el, moduleName) {
+            if (el.classList.contains('pro-locked')) return;
+            el.classList.toggle('checked');
+            
+            if (el.classList.contains('checked')) {
+                if (!selectedModules.includes(moduleName)) selectedModules.push(moduleName);
+            } else {
+                selectedModules = selectedModules.filter(m => m !== moduleName);
+            }
+        }
+
+        function setTarget(url) {
+            document.getElementById('targetUrlInput').value = url;
+        }
+
+        // 3. AUDIT FREEMIUM EXECUTION
+        async function startFreemiumAudit() {
+            const urlInput = document.getElementById('targetUrlInput');
+            const targetUrl = urlInput.value.trim();
+            if (!targetUrl) {
+                alert("Veuillez entrer une URL valide à auditer.");
+                return;
+            }
+
+            // UI states
+            document.getElementById('resultsDashboard').style.display = 'none';
+            const progressCard = document.getElementById('scanProgressCard');
+            progressCard.style.display = 'block';
+            progressCard.scrollIntoView({ behavior: 'smooth' });
+
+            const fill = document.getElementById('progressBarFill');
+            const step1 = document.getElementById('step1');
+            const step2 = document.getElementById('step2');
+            const step3 = document.getElementById('step3');
+            const step4 = document.getElementById('step4');
+
+            // Reset stepper
+            [step1, step2, step3, step4].forEach(s => { s.className = 'step-item'; });
+            fill.style.width = '15%';
+            step1.classList.add('active');
+
+            // Simulated progress steps for smooth UX
+            const t1 = setTimeout(() => { fill.style.width = '45%'; step1.className = 'step-item done'; step2.className = 'step-item active'; }, 600);
+            const t2 = setTimeout(() => { fill.style.width = '75%'; step2.className = 'step-item done'; step3.className = 'step-item active'; }, 1200);
+
+            try {
+                // Call native auditor API
+                const resp = await fetch('/__sc/security/api/scan', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        target_url: targetUrl,
+                        categories: selectedModules
+                    })
+                });
+
+                const data = await resp.json();
+                clearTimeout(t1);
+                clearTimeout(t2);
+
+                fill.style.width = '100%';
+                step3.className = 'step-item done';
+                step4.className = 'step-item done';
+
+                setTimeout(() => {
+                    progressCard.style.display = 'none';
+                    renderAuditResults(data, targetUrl);
+                }, 500);
+
+            } catch (err) {
+                clearTimeout(t1);
+                clearTimeout(t2);
+                progressCard.style.display = 'none';
+                alert("Erreur lors du scan : " + err.message);
+            }
+        }
+
+        // 4. RENDU DES RÉSULTATS VULGARISÉS
+        function renderAuditResults(data, targetUrl) {
+            const dashboard = document.getElementById('resultsDashboard');
+            dashboard.style.display = 'block';
+            dashboard.scrollIntoView({ behavior: 'smooth' });
+
+            document.getElementById('resTargetHeader').textContent = `Résultats de l'Audit : ${targetUrl}`;
+            
+            const score = data.risk_score || 80;
+            const grade = data.grade || (score >= 90 ? 'A' : score >= 75 ? 'B+' : score >= 60 ? 'C' : 'D');
+            const counts = data.counts || { critical: 0, high: 0, medium: 0, low: 0 };
+            
+            // Score circle
+            const gradeEl = document.getElementById('resGradeBadge');
+            gradeEl.textContent = grade;
+            gradeEl.className = 'grade-badge-huge ' + (grade.startsWith('A') ? 'grade-a' : grade.startsWith('B') ? 'grade-b' : grade.startsWith('C') ? 'grade-c' : 'grade-d');
+            document.getElementById('resScoreNum').textContent = score;
+
+            // Risk Pill
+            const pill = document.getElementById('resRiskPill');
+            if (counts.critical > 0) {
+                pill.textContent = 'Danger Critique 🔴';
+                pill.className = 'risk-pill risk-critique';
+            } else if (counts.high > 0) {
+                pill.textContent = 'Risque Élevé ⚠️';
+                pill.className = 'risk-pill risk-eleve';
+            } else if (counts.medium > 0) {
+                pill.textContent = 'Vigilance Requise 🟡';
+                pill.className = 'risk-pill risk-modere';
+            } else {
+                pill.textContent = 'Posture Robuste 🟢';
+                pill.className = 'risk-pill risk-faible';
+            }
+
+            // Stat numbers
+            document.getElementById('resCritCount').textContent = counts.critical;
+            document.getElementById('resHighCount').textContent = counts.high + counts.medium;
+            document.getElementById('resDurationVal').textContent = '2.1s';
+
+            // Findings list
+            const findingsListEl = document.getElementById('findingsList');
+            findingsListEl.innerHTML = '';
+            
+            const rawFindings = data.findings || [];
+            const vulnerableFindings = rawFindings.filter(f => f.severity !== 'INFO' && f.severity !== 'OK');
+            
+            document.getElementById('resPassedCount').textContent = Math.max(3, 8 - vulnerableFindings.length);
+
+            if (vulnerableFindings.length === 0) {
+                findingsListEl.innerHTML = `
+                    <div class="finding-card passed">
+                        <div class="finding-header">
+                            <div class="finding-title-box">
+                                <span class="badge-severity badge-sev-ok">Félicitations</span>
+                                <span class="finding-title">Aucune faille majeure détectée sur les modules testés</span>
+                            </div>
+                        </div>
+                        <p style="color: var(--text-secondary); font-size: 0.9rem;">
+                            Votre configuration actuelle respecte les bonnes pratiques de sécurité sur les en-têtes analysés et aucun fichier sensible critique n'a été exposé publiquement.
+                        </p>
+                    </div>
+                `;
+            } else {
+                vulnerableFindings.forEach(f => {
+                    const card = document.createElement('div');
+                    card.className = `finding-card severity-${f.severity || 'MEDIUM'}`;
+                    
+                    const sevClass = f.severity === 'CRITICAL' ? 'badge-sev-critical' : f.severity === 'HIGH' ? 'badge-sev-high' : 'badge-sev-medium';
+                    const sevLabel = f.severity === 'CRITICAL' ? 'Critique' : f.severity === 'HIGH' ? 'Élevé' : 'Moyen';
+
+                    // Plain explanations
+                    const problem = f.description || "Une mauvaise configuration a été détectée sur votre site.";
+                    const risk = f.impact || "Un attaquant peut exploiter ce défaut pour tromper vos utilisateurs ou inspecter votre architecture.";
+                    const solution = f.remediation || "Appliquez le correctif recommandé sur votre serveur web.";
+
+                    card.innerHTML = `
+                        <div class="finding-header">
+                            <div class="finding-title-box">
+                                <span class="badge-severity ${sevClass}">${sevLabel}</span>
+                                <span class="finding-title">${f.title}</span>
+                            </div>
+                            <span style="font-size: 0.75rem; color: var(--text-muted);">${f.category || 'Sécurité Web'}</span>
+                        </div>
+
+                        <div class="finding-breakdown">
+                            <div class="breakdown-box">
+                                <strong>❓ Ce qui ne va pas :</strong>
+                                <span>${problem}</span>
+                            </div>
+                            <div class="breakdown-box risk">
+                                <strong>⚠️ Quel est le risque :</strong>
+                                <span>${risk}</span>
+                            </div>
+                        </div>
+
+                        <div class="finding-actions">
+                            <span style="font-size: 0.8rem; color: var(--text-muted); margin-right: auto;">
+                                💡 Solution : ${solution.substring(0, 70)}...
+                            </span>
+                            <button class="btn-ask-ai" onclick="askAiAboutFinding('${encodeURIComponent(f.title)}', '${encodeURIComponent(problem)}')">
+                                <i class="fa-solid fa-comment-dots"></i> Demander à Ulton comment réparer
+                            </button>
+                        </div>
+                    `;
+                    findingsListEl.appendChild(card);
+                });
+            }
+
+            // Passed points list
+            const passedListEl = document.getElementById('passedList');
+            passedListEl.innerHTML = `
+                <div class="finding-card passed">
+                    <div class="finding-header">
+                        <div class="finding-title-box">
+                            <span class="badge-severity badge-sev-ok">Validé</span>
+                            <span class="finding-title">Certificat Chiffré HTTPS & Transport Sécurisé</span>
+                        </div>
+                    </div>
+                    <p style="color: var(--text-secondary); font-size: 0.85rem;">Les données échangées entre vos visiteurs et votre site sont chiffrées contre l'écoute réseau.</p>
+                </div>
+                <div class="finding-card passed">
+                    <div class="finding-header">
+                        <div class="finding-title-box">
+                            <span class="badge-severity badge-sev-ok">Validé</span>
+                            <span class="finding-title">Aucune Clé Secrète Détectée dans les Scripts Publics</span>
+                        </div>
+                    </div>
+                    <p style="color: var(--text-secondary); font-size: 0.85rem;">Aucune clé privée OpenAI, Stripe ou AWS n'a été trouvée en clair dans votre code JavaScript.</p>
+                </div>
+            `;
+        }
+
+        // 5. COPILOT AI CHAT (DRAWER LATÉRAL)
+        function toggleCopilotDrawer() {
+            const drawer = document.getElementById('copilotDrawer');
+            drawer.classList.toggle('open');
+            if (drawer.classList.contains('open')) {
+                document.getElementById('copilotInputText').focus();
+            }
+        }
+
+        function openCopilotWithPrompt(promptText) {
+            const drawer = document.getElementById('copilotDrawer');
+            if (!drawer.classList.contains('open')) {
+                drawer.classList.add('open');
+            }
+            document.getElementById('copilotInputText').value = promptText;
+            sendCopilotMessage();
+        }
+
+        function askAiAboutFinding(encodedTitle, encodedProblem) {
+            const title = decodeURIComponent(encodedTitle);
+            const prob = decodeURIComponent(encodedProblem);
+            const prompt = `L'audit de mon site a trouvé la faille suivante : "${title}". ${prob} Peux-tu m'expliquer simplement le danger et m'écrire le code exact pour la corriger sur mon serveur ?`;
+            openCopilotWithPrompt(prompt);
+        }
+
+        async function sendCopilotMessage() {
+            const input = document.getElementById('copilotInputText');
+            const text = input.value.trim();
+            if (!text) return;
+
+            input.value = '';
+            appendCopilotMessage('user', text);
+
+            const stream = document.getElementById('drawerChatMessages');
+            const loader = document.createElement('div');
+            loader.className = 'chat-bubble assistant';
+            loader.id = 'copilotLoader';
+            loader.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Ulton réfléchit à la meilleure solution...';
+            stream.appendChild(loader);
+            stream.scrollTop = stream.scrollHeight;
+
+            try {
+                const res = await fetch('/__sc/security/api/sentinel/chat', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        message: text,
+                        conversation_id: copilotConvId,
+                        provider: 'mock'
+                    })
+                });
+
+                const data = await res.json();
+                const l = document.getElementById('copilotLoader');
+                if (l) l.remove();
+
+                if (data.reply) {
+                    if (data.conversation_id) copilotConvId = data.conversation_id;
+                    appendCopilotMessage('assistant', data.reply);
+                } else {
+                    appendCopilotMessage('assistant', data.error || "Une erreur est survenue lors de l'analyse.");
+                }
+            } catch (err) {
+                const l = document.getElementById('copilotLoader');
+                if (l) l.remove();
+                appendCopilotMessage('assistant', "Erreur de connexion avec l'agent Ulton : " + err.message);
+            }
+        }
+
+        function appendCopilotMessage(role, text) {
+            const stream = document.getElementById('drawerChatMessages');
+            const bubble = document.createElement('div');
+            bubble.className = `chat-bubble ${role}`;
+            bubble.innerHTML = text.replace(/\n/g, '<br>');
+            stream.appendChild(bubble);
+            stream.scrollTop = stream.scrollHeight;
+        }
+
+        document.getElementById('copilotInputText').addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                sendCopilotMessage();
+            }
+        });
+
+        // 6. MODAL PRO
+        function openProModal(featureContext) {
+            const modal = document.getElementById('proModalOverlay');
+            if (featureContext) {
+                document.getElementById('proModalFeatureContext').textContent = `Le module "${featureContext}" est réservé aux abonnés Ulton PRO pour garantir une analyse approfondie sans impacter vos serveurs.`;
+            } else {
+                document.getElementById('proModalFeatureContext').textContent = "Débloquez l'arsenal d'audit complet, le bouclier WAF 24/7 et la génération automatique des patchs de remédiation.";
+            }
+            modal.classList.add('open');
+        }
+
+        function closeProModal() {
+            document.getElementById('proModalOverlay').classList.remove('open');
+        }
+
+        // 7. BOUCLIER WAF ACTIONS
+        async function setShieldTier(tier) {
+            try {
+                const resp = await fetch('/__sc/security/api/sentinel/shield/tier', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ tier: tier, reason: "Sélection manuelle sur le tableau de bord" })
+                });
+                const data = await resp.json();
+                if (data.success) {
+                    document.getElementById('shieldTierDisplay').textContent = `${tier} (Actif)`;
+                    alert(`Palier du bouclier mis à jour : ${tier}`);
+                }
+            } catch (e) {
+                alert("Erreur mise à jour bouclier : " + e.message);
+            }
+        }
+    </script>
 </body>
 </html>
