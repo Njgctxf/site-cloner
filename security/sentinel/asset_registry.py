@@ -305,6 +305,7 @@ def revoke_authorization(authorization_id: str, reason: str = "Révocation manue
 def _extract_target_identifiers(raw_target: str) -> List[str]:
     """
     Extracts all candidate hostnames, IPs, and domains from a target string or URL.
+    Never extracts protocol schemes (e.g. 'https') as standalone identifiers.
     """
     clean = raw_target.strip().lower()
     candidates = [clean]
@@ -317,15 +318,30 @@ def _extract_target_identifiers(raw_target: str) -> List[str]:
                 candidates.append(parsed.hostname.lower())
         except Exception:
             pass
-
-    # Strip port if present
-    if ":" in clean:
+    elif ":" in clean:
+        # Strip port if present ONLY for host:port without scheme
         parts = clean.split(":")
-        candidates.append(parts[0].lower())
+        if parts[0] and not parts[0].startswith("http"):
+            candidates.append(parts[0].lower())
 
     # Return unique identifiers
     seen = set()
     return [x for x in candidates if x and not (x in seen or seen.add(x))]
+
+
+def _target_matches_asset(target_identifiers: List[str], asset_identifiers: List[str]) -> bool:
+    """
+    Checks whether candidate target identifiers strictly match an authorized asset identifier.
+    Guarantees strict equality or wildcard subdomain matching, eliminating accidental substring bleed.
+    """
+    for t_id in target_identifiers:
+        for a_id in asset_identifiers:
+            if t_id == a_id:
+                return True
+            # Wildcard subdomain support: *.domain.com matches sub.domain.com
+            if a_id.startswith("*.") and t_id.endswith(a_id[1:]):
+                return True
+    return False
 
 
 def is_target_in_universal_scope(target_str: str, test_type: Optional[str] = None) -> Tuple[bool, str, Optional[Dict[str, Any]]]:
@@ -369,9 +385,10 @@ def is_target_in_universal_scope(target_str: str, test_type: Optional[str] = Non
             continue
 
         asset_target_clean = record["target"].lower().strip()
+        asset_idents = _extract_target_identifiers(asset_target_clean)
 
-        # Direct string or identifier match
-        if any(ident == asset_target_clean or asset_target_clean in ident or ident in asset_target_clean for ident in identifiers):
+        # Strict identity / hostname match
+        if _target_matches_asset(identifiers, asset_idents):
             return True, f"Cible autorisée par mandat entreprise '{record.get('mandate_ref') or record['auth_id']}' ({record['authorized_by']})", {
                 "scope": "enterprise_mandate",
                 "asset_id": record["id"],
