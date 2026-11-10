@@ -270,17 +270,167 @@ class SQLiDetector:
         return None
 
 
+class XSSDetector:
+    """Non-destructive Reflected Cross-Site Scripting (XSS) probe detector in pure Python."""
+
+    CANARY_TAG = "<u1t0n-probe-tag>"
+    CANARY_ATTR = '" data-u1t0n="probe"'
+
+    def __init__(self, timeout: int = 3):
+        self.timeout = timeout
+        self.session = requests.Session()
+        self.session.headers.update({
+            "User-Agent": "Ulton-NativeAuditor/3.0 (XSS-Probe-Engine)"
+        })
+
+    def test_parameter(self, url: str, param_name: str) -> Optional[Dict[str, Any]]:
+        """Tests an input parameter for reflected XSS weaknesses with safe benign canaries."""
+        clean_url = url.split("#")[0]
+        parsed = urllib.parse.urlparse(clean_url)
+        params = urllib.parse.parse_qs(parsed.query)
+
+        # Probe 1: Benign custom HTML tag reflection
+        test_params = dict(params)
+        test_params[param_name] = [self.CANARY_TAG]
+        probe_url = urllib.parse.urlunparse(parsed._replace(query=urllib.parse.urlencode(test_params, doseq=True)))
+
+        try:
+            resp = self.session.get(probe_url, timeout=self.timeout)
+            ctype = resp.headers.get("Content-Type", "").lower()
+            if "text/html" in ctype and self.CANARY_TAG in resp.text:
+                return {
+                    "parameter": param_name,
+                    "type": "reflected_xss",
+                    "severity": "HIGH",
+                    "probe": self.CANARY_TAG,
+                    "evidence": f"Balise inoffensive '{self.CANARY_TAG}' reflétée telle quelle sans échappement HTML dans la réponse.",
+                    "url": probe_url
+                }
+        except Exception:
+            pass
+
+        # Probe 2: Attribute breakout canary
+        try:
+            test_params[param_name] = [self.CANARY_ATTR]
+            probe_attr_url = urllib.parse.urlunparse(parsed._replace(query=urllib.parse.urlencode(test_params, doseq=True)))
+            resp_attr = self.session.get(probe_attr_url, timeout=self.timeout)
+            ctype = resp_attr.headers.get("Content-Type", "").lower()
+            if "text/html" in ctype and self.CANARY_ATTR in resp_attr.text:
+                return {
+                    "parameter": param_name,
+                    "type": "attribute_xss",
+                    "severity": "MEDIUM",
+                    "probe": self.CANARY_ATTR,
+                    "evidence": "Rupture d'attribut HTML détectée : injection d'attribut sans assainissement.",
+                    "url": probe_attr_url
+                }
+        except Exception:
+            pass
+
+        return None
+
+
+class SecretLeakScanner:
+    """Detects leaked API keys, tokens, and credentials in crawled HTML source code and JS files."""
+
+    PATTERNS = [
+        ("OpenAI API Key", re.compile(r"\b(sk-[a-zA-Z0-9_-]{32,})\b"), "CRITICAL"),
+        ("AWS Access Key ID", re.compile(r"\b(AKIA[0-9A-Z]{16})\b"), "CRITICAL"),
+        ("Stripe Live Secret Key", re.compile(r"\b(sk_live_[0-9a-zA-Z]{24,})\b"), "CRITICAL"),
+        ("GitHub Personal Access Token", re.compile(r"\b(ghp_[0-9a-zA-Z]{36}|github_pat_[0-9a-zA-Z_]{82})\b"), "CRITICAL"),
+        ("Google Cloud API Key", re.compile(r"\b(AIza[0-9A-Za-z-_]{35})\b"), "HIGH"),
+        ("Slack Bot Token", re.compile(r"\b(xoxb-[0-9]{11,13}-[0-9]{11,13}-[0-9a-zA-Z]{24})\b"), "HIGH"),
+        ("Private Cryptographic Key", re.compile(r"-----BEGIN (?:RSA |EC )?PRIVATE KEY-----"), "CRITICAL"),
+        ("Hardcoded JWT Token", re.compile(r"\beyJ[A-Za-z0-9_-]{10,}\.eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\b"), "MEDIUM")
+    ]
+
+    def scan_content(self, text: str, source_url: str = "") -> List[Dict[str, Any]]:
+        """Scans raw text (HTML, JavaScript) for credential leaks."""
+        leaks = []
+        for name, pattern, severity in self.PATTERNS:
+            matches = pattern.findall(text)
+            for m in matches:
+                raw_token = m if isinstance(m, str) else m[0]
+                if len(raw_token) > 8:
+                    preview = f"{raw_token[:4]}****{raw_token[-4:]}"
+                else:
+                    preview = "****"
+                leaks.append({
+                    "secret_type": name,
+                    "severity": severity,
+                    "preview": preview,
+                    "source_url": source_url,
+                    "evidence": f"Clé ou identifiant secret {name} hardcodé détecté dans le code source."
+                })
+        return leaks
+
+
+class IDORDetector:
+    """Detects predictable resource parameters prone to Insecure Direct Object Reference."""
+
+    SUSPECT_PARAMS = {"id", "user_id", "uid", "account_id", "invoice_id", "order_id", "doc_id", "profile_id", "member_id", "client_id"}
+
+    def __init__(self, timeout: int = 3):
+        self.timeout = timeout
+        self.session = requests.Session()
+        self.session.headers.update({
+            "User-Agent": "Ulton-NativeAuditor/3.0 (IDOR-Verifier)"
+        })
+
+    def test_parameter(self, url: str, param_name: str) -> Optional[Dict[str, Any]]:
+        """Checks if a numerical ID parameter permits unauthorized or altered object access."""
+        clean_url = url.split("#")[0]
+        parsed = urllib.parse.urlparse(clean_url)
+        params = urllib.parse.parse_qs(parsed.query)
+
+        val = params.get(param_name, [""])[0]
+        if not val or not val.isdigit():
+            return None
+
+        orig_num = int(val)
+        adjacent_num = orig_num + 1 if orig_num > 1 else 2
+
+        try:
+            base_resp = self.session.get(clean_url, timeout=self.timeout)
+            if base_resp.status_code != 200:
+                return None
+
+            test_params = dict(params)
+            test_params[param_name] = [str(adjacent_num)]
+            test_url = urllib.parse.urlunparse(parsed._replace(query=urllib.parse.urlencode(test_params, doseq=True)))
+
+            adj_resp = self.session.get(test_url, timeout=self.timeout)
+            if adj_resp.status_code == 200 and abs(len(adj_resp.content) - len(base_resp.content)) > 20:
+                return {
+                    "parameter": param_name,
+                    "type": "potential_idor",
+                    "severity": "HIGH",
+                    "original_id": str(orig_num),
+                    "tested_id": str(adjacent_num),
+                    "evidence": f"Paramètre d'objet séquentiel '{param_name}' : l'ID {adjacent_num} renvoie HTTP 200 avec des données distinctes sans restriction de contrôle d'accès.",
+                    "url": test_url
+                }
+        except Exception:
+            pass
+
+        return None
+
+
 class UltonNativeAuditor:
     """
     Unified Autonomous Security Auditor for ULTON AI (Sentinel).
-    Combines Port Scanning, Surface Crawling, Vulnerability Templates, and SQLi testing
-    in pure Python without requiring external Docker, Go, or Kali installations.
+    Combines Port Scanning, Surface Crawling, Vulnerability Templates, SQLi,
+    Reflected XSS, Secret Leaks, and IDOR testing in pure Python without
+    requiring external Docker, Go, or Kali installations.
     """
 
     def __init__(self):
         self.port_scanner = PortScanner()
         self.crawler = SurfaceCrawler()
         self.sqli_detector = SQLiDetector()
+        self.xss_detector = XSSDetector()
+        self.secret_scanner = SecretLeakScanner()
+        self.idor_detector = IDORDetector()
 
     def audit_target(self, target_url: str, depth: str = "standard") -> Dict[str, Any]:
         """
@@ -380,6 +530,20 @@ class UltonNativeAuditor:
                     "remediation_ready": True,
                     "vulnerability_type": "cors"
                 })
+
+            # 4. Secret Leak Detection in HTML source
+            leaks = self.secret_scanner.scan_content(head_resp.text, source_url=probe_url)
+            for leak in leaks:
+                findings.append({
+                    "id": f"SECRET-LEAK-{leak['secret_type'].replace(' ', '_').upper()}",
+                    "title": f"Fuite d'identifiant secret : {leak['secret_type']} ({leak['preview']})",
+                    "severity": leak["severity"],
+                    "category": "credentials",
+                    "description": f"{leak['evidence']} Empreinte trouvée dans {probe_url}.",
+                    "remediation_ready": True,
+                    "vulnerability_type": "secret_leak",
+                    "url": probe_url
+                })
         except Exception as e:
             logger.warning(f"Erreur audit en-têtes HTTP sur {base_http_url}: {e}")
 
@@ -401,12 +565,13 @@ class UltonNativeAuditor:
             except Exception as e:
                 logger.warning(f"Erreur recherche fichiers sensibles sur {base_http_url}: {e}")
 
-        # PHASE 4: FORM & SQL INJECTION AUDIT (Equivalent Sqlmap en pur Python)
+        # PHASE 4: ACTIVE APPLICATION AUDIT (SQLi, XSS, IDOR)
         if depth == "deep":
             try:
                 forms = self.crawler.discover_forms_and_params(base_http_url)
                 for form in forms:
                     for inp in form.get("inputs", []):
+                        # SQL Injection probing
                         sqli_res = self.sqli_detector.test_parameter(form["action_url"], inp)
                         if sqli_res:
                             findings.append({
@@ -419,8 +584,39 @@ class UltonNativeAuditor:
                                 "vulnerability_type": "sqli",
                                 "url": sqli_res["url"]
                             })
+
+                        # Reflected XSS probing
+                        xss_res = self.xss_detector.test_parameter(form["action_url"], inp)
+                        if xss_res:
+                            findings.append({
+                                "id": f"XSS-{inp.upper()}",
+                                "title": f"Vulnérabilité XSS réfléchi sur le paramètre '{inp}'",
+                                "severity": xss_res["severity"],
+                                "category": "injection",
+                                "description": f"{xss_res['evidence']} sur {form['action_url']}.",
+                                "remediation_ready": True,
+                                "vulnerability_type": "xss",
+                                "url": xss_res["url"]
+                            })
+
+                # Query parameters evaluation (IDOR & parameter tampering)
+                query_params = urllib.parse.parse_qs(parsed.query)
+                for qp in query_params.keys():
+                    if qp.lower() in IDORDetector.SUSPECT_PARAMS:
+                        idor_res = self.idor_detector.test_parameter(target_url, qp)
+                        if idor_res:
+                            findings.append({
+                                "id": f"IDOR-{qp.upper()}",
+                                "title": f"Vulnérabilité IDOR / BOLA sur le paramètre '{qp}'",
+                                "severity": idor_res["severity"],
+                                "category": "access_control",
+                                "description": idor_res["evidence"],
+                                "remediation_ready": True,
+                                "vulnerability_type": "idor",
+                                "url": idor_res["url"]
+                            })
             except Exception as e:
-                logger.warning(f"Erreur test d'injections SQL sur {base_http_url}: {e}")
+                logger.warning(f"Erreur test applicatif actif sur {base_http_url}: {e}")
 
         duration = round(time.time() - start_time, 2)
 

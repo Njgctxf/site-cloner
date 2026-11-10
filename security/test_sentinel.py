@@ -1555,6 +1555,56 @@ NullSessionShares: 1
         self.assertEqual(r_auth.status_code, 200)
         self.assertTrue(r_auth.json["success"])
 
+    def test_77_native_auditor_xss_secret_idor(self):
+        """Verifies native detectors for Reflected XSS, Secret Leaks, and IDOR."""
+        from security.sentinel.native_scanner import XSSDetector, SecretLeakScanner, IDORDetector, native_auditor
+        from security.sentinel.remediation import STANDARD_REMEDIATION_TEMPLATES, create_remediation_plan
+
+        # 1. SecretLeakScanner verification
+        scanner = SecretLeakScanner()
+        fake_openai = "sk-proj-" + "abc123456789012345678901234567890"
+        fake_aws = "AKIA" + "1234567890ABCDEF"
+        fake_stripe = "sk_" + "live_" + "123456789012345678901234"
+        sample_html = f"""
+        <html>
+        <script>
+            const apiKey = "{fake_openai}";
+            const awsKey = "{fake_aws}";
+            const stripeKey = "{fake_stripe}";
+        </script>
+        </html>
+        """
+        leaks = scanner.scan_content(sample_html, source_url="https://innotech-lab.local")
+        self.assertGreaterEqual(len(leaks), 3)
+        leak_types = [l["secret_type"] for l in leaks]
+        self.assertIn("OpenAI API Key", leak_types)
+        self.assertIn("AWS Access Key ID", leak_types)
+        self.assertIn("Stripe Live Secret Key", leak_types)
+        # Check that token is safely redacted in preview
+        self.assertTrue(all("****" in l["preview"] for l in leaks))
+
+        # 2. XSS and IDOR detector instances and constants
+        xss_det = XSSDetector(timeout=0.5)
+        self.assertEqual(xss_det.CANARY_TAG, "<u1t0n-probe-tag>")
+        idor_det = IDORDetector(timeout=0.5)
+        self.assertIn("user_id", IDORDetector.SUSPECT_PARAMS)
+        self.assertIn("invoice_id", IDORDetector.SUSPECT_PARAMS)
+
+        # 3. Remediation templates for new vulnerability classes
+        self.assertIn("xss", STANDARD_REMEDIATION_TEMPLATES)
+        self.assertIn("secret_leak", STANDARD_REMEDIATION_TEMPLATES)
+        self.assertIn("idor", STANDARD_REMEDIATION_TEMPLATES)
+
+        plan = create_remediation_plan(vulnerability_type="xss", target="https://innotech-lab.local/search")
+        self.assertIn("Context-Aware", plan["title"])
+        self.assertIn("--- a/", plan["patch_diff"])
+
+        # 4. Deep native audit execution on local lab
+        res = native_auditor.audit_target("https://innotech-lab.local", depth="deep")
+        self.assertTrue(res["success"])
+        self.assertEqual(res["depth"], "deep")
+        self.assertIsInstance(res["findings"], list)
+
 
 if __name__ == "__main__":
     unittest.main()

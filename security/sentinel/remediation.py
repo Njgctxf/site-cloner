@@ -93,6 +93,27 @@ STANDARD_REMEDIATION_TEMPLATES = {
         "description": "Liaison aux seules interfaces privées et activation obligatoire du chiffrement TLS.",
         "sample_vulnerable": "bind 0.0.0.0\nprotected-mode no",
         "sample_fixed": "bind 127.0.0.1 10.0.0.5\nprotected-mode yes\nrequirepass <VOTRE_SECRET_ROBUSTE>"
+    },
+    "xss": {
+        "title": "Échappement contextuel des entrées utilisateurs (Context-Aware Output Encoding)",
+        "root_cause": "Injection directe de contenu utilisateur non nettoyé dans le Document Object Model (DOM) ou le flux HTML.",
+        "description": "Utilisation de fonctions d'échappement HTML contextuelles (ex: html.escape, template engines auto-escaping) et déploiement d'une politique CSP stricte.",
+        "sample_vulnerable": "return f\"<h1>Bienvenue, {username}!</h1>\"",
+        "sample_fixed": "import html\nsafe_user = html.escape(username, quote=True)\nreturn f\"<h1>Bienvenue, {safe_user}!</h1>\""
+    },
+    "secret_leak": {
+        "title": "Suppression des clés secrètes et stockage dans les variables d'environnement",
+        "root_cause": "Clés privées ou tokens d'API hardcodés dans les fichiers sources accessibles côté client.",
+        "description": "Révocation immédiate des identifiants compromis et migration vers des variables d'environnement (.env) protégées côté serveur.",
+        "sample_vulnerable": "OPENAI_API_KEY = \"sk-proj-984372984729384729384729834\"\nstripe = Stripe(\"sk_live_2348239048203948203948\")",
+        "sample_fixed": "import os\nOPENAI_API_KEY = os.environ.get(\"OPENAI_API_KEY\")\nstripe = Stripe(os.environ.get(\"STRIPE_API_KEY\"))"
+    },
+    "idor": {
+        "title": "Contrôle d'accès basé sur l'identité (Object-Level Authorization)",
+        "root_cause": "Utilisation d'identifiants prédictibles dans les paramètres sans validation de la propriété par l'utilisateur connecté.",
+        "description": "Validation systématique que l'objet demandé appartient au 'current_user' authentifié en session.",
+        "sample_vulnerable": "invoice = db.query(Invoice).filter_by(id=request.args.get('invoice_id')).first()",
+        "sample_fixed": "invoice = db.query(Invoice).filter_by(id=request.args.get('invoice_id'), user_id=current_user.id).first()\nif not invoice:\n    abort(403)"
     }
 }
 
