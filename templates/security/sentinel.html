@@ -474,7 +474,7 @@
         }
     </style>
 </head>
-<body class="ui sentinel-page">
+<body class="ui sentinel-page" data-admin="{{ '1' if is_admin else '0' }}">
 
 <nav class="ui-nav">
     <a class="ui-brand" href="/__sc/home"><img class="rx-orb" src="/__sc/static/reflex/img/brand-orbit.svg" alt=""><span>SiteCloner</span> <span class="ui-badge accent">Sentinel</span></a>
@@ -484,10 +484,52 @@
         <a href="/shop/">Marketplace</a>
         <a href="/__sc/security/">Sécurité IA</a>
         <a href="/__sc/security/sentinel" class="on">Console Sentinel</a>
-        <a href="/admin">Admin</a>
     </div>
 </nav>
 
+{% if sentinel_locked %}
+<main id="sentinelEnterpriseGate" style="flex: 1; min-height: 0; overflow-y: auto; display: flex; align-items: center; justify-content: center; padding: 32px 20px; position: relative; z-index: 1;">
+    <div class="ui-card" style="max-width: 780px; width: 100%; padding: 34px 30px; text-align: center; border-color: var(--line-strong);">
+        <span class="ui-eyebrow"><span class="dot"></span> Offre Entreprise &bull; Acc&egrave;s Complet Sentinel</span>
+        <h1 style="margin: 14px 0 10px; font-size: clamp(1.5rem, 3vw, 2.2rem); letter-spacing: -0.02em;">
+            D&eacute;bloquez toute la Console <span class="ui-grad-text">Ulton Sentinel</span>
+        </h1>
+        <p style="color: var(--muted); font-size: 0.96rem; max-width: 600px; margin: 0 auto 22px; line-height: 1.6;">
+            Votre offre actuelle (<strong style="color: var(--text);">{{ plan_status.plan_name }}</strong>) inclut {{ '1 site par mois avec audit de base' if plan_status.plan_id == 'free' else "jusqu'&agrave; 10 sites par mois et les audits web avanc&eacute;s" }}.
+            L'acc&egrave;s complet &agrave; l'agent autonome <strong>Sentinel IA</strong>, au <strong>Guardian Zero-Trust</strong>, au connecteur <strong>Claude MCP</strong>, au <strong>Bouclier WAF 24/7</strong> et aux rapports SOC fait partie de l'offre <strong>Entreprise (149 &euro; / mois)</strong>.
+        </p>
+
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 12px; text-align: left; margin-bottom: 24px;">
+            <div style="background: rgba(255,255,255,0.03); border: 1px solid var(--line); border-radius: 14px; padding: 14px;">
+                <div style="font-size: 0.78rem; color: var(--muted); text-transform: uppercase;">Gratuit</div>
+                <div style="font-size: 1.25rem; font-weight: 800; margin: 4px 0;">0 &euro; <span style="font-size: 0.78rem; font-weight: 500; color: var(--muted);">/ mois</span></div>
+                <div style="font-size: 0.8rem; color: var(--muted);">1 site / mois &bull; Audit de base</div>
+            </div>
+            <div style="background: rgba(255,255,255,0.03); border: 1px solid var(--line); border-radius: 14px; padding: 14px;">
+                <div style="font-size: 0.78rem; color: var(--accent); text-transform: uppercase;">Pro</div>
+                <div style="font-size: 1.25rem; font-weight: 800; margin: 4px 0;">29 &euro; <span style="font-size: 0.78rem; font-weight: 500; color: var(--muted);">/ mois</span></div>
+                <div style="font-size: 0.8rem; color: var(--muted);">10 sites / mois &bull; Audits avanc&eacute;s &amp; Copilote</div>
+            </div>
+            <div style="background: var(--grad-soft); border: 1px solid var(--accent-2); border-radius: 14px; padding: 14px;">
+                <div style="font-size: 0.78rem; color: #c4b5fd; text-transform: uppercase; font-weight: 700;">Entreprise</div>
+                <div style="font-size: 1.25rem; font-weight: 800; margin: 4px 0;">149 &euro; <span style="font-size: 0.78rem; font-weight: 500; color: var(--muted);">/ mois</span></div>
+                <div style="font-size: 0.8rem; color: var(--text);">Sites illimit&eacute;s &bull; Tout Sentinel inclus</div>
+            </div>
+        </div>
+
+        <div id="enterpriseUpgradeFeedback" style="display: none; margin-bottom: 14px; padding: 10px 14px; border-radius: 10px; font-size: 0.84rem; border: 1px solid var(--line);"></div>
+
+        <div style="display: flex; justify-content: center; gap: 12px; flex-wrap: wrap;">
+            <button type="button" id="unlockEnterpriseBtn" class="ui-btn primary" onclick="activateEnterprisePlan()">
+                <i class="fa-solid fa-crown"></i> Passer &agrave; Entreprise (149 &euro; / mois)
+            </button>
+            <a href="/__sc/security/" class="ui-btn ghost">
+                <i class="fa-solid fa-arrow-left"></i> Retour &agrave; l'Audit Web
+            </a>
+        </div>
+    </div>
+</main>
+{% else %}
 <div class="sentinel-layout">
     <!-- Left Sidebar -->
     <aside class="sentinel-sidebar">
@@ -539,11 +581,14 @@
                 <span id="activeModelTag">Simulation</span>
             </div>
             <div class="topbar-links">
+                {% if is_admin %}
                 <a href="#" id="openShieldBtn" class="topbar-pill"><i class="fa-solid fa-shield-halved"></i> WAF <span id="shieldTierPill" class="pill-tag">NORMAL</span></a>
                 <a href="#" id="openScannersBtn" class="topbar-pill"><i class="fa-solid fa-radar"></i> Scanners <span id="scannersStatusPill" class="pill-tag">5</span></a>
                 <a href="#" id="openPentagiBtn" class="topbar-pill"><i class="fa-solid fa-microchip"></i> PentAGI <span id="pentagiStatusPill" class="pill-tag">SANDBOX</span></a>
                 <a href="#" id="openKaliBtn" class="topbar-pill"><i class="fa-brands fa-linux"></i> Kali <span id="kaliStatusPill" class="pill-tag">MCP</span></a>
-                <a href="#" id="openSkillsLibBtn" class="topbar-pill"><i class="fa-solid fa-book"></i> Skills <span class="pill-tag">1774</span></a>
+                {% endif %}
+                <a href="#" id="openSkillsLibBtn" class="topbar-pill"><i class="fa-solid fa-book"></i> Comp&eacute;tences <span class="pill-tag">1774</span></a>
+                <a href="#" id="openClaudeMcpBtn" class="topbar-pill"><i class="fa-solid fa-plug-circle-bolt"></i> Claude MCP <span id="claudeMcpStatusPill" class="pill-tag">PRO/MAX</span></a>
                 <a href="#" id="openUserLlmBtn" class="topbar-pill"><i class="fa-solid fa-key"></i> Fournisseurs</a>
                 <a href="{{ lab_url }}" target="_blank" class="topbar-pill"><i class="fa-solid fa-flask"></i> Sandbox</a>
             </div>
@@ -577,8 +622,10 @@
                 <button type="button" class="prompt-pill" onclick="sendQuickPrompt('Vérifie la robustesse de l\'endpoint d\'upload sur https://innotech-lab.local/upload')">Upload fichiers</button>
                 <button type="button" class="prompt-pill" onclick="sendQuickPrompt('Teste les vulnérabilités de Race Condition sur l\'application d\'un coupon')">Race Condition</button>
                 <button type="button" class="prompt-pill" onclick="sendQuickPrompt('Vérifie si le panier autorise la manipulation de prix négatifs ou nuls')">Logique métier</button>
+                {% if is_admin %}
                 <button type="button" class="prompt-pill" onclick="openPentagiModal()">PentAGI</button>
-                <button type="button" class="prompt-pill" onclick="openSkillsLib()">Skills MITRE/OWASP</button>
+                {% endif %}
+                <button type="button" class="prompt-pill" onclick="openSkillsLib()">Comp&eacute;tences MITRE/OWASP</button>
             </div>
 
             <div class="input-box">
@@ -590,6 +637,7 @@
         </div>
     </main>
 </div>
+{% endif %}
 
 <!-- Modal LLM Connection Center (Espace Personnel) -->
 <div class="modal-overlay" id="byokModal">
@@ -614,6 +662,20 @@
                     <i class="fa-solid fa-xmark"></i>
                 </button>
             </div>
+        </div>
+
+        <!-- Banniere Claude Pro / Max via MCP -->
+        <div style="display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; background: rgba(96, 165, 250, 0.08); border: 1px solid rgba(96, 165, 250, 0.28); border-radius: 12px; padding: 10px 14px; margin-bottom: 12px;">
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <i class="fa-solid fa-plug-circle-bolt" style="color: #60a5fa; font-size: 1.15rem;"></i>
+                <div>
+                    <div style="font-size: 0.84rem; font-weight: 600; color: #f8fafc;">Abonnement Claude Pro / Max ? Utilisez-le sans cl&eacute; API</div>
+                    <div style="font-size: 0.72rem; color: #94a3b8;">Connectez Claude Desktop ou Claude Code directement &agrave; SiteCloner &amp; Sentinel via MCP en 1 clic.</div>
+                </div>
+            </div>
+            <button type="button" onclick="closeByokModal(); openClaudeMcpModal();" style="background: var(--grad); color: #fff; border: none; border-radius: 999px; padding: 7px 14px; font-size: 0.76rem; font-weight: 600; cursor: pointer; white-space: nowrap;">
+                Fiche Claude MCP &rarr;
+            </button>
         </div>
 
         <!-- Corps du modal -->
@@ -658,6 +720,10 @@
                     </div>
                     <input type="password" id="modalApiKey" class="form-input" style="font-size: 0.82rem; padding: 7px 10px;" placeholder="sk-... ou AIza...">
                     <small id="apiKeyHint" style="color: #64748b; font-size: 0.68rem;">Chiffré en AES-256 dans votre espace personnel. Jamais partagé.</small>
+                    <div id="claudeMcpHintRow" style="display: none; margin-top: 5px; font-size: 0.72rem; color: #60a5fa;">
+                        Abonnement Claude Pro/Max sans cl&eacute; API ?
+                        <a href="#" onclick="closeByokModal(); openClaudeMcpModal(); return false;" style="color: #93c5fd; text-decoration: underline;">Connecter via Claude MCP</a>
+                    </div>
                 </div>
 
                 <div class="form-group" style="margin-bottom: 8px;">
@@ -727,6 +793,7 @@
     </div>
 </div>
 
+{% if is_admin %}
 <!-- Modal Kali Linux Integration -->
 <div class="modal-overlay" id="kaliModal">
     <div class="modal-card" style="width: 920px; max-width: 95vw; max-height: 90vh; display: flex; flex-direction: column;">
@@ -1181,6 +1248,123 @@
         <div style="margin-top: 10px; padding-top: 10px; border-top: 1px solid #1e293b; display: flex; justify-content: space-between; align-items: center;">
             <span style="color: #475569; font-size: 0.72rem;">Conformité EULA PentAGI : Audits limités exclusivement aux cibles formellement autorisées.</span>
             <button onclick="closePentagiModal()" style="background: #1e293b; color: #cbd5e1; border: 1px solid #334155; padding: 6px 14px; border-radius: 6px; font-size: 0.8rem; cursor: pointer;">Fermer</button>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Modal Claude Pro / Max via MCP (Installation 1 clic) -->
+<div class="modal-overlay" id="claudeMcpModal">
+    <div class="modal-card" style="width: 820px; max-width: 95vw; max-height: 90vh; display: flex; flex-direction: column;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; border-bottom: 1px solid var(--line); padding-bottom: 10px;">
+            <div style="display: flex; align-items: center; gap: 12px;">
+                <i class="fa-solid fa-plug-circle-bolt" style="color: var(--accent); font-size: 1.5rem;"></i>
+                <div>
+                    <h3 style="margin: 0; font-size: 1.1rem; color: var(--text);">
+                        CLAUDE PRO / MAX &bull; CONNECTEUR MCP SITECLONER
+                    </h3>
+                    <small style="color: var(--muted); font-size: 0.74rem;">
+                        Utilisez votre abonnement Claude Desktop ou Claude Code directement comme agent IA sans cl&eacute; API
+                    </small>
+                </div>
+            </div>
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <span id="claudeMcpBadge" style="background: rgba(96, 165, 250, 0.14); border: 1px solid rgba(96, 165, 250, 0.35); color: #93c5fd; font-size: 0.72rem; padding: 3px 9px; border-radius: 999px; font-weight: 600;">
+                    Chargement...
+                </span>
+                <button onclick="closeClaudeMcpModal()" style="background: none; border: none; color: var(--muted); font-size: 1.2rem; cursor: pointer;">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+        </div>
+
+        <div style="background: rgba(255, 255, 255, 0.03); border: 1px solid var(--line); border-radius: 12px; padding: 10px 14px; font-size: 0.78rem; color: var(--muted); margin-bottom: 12px;">
+            <strong style="color: var(--text);">Fonctionnement conforme :</strong> votre application <strong>Claude Desktop</strong> ou <strong>Claude Code</strong> utilise votre abonnement personnel c&ocirc;t&eacute; client et pilote SiteCloner &amp; Sentinel via <code>mcp_server.py</code> (clonage, scans passifs, v&eacute;rification DNS/HTTP et lecture des incidents).
+        </div>
+
+        <!-- Tabs -->
+        <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px;">
+            <button type="button" class="prompt-pill mcp-tab-btn" id="mcpTabBtnDesktop" onclick="switchMcpTab('desktop')" style="border-color: var(--accent); color: var(--text);">
+                <i class="fa-solid fa-desktop"></i> Claude Desktop (1 clic)
+            </button>
+            <button type="button" class="prompt-pill mcp-tab-btn" id="mcpTabBtnCli" onclick="switchMcpTab('cli')">
+                <i class="fa-solid fa-terminal"></i> Claude Code (CLI)
+            </button>
+            <button type="button" class="prompt-pill mcp-tab-btn" id="mcpTabBtnTools" onclick="switchMcpTab('tools')">
+                <i class="fa-solid fa-toolbox"></i> Outils expos&eacute;s (<span id="mcpToolsCountTag">9</span>)
+            </button>
+        </div>
+
+        <div style="overflow-y: auto; flex: 1; padding-right: 4px;">
+            <!-- Tab 1: Claude Desktop -->
+            <div id="mcpTabDesktop" class="mcp-tab-panel">
+                <div style="display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 10px;">
+                    <div id="mcpDesktopPathText" style="font-size: 0.74rem; color: var(--muted);">
+                        Fichier : <code>claude_desktop_config.json</code>
+                    </div>
+                    <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                        <button type="button" id="mcpTestBtn" onclick="testClaudeMcpServer()" style="background: rgba(255, 255, 255, 0.05); color: var(--text); border: 1px solid var(--line-strong); padding: 7px 12px; border-radius: 999px; font-size: 0.76rem; font-weight: 600; cursor: pointer;">
+                            <i class="fa-solid fa-stethoscope"></i> Tester MCP
+                        </button>
+                        <button type="button" id="mcpInstallLocalBtn" onclick="installClaudeDesktopLocal()" style="background: var(--grad); color: #fff; border: none; padding: 7px 14px; border-radius: 999px; font-size: 0.76rem; font-weight: 600; cursor: pointer;">
+                            <i class="fa-solid fa-wand-magic-sparkles"></i> Installer dans Claude Desktop (1 clic)
+                        </button>
+                    </div>
+                </div>
+
+                <div id="mcpFeedbackBox" style="display: none; margin-bottom: 10px; padding: 9px 12px; border-radius: 10px; font-size: 0.76rem; border: 1px solid var(--line); background: rgba(0, 0, 0, 0.25);"></div>
+
+                <div style="position: relative; background: rgba(2, 6, 23, 0.78); border: 1px solid var(--line); border-radius: 12px; padding: 12px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                        <span style="font-size: 0.72rem; text-transform: uppercase; color: var(--muted); font-weight: 600;">claude_desktop_config.json</span>
+                        <div style="display: flex; gap: 6px;">
+                            <button type="button" onclick="copyMcpSnippet('mcpDesktopJsonCode', this)" style="background: rgba(255,255,255,0.06); color: var(--text); border: 1px solid var(--line); border-radius: 8px; padding: 4px 10px; font-size: 0.72rem; cursor: pointer;">
+                                <i class="fa-solid fa-copy"></i> Copier JSON
+                            </button>
+                            <button type="button" onclick="downloadMcpConfigJson()" style="background: rgba(255,255,255,0.06); color: var(--text); border: 1px solid var(--line); border-radius: 8px; padding: 4px 10px; font-size: 0.72rem; cursor: pointer;">
+                                <i class="fa-solid fa-download"></i> T&eacute;l&eacute;charger .json
+                            </button>
+                        </div>
+                    </div>
+                    <pre id="mcpDesktopJsonCode" style="margin: 0; font-family: var(--mono); font-size: 0.75rem; color: #93c5fd; white-space: pre-wrap; word-break: break-all; max-height: 220px; overflow-y: auto;"></pre>
+                </div>
+            </div>
+
+            <!-- Tab 2: Claude Code CLI -->
+            <div id="mcpTabCli" class="mcp-tab-panel" style="display: none;">
+                <p style="margin: 0 0 10px; font-size: 0.78rem; color: var(--muted);">
+                    Ex&eacute;cutez cette commande dans votre terminal pour enregistrer SiteCloner dans <strong>Claude Code</strong> (abonnement Pro / Max) :
+                </p>
+                <div style="background: rgba(2, 6, 23, 0.78); border: 1px solid var(--line); border-radius: 12px; padding: 12px; margin-bottom: 12px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                        <span style="font-size: 0.72rem; text-transform: uppercase; color: var(--muted); font-weight: 600;">Commande Terminal (1 ligne)</span>
+                        <button type="button" onclick="copyMcpSnippet('mcpClaudeCodeCmd', this)" style="background: rgba(255,255,255,0.06); color: var(--text); border: 1px solid var(--line); border-radius: 8px; padding: 4px 10px; font-size: 0.72rem; cursor: pointer;">
+                            <i class="fa-solid fa-copy"></i> Copier la commande
+                        </button>
+                    </div>
+                    <pre id="mcpClaudeCodeCmd" style="margin: 0; font-family: var(--mono); font-size: 0.75rem; color: #34d399; white-space: pre-wrap; word-break: break-all;"></pre>
+                </div>
+
+                <div style="background: rgba(2, 6, 23, 0.65); border: 1px solid var(--line); border-radius: 12px; padding: 12px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                        <span style="font-size: 0.72rem; text-transform: uppercase; color: var(--muted); font-weight: 600;">Alternative .mcp.json (Projet / Cursor)</span>
+                        <button type="button" onclick="copyMcpSnippet('mcpCursorJsonCode', this)" style="background: rgba(255,255,255,0.06); color: var(--text); border: 1px solid var(--line); border-radius: 8px; padding: 4px 10px; font-size: 0.72rem; cursor: pointer;">
+                            <i class="fa-solid fa-copy"></i> Copier .mcp.json
+                        </button>
+                    </div>
+                    <pre id="mcpCursorJsonCode" style="margin: 0; font-family: var(--mono); font-size: 0.74rem; color: #cbd5e1; white-space: pre-wrap; word-break: break-all;"></pre>
+                </div>
+            </div>
+
+            <!-- Tab 3: Exposed MCP Tools -->
+            <div id="mcpTabTools" class="mcp-tab-panel" style="display: none;">
+                <div id="mcpToolsList" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 10px;"></div>
+            </div>
+        </div>
+
+        <div style="margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--line); display: flex; justify-content: space-between; align-items: center;">
+            <span style="color: var(--dim); font-size: 0.72rem;">P&eacute;rim&egrave;tre s&eacute;curis&eacute; : aucun scan offensif ni action destructive expos&eacute; via MCP.</span>
+            <button type="button" onclick="closeClaudeMcpModal()" style="background: rgba(255, 255, 255, 0.06); color: var(--text); border: 1px solid var(--line-strong); padding: 6px 16px; border-radius: 999px; font-size: 0.8rem; cursor: pointer;">Fermer</button>
         </div>
     </div>
 </div>

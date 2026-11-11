@@ -20,11 +20,33 @@ from collections import Counter
 from html import unescape
 from pathlib import Path
 
-from flask import Blueprint, abort, jsonify, render_template, request, send_file
+from flask import Blueprint, abort, jsonify, redirect, render_template, request, send_file, session
 
+from accounts import account_gate_url, has_registered_account
+from rea_engine import analyze_site_rea, build_rea_bundle_zip, load_rea_report, read_rea_source_file
 from site_server import _start_page, make_server, resolve
 
 bp = Blueprint("studio", __name__)
+
+
+@bp.before_request
+def _require_account_before_studio_results():
+    """Requires a registered user account before opening Studio pages or Studio result APIs."""
+    if request.endpoint in ("studio.cover", "studio.thumb", "studio.section_img"):
+        return None
+    if has_registered_account():
+        return None
+    if request.path.startswith("/__sc/api/studio/"):
+        sid = (request.view_args or {}).get("site_id", "")
+        next_target = f"/__sc/studio/{sid}" if sid else "/__sc/"
+        return jsonify({
+            "error_code": "ACCOUNT_REQUIRED",
+            "redirect": account_gate_url("cloner", next_target),
+            "error": "Créez votre compte gratuit pour accéder au Studio et aux résultats.",
+        }), 401
+    if request.endpoint in ("studio.studio_page", "studio.inspect_page"):
+        return redirect(account_gate_url("cloner", request.full_path.rstrip("?")))
+    return None
 _cfg = {}
 _jobs = {}            # site_id -> {"kind", "state", "done", "total", "error", "started"}
 _jobs_lock = threading.Lock()
@@ -657,6 +679,9 @@ def section_img(site_id, pid, n):
 
 @bp.route("/__sc/api/studio/<site_id>/section/<pid>/<int:n>/export")
 def section_export(site_id, pid, n):
+    denied = _require_rea_access()
+    if denied:
+        return denied
     site_dir = _site(site_id)
     if not re.fullmatch(r"[0-9a-f]{12}", pid):
         abort(404)
@@ -679,6 +704,9 @@ def section_export(site_id, pid, n):
 def export_pages(site_id):
     """The chosen pages with every non-page file of the clone (scripts load chunks the HTML never names, so the
     asset set is kept whole), plus a small server so routing and recorded data keep working."""
+    denied = _require_rea_access()
+    if denied:
+        return denied
     site_dir = _site(site_id)
     wanted = set((request.get_json(silent=True) or {}).get("pages") or [])
     pages = [p for p in _pages(site_dir) if p["key"] in wanted]
@@ -721,6 +749,9 @@ def _clean_readme(name, title, files_count):
 
 @bp.route("/__sc/api/studio/<site_id>/clean", methods=["POST"])
 def clean_code(site_id):
+    denied = _require_rea_access()
+    if denied:
+        return denied
     from clean_export import CLEAN_JS, component_name, pretty_html, react_component
     site_dir = _site(site_id)
     data = request.get_json(silent=True) or {}
@@ -860,6 +891,9 @@ def inspect_ops(site_id):
 
 @bp.route("/__sc/api/studio/<site_id>/inspect/save", methods=["POST"])
 def inspect_save(site_id):
+    denied = _require_rea_access()
+    if denied:
+        return denied
     site_dir = _site(site_id)
     body = request.get_json(silent=True) or {}
     page = _norm_page(body.get("key", "/"))
@@ -875,6 +909,9 @@ def inspect_save(site_id):
 
 @bp.route("/__sc/api/studio/<site_id>/inspect/undo", methods=["POST"])
 def inspect_undo(site_id):
+    denied = _require_rea_access()
+    if denied:
+        return denied
     site_dir = _site(site_id)
     hist = sorted((site_dir / "_edited" / "history").glob("*.json")) if (site_dir / "_edited" / "history").exists() else []
     if not hist:
@@ -889,6 +926,9 @@ def inspect_undo(site_id):
 
 @bp.route("/__sc/api/studio/<site_id>/inspect/upload", methods=["POST"])
 def inspect_upload(site_id):
+    denied = _require_rea_access()
+    if denied:
+        return denied
     site_dir = _site(site_id)
     kind = request.form.get("kind", "")
     f = request.files.get("file")
@@ -927,6 +967,9 @@ def inspect_upload(site_id):
 
 @bp.route("/__sc/api/studio/<site_id>/inspect/model-restore", methods=["POST"])
 def inspect_model_restore(site_id):
+    denied = _require_rea_access()
+    if denied:
+        return denied
     site_dir = _site(site_id)
     target = urllib.parse.urlsplit((request.get_json(silent=True) or {}).get("target", ""))
     res = resolve(site_dir, target.path + (("?" + target.query) if target.query else ""))
@@ -939,3 +982,72 @@ def inspect_model_restore(site_id):
     shutil.copy2(backup, res[1])
     backup.unlink()
     return jsonify({"ok": True})
+
+
+def _require_rea_access():
+    """Enforces Cloneur Pro/Agency/Suite/Admin access for Studio editing, exports, and R.E.A."""
+    from security.plans import check_cloner_plan_requirement
+    from security.sentinel.user_llm_manager import get_current_user_id
+    gate = check_cloner_plan_requirement(get_current_user_id(), "pro", is_admin=bool(session.get("admin")))
+    if not gate.get("allowed"):
+        return jsonify(gate), gate.get("status_code", 403)
+    return None
+
+
+@bp.route("/__sc/api/studio/<site_id>/rea", methods=["GET"])
+def api_rea_report(site_id):
+    denied = _require_rea_access()
+    if denied:
+        return denied
+    site_dir = _site(site_id)
+    report = load_rea_report(site_dir)
+    if not report:
+        return jsonify({"available": False, "site_id": site_id})
+    return jsonify(report)
+
+
+@bp.route("/__sc/api/studio/<site_id>/rea/analyze", methods=["POST"])
+def api_rea_analyze(site_id):
+    denied = _require_rea_access()
+    if denied:
+        return denied
+    site_dir = _site(site_id)
+    report = analyze_site_rea(site_dir)
+    return jsonify(report)
+
+
+@bp.route("/__sc/api/studio/<site_id>/rea/source", methods=["GET"])
+def api_rea_source(site_id):
+    denied = _require_rea_access()
+    if denied:
+        return denied
+    site_dir = _site(site_id)
+    rel_path = request.args.get("path", "")
+    content = read_rea_source_file(site_dir, rel_path)
+    if content is None:
+        return jsonify({"error": "Fichier source introuvable"}), 404
+    return jsonify({"path": rel_path, "content": content})
+
+
+@bp.route("/__sc/api/studio/<site_id>/rea/openapi.json", methods=["GET"])
+def api_rea_openapi(site_id):
+    denied = _require_rea_access()
+    if denied:
+        return denied
+    site_dir = _site(site_id)
+    fp = site_dir / "_rea" / "openapi.json"
+    if not fp.is_file():
+        analyze_site_rea(site_dir)
+    if not fp.is_file():
+        abort(404)
+    return send_file(str(fp), mimetype="application/json", as_attachment=True, download_name=f"{site_id}-openapi.json")
+
+
+@bp.route("/__sc/api/studio/<site_id>/rea/bundle.zip", methods=["GET"])
+def api_rea_bundle(site_id):
+    denied = _require_rea_access()
+    if denied:
+        return denied
+    site_dir = _site(site_id)
+    buf = build_rea_bundle_zip(site_dir)
+    return send_file(buf, mimetype="application/zip", as_attachment=True, download_name=f"{site_id}-rea-bundle.zip")

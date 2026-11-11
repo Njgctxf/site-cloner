@@ -186,6 +186,27 @@ body.theme-violet .ui-nav { background: rgba(4, 0, 20, 0.58); }
 }
 .sc-theme-btn .dot { width: 7px; height: 7px; border-radius: 50%; }
 .sc-theme-btn.on { background: rgba(255, 255, 255, .12); color: #fff; }
+.sc-acc-wrap { display: inline-flex; align-items: center; gap: 6px; flex-shrink: 0; }
+.sc-acc-btn {
+  display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 999px;
+  font: 600 .78rem var(--font); text-decoration: none; color: var(--muted);
+  border: 1px solid var(--line-strong); background: rgba(255, 255, 255, .04);
+  transition: all .2s var(--ease); white-space: nowrap;
+}
+.sc-acc-btn:hover { color: #fff; border-color: var(--accent); background: rgba(255, 255, 255, .09); }
+.sc-acc-btn.primary { border-color: transparent; background: var(--grad); color: #fff; }
+.sc-acc-pill {
+  display: inline-flex; align-items: center; gap: 8px; padding: 3px 12px 3px 4px; border-radius: 999px;
+  text-decoration: none; color: #fff; font: 600 .78rem var(--font);
+  background: rgba(255, 255, 255, .06); border: 1px solid var(--line-strong);
+  transition: all .2s var(--ease); white-space: nowrap;
+}
+.sc-acc-pill:hover { border-color: var(--accent); background: rgba(255, 255, 255, .11); }
+.sc-acc-av {
+  width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center;
+  font-size: .68rem; font-weight: 800; color: #fff; overflow: hidden; flex-shrink: 0;
+}
+.sc-acc-av img { width: 100%; height: 100%; object-fit: cover; display: block; }
 
 .ui-wrap { max-width: 1200px; margin: 0 auto; padding: clamp(24px, 5vw, 56px) clamp(16px, 4vw, 32px) 80px; }
 

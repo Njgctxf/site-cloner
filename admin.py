@@ -16,7 +16,7 @@ from flask import (Blueprint, abort, jsonify, redirect, render_template, request
                    session, url_for)
 from werkzeug.security import check_password_hash, generate_password_hash
 
-DATA_DIR = Path(__file__).resolve().parent / "data"
+DATA_DIR = Path(os.environ.get("DATA_DIR") or (Path(__file__).resolve().parent / "data"))
 ADMIN_FILE = DATA_DIR / "admin.json"
 SECRET_FILE = DATA_DIR / "secret_key"
 INITIAL_PW_FILE = DATA_DIR / "admin_initial_password.txt"
@@ -232,6 +232,48 @@ def clear_job(job_id):
         return jsonify({"error": "Job en cours"}), 409
     del _ctx["jobs"][job_id]
     return jsonify({"status": "cleared"})
+
+
+@bp.route("/api/platform-overview")
+@login_required
+def platform_overview():
+    """Unified platform telemetry across Cloner, Shop orders, Security, Plans, and LLM."""
+    shop_orders = []
+    try:
+        from shop import db as shop_db
+        with shop_db() as conn:
+            shop_orders = [dict(r) for r in conn.execute("SELECT created_at, status, amount_cents FROM orders ORDER BY id DESC LIMIT 1000").fetchall()]
+    except Exception:
+        shop_orders = []
+
+    from security.admin_overview import build_platform_admin_overview
+    manifest = _ctx["load_manifest"]()
+    data = build_platform_admin_overview(
+        manifest=manifest,
+        jobs=_ctx["jobs"],
+        active_servers=_ctx["active_servers"],
+        shop_orders=shop_orders,
+    )
+    return jsonify(data)
+
+
+@bp.route("/api/platform/assign-plan", methods=["POST"])
+@login_required
+def platform_assign_plan():
+    """Allows SaaS admins to upgrade or downgrade a user's Ultron, Cloner, or Suite offer from /admin."""
+    data = request.get_json(silent=True) or {}
+    user_id = (data.get("user_id") or "").strip()
+    plan_id = (data.get("plan_id") or "").strip().lower()
+    scope = (data.get("scope") or "").strip().lower() or None
+    email = (data.get("email") or "").strip()
+    if not user_id or not plan_id:
+        return jsonify({"error": "user_id et plan_id sont requis."}), 400
+    from security.plans import set_user_plan
+    try:
+        sub = set_user_plan(user_id, plan_id, source="admin_dashboard", email=email, scope=scope)
+        return jsonify({"success": True, "subscription": sub})
+    except ValueError as exc:
+        return jsonify({"error": str(exc)}), 400
 
 
 @bp.route("/api/password", methods=["POST"])

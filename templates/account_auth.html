@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{{ 'Créer un compte' if mode == 'register' else 'Connexion' }} · SiteCloner</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/__sc/static/ui.css">
+  <style>
+    body.ui { display: flex; flex-direction: column; min-height: 100vh; }
+    .auth-shell {
+      flex: 1;
+      width: 100%;
+      max-width: 1120px;
+      margin: 0 auto;
+      padding: clamp(24px, 4vw, 52px) clamp(16px, 4vw, 32px) 64px;
+      display: grid;
+      grid-template-columns: minmax(0, 1.05fr) minmax(0, 480px);
+      gap: clamp(24px, 4vw, 52px);
+      align-items: center;
+    }
+    @media (max-width: 920px) { .auth-shell { grid-template-columns: 1fr; max-width: 520px; } }
+
+    .auth-showcase { display: flex; flex-direction: column; gap: 22px; }
+    .gate-banner {
+      display: flex; align-items: flex-start; gap: 14px; padding: 16px 18px; border-radius: 16px;
+      background: linear-gradient(135deg, rgba(46,230,166,.12), rgba(99,102,241,.10));
+      border: 1px solid rgba(46,230,166,.4);
+      box-shadow: 0 18px 40px -24px rgba(46,230,166,.45);
+    }
+    .gate-ico {
+      width: 38px; height: 38px; border-radius: 11px; flex-shrink: 0;
+      display: grid; place-items: center;
+      background: rgba(46,230,166,.16); color: #34d399; border: 1px solid rgba(46,230,166,.35);
+    }
+    .gate-title { font-size: .95rem; font-weight: 700; color: #fff; margin: 0 0 3px; }
+    .gate-desc { font-size: .84rem; color: #cbd5e1; margin: 0; line-height: 1.45; }
+
+    .showcase-heading {
+      margin: 0;
+      font-size: clamp(1.85rem, 3.2vw, 2.65rem);
+      line-height: 1.1;
+      letter-spacing: -.035em;
+      font-weight: 800;
+    }
+    .showcase-lead { margin: 0; color: var(--muted); font-size: .98rem; line-height: 1.6; max-width: 500px; }
+
+    .feature-stack { display: flex; flex-direction: column; gap: 12px; margin-top: 4px; }
+    .feat-row {
+      display: flex; align-items: flex-start; gap: 14px; padding: 14px 16px; border-radius: 15px;
+      background: rgba(255,255,255,.025); border: 1px solid var(--line);
+      transition: border-color .2s var(--ease), transform .2s var(--ease);
+    }
+    .feat-row:hover { border-color: var(--line-strong); transform: translateX(3px); }
+    .feat-ico {
+      width: 36px; height: 36px; border-radius: 10px; flex-shrink: 0;
+      display: grid; place-items: center;
+      background: var(--grad-soft); color: var(--accent); border: 1px solid var(--line-strong);
+    }
+    .feat-row strong { display: block; font-size: .92rem; font-weight: 700; color: #fff; margin-bottom: 2px; }
+    .feat-row span { display: block; font-size: .82rem; color: var(--muted); line-height: 1.4; }
+
+    .auth-card {
+      padding: 30px 28px 26px;
+      border-radius: 22px;
+      background: linear-gradient(180deg, rgba(16, 22, 54, .92), rgba(7, 10, 26, .96));
+      border: 1px solid var(--line-strong);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.14), 0 32px 80px -20px rgba(0,0,0,.9), 0 0 48px -18px var(--glow-b);
+    }
+    body.theme-violet .auth-card {
+      background: linear-gradient(180deg, rgba(22, 16, 52, .92), rgba(8, 4, 24, .96));
+    }
+    .auth-tabs {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 6px; padding: 5px;
+      border-radius: 999px; background: rgba(255,255,255,.04); border: 1px solid var(--line);
+      margin-bottom: 22px;
+    }
+    .auth-tab {
+      border: 0; background: transparent; color: var(--muted); font: 600 .86rem var(--font);
+      padding: 9px 14px; border-radius: 999px; cursor: pointer; transition: all .22s var(--ease);
+    }
+    .auth-tab.on { background: var(--grad); color: #fff; box-shadow: 0 8px 22px -6px rgba(99,102,241,.65); }
+    .auth-title { margin: 0 0 6px; font-size: 1.38rem; font-weight: 800; letter-spacing: -.025em; }
+    .auth-sub { margin: 0 0 18px; color: var(--muted); font-size: .86rem; line-height: 1.48; }
+    .field { display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px; }
+    .field label { font-size: .78rem; font-weight: 600; color: var(--muted); }
+    .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    @media (max-width: 520px) { .field-row { grid-template-columns: 1fr; } }
+    .auth-alert {
+      display: none; padding: 10px 13px; border-radius: 12px; font-size: .83rem; margin-bottom: 16px;
+      border: 1px solid rgba(255,92,122,.45); background: rgba(255,92,122,.10); color: #fecdd3;
+    }
+    .auth-alert.ok { border-color: rgba(46,230,166,.45); background: rgba(46,230,166,.10); color: #a7f3d0; }
+    .auth-foot {
+      margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--line);
+      display: flex; justify-content: space-between; align-items: center; gap: 10px;
+      font-size: .78rem; color: var(--muted); flex-wrap: wrap;
+    }
+  </style>
+  <script src="/__sc/static/ui.js"></script>
+</head>
+<body class="ui">
+  <nav class="ui-nav">
+    <a class="ui-brand" href="/__sc/home"><img class="rx-orb" src="/__sc/static/reflex/img/brand-orbit.svg" alt=""><span>SiteCloner</span> <span class="ui-badge accent">Espace Membre</span></a>
+    <div class="ui-links">
+      <a href="/__sc/home">Accueil</a>
+      <a href="/__sc/">Cloneur</a>
+      <a href="/shop/">Marketplace</a>
+      <a href="/__sc/security/">Sécurité IA</a>
+    </div>
+  </nav>
+
+  <main class="auth-shell">
+    <section class="auth-showcase">
+      {% if gate_mode == 'cloner' %}
+      <div class="gate-banner">
+        <div class="gate-ico">
+          <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>
+        </div>
+        <div>
+          <p class="gate-title">Votre site est cloné et prêt</p>
+          <p class="gate-desc">Créez votre compte gratuit en 15 secondes (ou connectez-vous) pour ouvrir immédiatement le Studio visuel, l'aperçu et vos fichiers.</p>
+        </div>
+      </div>
+      {% elif gate_mode == 'ultron' %}
+      <div class="gate-banner">
+        <div class="gate-ico">
+          <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7 3v5.5c0 4.5-3 8.2-7 9.5-4-1.3-7-5-7-9.5V6l7-3z"/></svg>
+        </div>
+        <div>
+          <p class="gate-title">Votre audit de sécurité est terminé</p>
+          <p class="gate-desc">Créez votre compte gratuit en 15 secondes (ou connectez-vous) pour afficher votre score de risque, les failles détectées et les correctifs.</p>
+        </div>
+      </div>
+      {% elif gate_mode == 'market' %}
+      <div class="gate-banner">
+        <div class="gate-ico">
+          <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/></svg>
+        </div>
+        <div>
+          <p class="gate-title">Encaissez directement vos ventes Marketplace</p>
+          <p class="gate-desc">Créez votre compte créateur gratuit pour publier vos produits payants et recevoir 99 % de chaque vente directement via Stripe Connect (1 % commission plateforme).</p>
+        </div>
+      </div>
+      {% else %}
+      <span class="ui-eyebrow" style="align-self:flex-start"><span class="dot"></span> Compte unifié SiteCloner &amp; Ultron</span>
+      {% endif %}
+
+      <h1 class="showcase-heading">Un seul compte pour <span class="ui-grad-text">cloner, éditer et sécuriser.</span></h1>
+      <p class="showcase-lead">Centralisez vos sites capturés dans le Studio, vos rapports d'audit Ultron, vos abonnements, vos clés IA et vos publications Marketplace.</p>
+
+      <div class="feature-stack">
+        <div class="feat-row">
+          <div class="feat-ico">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="14" rx="2"/><path d="M8 20h8M12 18v2"/></svg>
+          </div>
+          <div>
+            <strong>Cloneur &amp; Studio Visuel</strong>
+            <span>Accès persistant à vos captures multi-pages, éditeur Inspect et exports React / Tailwind.</span>
+          </div>
+        </div>
+        <div class="feat-row">
+          <div class="feat-ico">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7 3v5.5c0 4.5-3 8.2-7 9.5-4-1.3-7-5-7-9.5V6l7-3z"/></svg>
+          </div>
+          <div>
+            <strong>Ultron Sécurité IA &amp; Sentinel</strong>
+            <span>Historique d'audits, suivi des quotas mensuels et isolation chiffrée de vos clés LLM.</span>
+          </div>
+        </div>
+        <div class="feat-row">
+          <div class="feat-ico">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+          </div>
+          <div>
+            <strong>Profil Créateur &amp; Marketplace</strong>
+            <span>Suivez vos outils soumis, vos ventes et vos achats depuis votre tableau personnel.</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="auth-card">
+      <div class="auth-tabs" role="tablist">
+        <button type="button" class="auth-tab {{ 'on' if mode == 'register' else '' }}" data-mode="register" onclick="switchAuthMode('register')">Créer un compte</button>
+        <button type="button" class="auth-tab {{ 'on' if mode != 'register' else '' }}" data-mode="login" onclick="switchAuthMode('login')">Connexion</button>
+      </div>
+
+      <div id="authAlert" class="auth-alert" role="alert"></div>
+
+      <form id="registerForm" style="display:{{ 'block' if mode == 'register' else 'none' }}" onsubmit="submitRegister(event)">
+        <h2 class="auth-title">{{ 'Débloquez vos résultats' if gate_mode else 'Créer votre compte' }}</h2>
+        <p class="auth-sub">{{ 'Finalisez votre inscription gratuite pour accéder immédiatement à votre résultat.' if gate_mode else 'Gratuit, sans carte bancaire requise pour démarrer.' }}</p>
+
+        <div class="field">
+          <label for="regDisplayName">Nom</label>
+          <input id="regDisplayName" class="ui-input" type="text" required maxlength="80" autocomplete="name" placeholder="Votre nom">
+        </div>
+
+        <div class="field">
+          <label for="regEmail">Adresse e-mail</label>
+          <input id="regEmail" class="ui-input" type="email" required autocomplete="email" placeholder="vous@exemple.com">
+        </div>
+
+        <div class="field">
+          <label for="regPassword">Mot de passe (6+ caractères)</label>
+          <input id="regPassword" class="ui-input" type="password" required minlength="6" autocomplete="new-password" placeholder="Minimum 6 caractères">
+        </div>
+
+        <button type="submit" id="registerBtn" class="ui-btn primary" style="width:100%;justify-content:center;padding:12px 18px;margin-top:4px">
+          {{ 'Créer mon compte et voir les résultats' if gate_mode else 'Créer mon compte' }}
+        </button>
+      </form>
+
+      <form id="loginForm" style="display:{{ 'none' if mode == 'register' else 'block' }}" onsubmit="submitLogin(event)">
+        <h2 class="auth-title">{{ 'Connectez-vous pour continuer' if gate_mode else 'Connexion à votre espace' }}</h2>
+        <p class="auth-sub">Accédez à vos offres Cloneur &amp; Ultron, à votre profil et à vos résultats enregistrés.</p>
+
+        <div class="field">
+          <label for="loginIdentifier">E-mail ou identifiant</label>
+          <input id="loginIdentifier" class="ui-input" type="text" required autocomplete="username" placeholder="vous@exemple.com">
+        </div>
+        <div class="field">
+          <label for="loginPassword">Mot de passe</label>
+          <input id="loginPassword" class="ui-input" type="password" required autocomplete="current-password" placeholder="Votre mot de passe">
+        </div>
+
+        <button type="submit" id="loginBtn" class="ui-btn primary" style="width:100%;justify-content:center;padding:12px 18px;margin-top:4px">
+          {{ 'Se connecter et voir les résultats' if gate_mode else 'Se connecter' }}
+        </button>
+      </form>
+
+      <div class="auth-foot">
+        <span>Chiffrement PBKDF2 &bull; Session sécurisée</span>
+        <span>Accès gratuit</span>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const NEXT_URL = {{ next_url|tojson }};
+    const GATE_MODE = {{ gate_mode|tojson }};
+
+    function showAuthAlert(msg, ok = false) {
+      const box = document.getElementById('authAlert');
+      box.textContent = msg;
+      box.className = 'auth-alert' + (ok ? ' ok' : '');
+      box.style.display = 'block';
+      box.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+
+    function switchAuthMode(mode) {
+      document.querySelectorAll('.auth-tab').forEach(btn => btn.classList.toggle('on', btn.dataset.mode === mode));
+      document.getElementById('loginForm').style.display = mode === 'login' ? 'block' : 'none';
+      document.getElementById('registerForm').style.display = mode === 'register' ? 'block' : 'none';
+      document.getElementById('authAlert').style.display = 'none';
+      const targetPath = mode === 'register' ? '/account/register' : '/account/login';
+      const qs = new URLSearchParams();
+      if (GATE_MODE) qs.set('gate', GATE_MODE);
+      if (NEXT_URL && NEXT_URL !== '/account/profile') qs.set('next', NEXT_URL);
+      const qStr = qs.toString();
+      history.replaceState(null, '', qStr ? `${targetPath}?${qStr}` : targetPath);
+    }
+
+    async function submitLogin(ev) {
+      ev.preventDefault();
+      const btn = document.getElementById('loginBtn');
+      btn.disabled = true;
+      try {
+        const res = await fetch('/account/api/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            identifier: document.getElementById('loginIdentifier').value.trim(),
+            password: document.getElementById('loginPassword').value,
+            next: NEXT_URL
+          })
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || !data.success) {
+          showAuthAlert(data.error || 'Connexion impossible.');
+          btn.disabled = false;
+          return;
+        }
+        window.location.href = data.redirect || '/account/profile';
+      } catch (e) {
+        showAuthAlert('Erreur réseau lors de la connexion.');
+        btn.disabled = false;
+      }
+    }
+
+    async function submitRegister(ev) {
+      ev.preventDefault();
+      const nameVal = document.getElementById('regDisplayName').value.trim();
+      const emailVal = document.getElementById('regEmail').value.trim();
+      const pw = document.getElementById('regPassword').value;
+      if (!nameVal) {
+        showAuthAlert('Veuillez saisir votre nom.');
+        return;
+      }
+      if (!emailVal) {
+        showAuthAlert('Veuillez saisir votre adresse e-mail.');
+        return;
+      }
+      if (pw.length < 6) {
+        showAuthAlert('Le mot de passe doit contenir au moins 6 caractères.');
+        return;
+      }
+      const btn = document.getElementById('registerBtn');
+      btn.disabled = true;
+      try {
+        const res = await fetch('/account/api/register', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            display_name: nameVal,
+            email: emailVal,
+            password: pw,
+            next: NEXT_URL
+          })
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || !data.success) {
+          showAuthAlert(data.error || 'Création de compte impossible.');
+          btn.disabled = false;
+          return;
+        }
+        window.location.href = data.redirect || '/account/profile';
+      } catch (e) {
+        showAuthAlert('Erreur réseau lors de la création.');
+        btn.disabled = false;
+      }
+    }
+  </script>
+</body>
+</html>

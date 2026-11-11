@@ -769,6 +769,99 @@
         }
         .modal-close-btn:hover { color: var(--text); }
 
+        /* --- 3 OFFERS PRICING GRID --- */
+        .offers-section {
+            margin-top: 2.2rem;
+            padding: 1.5rem 0 0.5rem;
+        }
+        .offers-grid {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 16px;
+            align-items: stretch;
+        }
+        .offer-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            padding: 1.5rem;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            position: relative;
+            transition: transform 0.22s var(--ease), border-color 0.22s ease, box-shadow 0.22s ease;
+        }
+        .offer-card:hover { transform: translateY(-2px); border-color: var(--line-strong); }
+        .offer-card.featured {
+            background: linear-gradient(180deg, rgba(16, 26, 68, 0.92), rgba(9, 14, 36, 0.94));
+            border-color: var(--accent);
+            box-shadow: 0 18px 48px -18px var(--glow-a);
+        }
+        .offer-card.current { border-color: var(--ok); }
+        .offer-top { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+        .offer-name { font-size: 1.05rem; font-weight: 700; color: var(--text); }
+        .offer-badge {
+            font-size: 0.68rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;
+            padding: 3px 9px; border-radius: 999px;
+            background: rgba(96, 165, 250, 0.14); color: #93c5fd; border: 1px solid rgba(96, 165, 250, 0.3);
+        }
+        .offer-card.current .offer-badge {
+            background: rgba(52, 211, 153, 0.14); color: var(--ok); border-color: rgba(52, 211, 153, 0.35);
+        }
+        .offer-price { font-size: 1.75rem; font-weight: 800; color: #fff; letter-spacing: -0.02em; }
+        .offer-sub { font-size: 0.8rem; color: var(--text-secondary); }
+        .offer-features {
+            list-style: none; padding: 0; margin: 4px 0 8px;
+            display: flex; flex-direction: column; gap: 8px; flex: 1;
+            font-size: 0.83rem; color: var(--text-secondary);
+        }
+        .offer-features li { display: flex; align-items: flex-start; gap: 8px; line-height: 1.45; }
+        .offer-features li i { color: var(--ok); margin-top: 3px; font-size: 0.78rem; flex-shrink: 0; }
+        .offer-excluded {
+            list-style: none; padding: 8px 0 4px; margin: 0 0 6px;
+            border-top: 1px dashed var(--line);
+            display: flex; flex-direction: column; gap: 6px;
+            font-size: 0.78rem; color: var(--dim);
+        }
+        .offer-excluded li { display: flex; align-items: flex-start; gap: 8px; line-height: 1.38; }
+        .offer-excluded li i { color: #fb7185; margin-top: 3px; font-size: 0.74rem; flex-shrink: 0; opacity: 0.85; }
+        .offers-compare-wrap {
+            margin-top: 20px; background: var(--bg-card); border: 1px solid var(--border);
+            border-radius: 18px; overflow: hidden;
+        }
+        .offers-compare-table {
+            width: 100%; border-collapse: collapse; font-size: 0.83rem;
+        }
+        .offers-compare-table th, .offers-compare-table td {
+            padding: 11px 14px; border-bottom: 1px solid var(--line); text-align: center;
+        }
+        .offers-compare-table th:first-child, .offers-compare-table td:first-child {
+            text-align: left; color: var(--text-secondary); font-weight: 500;
+        }
+        .offers-compare-table thead th {
+            background: rgba(255, 255, 255, 0.03); color: var(--text); font-weight: 700; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.04em;
+        }
+        .offers-compare-table tbody tr:last-child td { border-bottom: none; }
+        .cmp-yes { color: var(--ok); font-weight: 700; }
+        .cmp-no { color: var(--dim); }
+        .offer-cta {
+            width: 100%; border-radius: 999px; padding: 10px 14px; font: 600 0.85rem var(--font);
+            cursor: pointer; border: 1px solid var(--line-strong);
+            background: rgba(255, 255, 255, 0.06); color: var(--text);
+            transition: transform 0.2s, filter 0.2s, border-color 0.2s;
+        }
+        .offer-cta.primary { background: var(--grad); border: none; color: #fff; }
+        .offer-cta:hover:not(:disabled) { transform: translateY(-1px); filter: brightness(1.08); }
+        .offer-cta:disabled { opacity: 0.6; cursor: default; }
+        .scan-limit-notice {
+            display: none; margin-top: 14px; padding: 12px 16px; border-radius: 14px;
+            background: rgba(251, 113, 133, 0.1); border: 1px solid rgba(251, 113, 133, 0.38);
+            color: #fecdd3; font-size: 0.88rem; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;
+        }
+
+        @media (max-width: 900px) {
+            .offers-grid { grid-template-columns: 1fr; }
+        }
         @media (max-width: 768px) {
             .sec-subbar { justify-content: center; }
             .score-hero-card { grid-template-columns: 1fr; }
@@ -788,7 +881,6 @@
             <a href="/__sc/">Cloneur</a>
             <a href="/shop/">Marketplace</a>
             <a class="on" href="/__sc/security/">Sécurité IA</a>
-            <a href="/admin">Admin</a>
         </div>
     </nav>
 
@@ -808,9 +900,9 @@
                 </button>
             </div>
             <div class="sec-plan-bar">
-                <span class="badge-plan"><i class="fa-solid fa-circle-check"></i> Découverte</span>
-                <button type="button" class="btn-upgrade-pro" onclick="openProModal()">Passer Pro</button>
-                <a class="ui-btn sm ghost" href="/__sc/security/sentinel" style="border-radius:999px">Console Sentinel</a>
+                <span class="badge-plan" id="userPlanBadge"><i class="fa-solid fa-circle-check"></i> Gratuit &bull; 0/1 site ce mois</span>
+                <button type="button" class="btn-upgrade-pro" id="openOffersBtn" onclick="openProModal()">Offres &amp; Tarifs</button>
+                <a class="ui-btn sm ghost" id="navSentinelBtn" href="/__sc/security/sentinel" style="border-radius:999px">Console Sentinel</a>
             </div>
         </div>
 
@@ -848,107 +940,119 @@
             <div class="modules-section">
                 <div class="modules-section-title">
                     <span>Modules d'analyse</span>
-                    <span class="ui-badge">3 inclus &bull; 5 Pro</span>
+                    <span class="ui-badge" id="modulesQuotaSummary">3 inclus (Gratuit) &bull; Avanc&eacute;s (Pro) &bull; Sentinel (Entreprise)</span>
                 </div>
 
                 <div class="modules-grid">
                     <!-- Module Gratuit 1 -->
-                    <div class="module-checkbox-card checked" onclick="toggleModuleCheck(this, 'headers')">
+                    <div class="module-checkbox-card checked" data-module="headers" data-min-plan="free" onclick="toggleModuleCheck(this, 'headers')">
                         <div class="checkbox-custom"><i class="fa-solid fa-check"></i></div>
                         <div class="module-info">
                             <div class="module-title">
-                                <span>En-têtes HTTP &amp; SSL</span>
-                                <span class="module-badge-free">Inclus</span>
+                                <span>En-t&ecirc;tes HTTP &amp; SSL</span>
+                                <span class="module-badge-free">Gratuit</span>
                             </div>
                             <div class="module-desc">HSTS, CSP et X-Frame-Options contre le vol de session.</div>
                         </div>
                     </div>
 
                     <!-- Module Gratuit 2 -->
-                    <div class="module-checkbox-card checked" onclick="toggleModuleCheck(this, 'files')">
+                    <div class="module-checkbox-card checked" data-module="files" data-min-plan="free" onclick="toggleModuleCheck(this, 'files')">
                         <div class="checkbox-custom"><i class="fa-solid fa-check"></i></div>
                         <div class="module-info">
                             <div class="module-title">
                                 <span>Fichiers Sensibles</span>
-                                <span class="module-badge-free">Inclus</span>
+                                <span class="module-badge-free">Gratuit</span>
                             </div>
-                            <div class="module-desc">Fuites de .env, .git/config, backup.sql et dumps exposés.</div>
+                            <div class="module-desc">Fuites de .env, .git/config, backup.sql et dumps expos&eacute;s.</div>
                         </div>
                     </div>
 
                     <!-- Module Gratuit 3 -->
-                    <div class="module-checkbox-card checked" onclick="toggleModuleCheck(this, 'secrets')">
+                    <div class="module-checkbox-card checked" data-module="secrets" data-min-plan="free" onclick="toggleModuleCheck(this, 'secrets')">
                         <div class="checkbox-custom"><i class="fa-solid fa-check"></i></div>
                         <div class="module-info">
                             <div class="module-title">
-                                <span>Clés API &amp; Secrets</span>
-                                <span class="module-badge-free">Inclus</span>
+                                <span>Cl&eacute;s API &amp; Secrets</span>
+                                <span class="module-badge-free">Gratuit</span>
                             </div>
-                            <div class="module-desc">Détection des clés OpenAI, AWS et Stripe dans le code source.</div>
+                            <div class="module-desc">D&eacute;tection des cl&eacute;s OpenAI, AWS et Stripe dans le code source.</div>
                         </div>
                     </div>
 
                     <!-- Module PRO 1 -->
-                    <div class="module-checkbox-card pro-locked" onclick="openProModal('Injections SQL Actives')">
+                    <div class="module-checkbox-card pro-locked" data-module="active" data-min-plan="pro" onclick="toggleModuleCheck(this, 'active')">
                         <div class="checkbox-custom"><i class="fa-solid fa-lock"></i></div>
                         <div class="module-info">
                             <div class="module-title">
-                                <span>Injections SQL</span>
+                                <span>Audit Actif (SQLi / XSS / IDOR)</span>
                                 <span class="module-badge-pro">Pro</span>
                             </div>
-                            <div class="module-desc">Extraction de données et injection SQL différentielle.</div>
+                            <div class="module-desc">D&eacute;tection différentielle SQLi, XSS et contr&ocirc;le d'acc&egrave;s IDOR/BOLA.</div>
                         </div>
                     </div>
 
                     <!-- Module PRO 2 -->
-                    <div class="module-checkbox-card pro-locked" onclick="openProModal('Audit XSS & Formulaires')">
+                    <div class="module-checkbox-card pro-locked" data-module="tls" data-min-plan="pro" onclick="toggleModuleCheck(this, 'tls')">
                         <div class="checkbox-custom"><i class="fa-solid fa-lock"></i></div>
                         <div class="module-info">
                             <div class="module-title">
-                                <span>Failles XSS</span>
+                                <span>Certificat TLS &amp; CORS</span>
                                 <span class="module-badge-pro">Pro</span>
                             </div>
-                            <div class="module-desc">Sondes canaris sur les formulaires contre l'injection de scripts.</div>
+                            <div class="module-desc">Audit chiffrement TLS, en-t&ecirc;tes CORS et m&eacute;thodes HTTP.</div>
                         </div>
                     </div>
 
                     <!-- Module PRO 3 -->
-                    <div class="module-checkbox-card pro-locked" onclick="openProModal('Audit IDOR & Contrôle d\'accès')">
+                    <div class="module-checkbox-card pro-locked" data-module="cve" data-min-plan="pro" onclick="toggleModuleCheck(this, 'cve')">
                         <div class="checkbox-custom"><i class="fa-solid fa-lock"></i></div>
                         <div class="module-info">
                             <div class="module-title">
-                                <span>Contrôle IDOR/BOLA</span>
+                                <span>CVE &amp; D&eacute;pendances (SCA)</span>
                                 <span class="module-badge-pro">Pro</span>
                             </div>
-                            <div class="module-desc">Vérification d'isolation entre comptes et ressources privées.</div>
+                            <div class="module-desc">Composants obsol&egrave;tes, CVE connues et analyse statique SAST.</div>
                         </div>
                     </div>
 
                     <!-- Module PRO 4 -->
-                    <div class="module-checkbox-card pro-locked" onclick="openProModal('Scan Infrastructure Nmap')">
+                    <div class="module-checkbox-card pro-locked" data-module="forms" data-min-plan="pro" onclick="toggleModuleCheck(this, 'forms')">
                         <div class="checkbox-custom"><i class="fa-solid fa-lock"></i></div>
                         <div class="module-info">
                             <div class="module-title">
-                                <span>Ports Serveur (Nmap)</span>
+                                <span>Formulaires &amp; Surface Web</span>
                                 <span class="module-badge-pro">Pro</span>
                             </div>
-                            <div class="module-desc">Audit TCP des 17 ports critiques et bannières réseau.</div>
+                            <div class="module-desc">Hygi&egrave;ne CSRF/formulaires, indexation et contenu mixte.</div>
                         </div>
                     </div>
 
-                    <!-- Module PRO 5 -->
-                    <div class="module-checkbox-card pro-locked" onclick="openProModal('Pentest Multi-Agents PentAGI')">
+                    <!-- Module ENTREPRISE -->
+                    <div class="module-checkbox-card pro-locked" data-module="pentagi" data-min-plan="enterprise" onclick="toggleModuleCheck(this, 'pentagi')">
                         <div class="checkbox-custom"><i class="fa-solid fa-lock"></i></div>
                         <div class="module-info">
                             <div class="module-title">
-                                <span>Agents PentAGI</span>
-                                <span class="module-badge-pro">Pro</span>
+                                <span>Suite Sentinel Compl&egrave;te</span>
+                                <span class="module-badge-pro">Entreprise</span>
                             </div>
-                            <div class="module-desc">Multi-agents autonomes en conteneurs Docker éphémères.</div>
+                            <div class="module-desc">Console Sentinel IA, WAF 24/7, PentAGI, Scanners et CI/CD.</div>
                         </div>
                     </div>
                 </div>
+
+                <div id="scanLimitNotice" class="scan-limit-notice"></div>
             </div>
+
+            <!-- SECTION 3 OFFRES -->
+            <section id="offersSection" class="offers-section">
+                <div class="modules-section-title">
+                    <span>Nos 3 Offres &amp; Comparatif D&eacute;taill&eacute;</span>
+                    <span class="ui-badge" id="offersStripeHint">Gratuit &bull; Pro &bull; Entreprise</span>
+                </div>
+                <div id="offersCardsInline" class="offers-grid"></div>
+                <div id="offersCompareInline" class="offers-compare-wrap"></div>
+            </section>
 
             <!-- SCAN PROGRESS LIVE STEPPER -->
             <div id="scanProgressCard" class="scan-progress-card">
@@ -969,6 +1073,9 @@
                     <div class="step-item" id="step4"><i class="fa-solid fa-circle-check"></i> 4. Synthèse IA</div>
                 </div>
             </div>
+
+            <!-- ACCOUNT GATE CARD (SHOWN BEFORE DISPLAYING SCAN RESULTS IF UNAUTHENTICATED) -->
+            <div id="auditAccountGate" class="scan-progress-card" style="display:none; text-align:left; padding:32px; border:1px solid rgba(16,185,129,.38); background:linear-gradient(155deg, rgba(16,185,129,.09), rgba(15,23,42,.94));"></div>
 
             <!-- RESULTS DASHBOARD (ACCESSIBLE TO ALL) -->
             <div id="resultsDashboard" class="results-container">
@@ -1009,11 +1116,16 @@
                 </div>
 
                 <!-- FINDINGS LIST (VULGARISÉE ET LISIBLE) -->
-                <div class="section-header-title">
+                <div class="section-header-title" style="gap: 10px; flex-wrap: wrap;">
                     <span><i class="fa-solid fa-triangle-exclamation" style="color: var(--orange);"></i> Points de Vulnérabilité Détectés</span>
-                    <button class="btn-ask-ai" onclick="openCopilotWithPrompt('Fais-moi un résumé simple des failles trouvées sur mon site et de la priorité de correction.')">
-                        <i class="fa-solid fa-robot"></i> Résumer avec l'IA Ulton
-                    </button>
+                    <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-left: auto;">
+                        <button type="button" class="btn-ask-ai" onclick="openLastScanReport()">
+                            <i class="fa-solid fa-file-shield"></i> Rapport &amp; Patchs (Pro)
+                        </button>
+                        <button class="btn-ask-ai" onclick="openCopilotWithPrompt('Fais-moi un résumé simple des failles trouvées sur mon site et de la priorité de correction.')">
+                            <i class="fa-solid fa-robot"></i> Résumer avec l'IA Ulton
+                        </button>
+                    </div>
                 </div>
 
                 <div id="findingsList" class="findings-list">
@@ -1061,6 +1173,11 @@
                 <span class="ui-eyebrow"><span class="dot"></span> Protection Temps Réel &amp; Auto-Apprentissage</span>
                 <h2 class="ui-title">Bouclier Applicatif <span class="ui-grad-text">Ulton Sentinel</span></h2>
                 <p class="ui-lead">Protégez vos applications contre les injections SQL, failles XSS et attaques Zero-Day avec un filtre intelligent.</p>
+            </div>
+
+            <div id="shieldEnterpriseBanner" class="scan-limit-notice" style="display: none; margin-bottom: 16px;">
+                <span><i class="fa-solid fa-lock"></i> Le pilotage du Bouclier WAF temps r&eacute;el 24/7 fait partie de l'offre <strong>Entreprise (Tout Sentinel)</strong>.</span>
+                <button type="button" class="btn-upgrade-pro" onclick="openProModal('Bouclier WAF 24/7', 'enterprise')">Passer &agrave; Entreprise</button>
             </div>
 
             <div class="shield-view-card">
@@ -1152,20 +1269,6 @@ def ulton_waf_shield():
                         <i class="fa-solid fa-plug"></i> État du serveur Kali MCP →
                     </a>
                 </div>
-
-                <!-- Card 4: Espace Privé Propriétaire -->
-                <div class="shield-view-card" style="padding: 1.5rem;">
-                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 0.75rem;">
-                        <h4 style="font-size: 1.05rem;"><i class="fa-solid fa-lock" style="color: var(--red);"></i> Espace Privé Admin</h4>
-                        <span class="sample-pill" style="color:var(--red); border-color:var(--red);">Admin Only</span>
-                    </div>
-                    <p style="color: var(--text-secondary); font-size: 0.85rem; margin-bottom: 1rem;">
-                        Audits privés avec cookies d'authentification et historique des comparaisons de scans.
-                    </p>
-                    <a href="/__sc/security/admin-space" class="btn-ask-ai" style="text-decoration:none; display:inline-flex;">
-                        <i class="fa-solid fa-shield"></i> Ouvrir l'espace privé →
-                    </a>
-                </div>
             </div>
         </section>
 
@@ -1219,54 +1322,25 @@ def ulton_waf_shield():
 
 
     <!-- ============================================================== -->
-    <!-- MODAL PRO (UPSELL & COMPARATIF) -->
+    <!-- MODAL 3 OFFRES (COMPARATIF & UPGRADE) -->
     <!-- ============================================================== -->
     <div class="modal-overlay" id="proModalOverlay" onclick="if(event.target === this) closeProModal()">
-        <div class="modal-card">
+        <div class="modal-card" style="max-width: 980px; max-height: 92vh; overflow-y: auto;">
             <button class="modal-close-btn" onclick="closeProModal()"><i class="fa-solid fa-xmark"></i></button>
 
-            <div style="text-align: center; margin-bottom: 1.5rem;">
-                <div style="display:inline-flex; width: 48px; height: 48px; background: var(--grad-soft); border: 1px solid var(--line-strong); border-radius: 14px; align-items:center; justify-content:center; color: var(--accent-2); font-size: 1.35rem; margin-bottom: 0.75rem;">
+            <div style="text-align: center; margin-bottom: 1.4rem;">
+                <div style="display:inline-flex; width: 46px; height: 46px; background: var(--grad-soft); border: 1px solid var(--line-strong); border-radius: 14px; align-items:center; justify-content:center; color: var(--accent-2); font-size: 1.3rem; margin-bottom: 0.6rem;">
                     <i class="fa-solid fa-shield-halved"></i>
                 </div>
-                <h3 style="font-size: 1.35rem; font-weight: 700; margin-bottom: 4px;">Passer à Ulton PRO</h3>
+                <h3 style="font-size: 1.35rem; font-weight: 700; margin-bottom: 4px;">Choisissez votre offre Ulton IA</h3>
                 <p style="color: var(--text-secondary); font-size: 0.9rem;" id="proModalFeatureContext">
-                    Cette fonctionnalité avancée fait partie de l'arsenal complet Ulton PRO.
+                    Passez de l'audit d&eacute;couverte (1 site/mois) aux audits avanc&eacute;s Pro ou &agrave; toute la suite Sentinel Entreprise.
                 </p>
             </div>
 
-            <div style="background: rgba(255, 255, 255, 0.03); border: 1px solid var(--border); border-radius: 14px; padding: 1.25rem; margin-bottom: 1.5rem;">
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px; font-size: 0.85rem;">
-                    <div>
-                        <strong style="color: var(--text-muted); display:block; margin-bottom: 6px;">MODE DÉCOUVERTE (0€)</strong>
-                        <ul style="list-style:none; line-height: 1.8; color: var(--text-secondary);">
-                            <li>✓ En-têtes HTTP &amp; SSL</li>
-                            <li>✓ Fichiers sensibles publics</li>
-                            <li>✓ Fuites de clés d'API simples</li>
-                            <li>✓ Explications textuelles IA</li>
-                        </ul>
-                    </div>
-                    <div>
-                        <strong style="color: var(--accent-2); display:block; margin-bottom: 6px;">ULTON PRO</strong>
-                        <ul style="list-style:none; line-height: 1.8; color: #fff;">
-                            <li><strong style="color: var(--green);">✓ Injections SQL &amp; Extraction BDD</strong></li>
-                            <li><strong style="color: var(--green);">✓ Failles XSS &amp; IDOR/BOLA</strong></li>
-                            <li><strong style="color: var(--green);">✓ Génération de patchs (diff)</strong></li>
-                            <li><strong style="color: var(--green);">✓ Bouclier WAF actif 24h/24</strong></li>
-                            <li><strong style="color: var(--green);">✓ Scanners Kali &amp; PentAGI</strong></li>
-                        </ul>
-                    </div>
-                </div>
-            </div>
-
-            <div style="text-align: center;">
-                <button class="ui-btn primary wide" style="padding: 12px; font-size: 0.95rem;" onclick="alert('Demande d\'accès PRO enregistrée ! Vous serez notifié dès l\'activation.'); closeProModal();">
-                    Activer Ulton PRO (Essai 14 jours)
-                </button>
-                <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 8px;">
-                    Sans engagement • Prêt pour les entreprises et développeurs
-                </div>
-            </div>
+            <div id="offersCardsModal" class="offers-grid"></div>
+            <div id="offersCompareModal" class="offers-compare-wrap" style="margin-top:16px"></div>
+            <div id="offerCheckoutStatus" style="display:none; margin-top: 14px; padding: 10px 14px; border-radius: 12px; font-size: 0.85rem; text-align: center; border: 1px solid var(--line);"></div>
         </div>
     </div>
 
@@ -1277,6 +1351,13 @@ def ulton_waf_shield():
     <script>
         let copilotConvId = null;
         let selectedModules = ["headers", "files", "secrets"];
+        let userPlanStatus = null;
+        let lastScanId = null;
+        const PLAN_RANK = { free: 0, pro: 1, enterprise: 2 };
+
+        function escHtml(s) {
+            return String(s || "").replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+        }
 
         // 1. NAVIGATION DES ONGLETS
         function switchMainTab(tabName) {
@@ -1290,16 +1371,289 @@ def ulton_waf_shield():
             if (targetView) targetView.classList.add('active');
         }
 
-        // 2. CHECKBOXES MODULES
+        // 2. CHECKBOXES MODULES & GESTION DES 3 OFFRES
         function toggleModuleCheck(el, moduleName) {
-            if (el.classList.contains('pro-locked')) return;
+            const minPlan = el.dataset.minPlan || 'free';
+            const curPlan = (userPlanStatus && userPlanStatus.plan_id) || 'free';
+            if ((PLAN_RANK[curPlan] ?? 0) < (PLAN_RANK[minPlan] ?? 0)) {
+                const title = el.querySelector('.module-title span')?.textContent || moduleName;
+                openProModal(title, minPlan);
+                return;
+            }
+            if (moduleName === 'pentagi') {
+                window.location.href = '/__sc/security/sentinel';
+                return;
+            }
             el.classList.toggle('checked');
-            
+            const icon = el.querySelector('.checkbox-custom i');
             if (el.classList.contains('checked')) {
                 if (!selectedModules.includes(moduleName)) selectedModules.push(moduleName);
+                if (icon) icon.className = 'fa-solid fa-check';
             } else {
                 selectedModules = selectedModules.filter(m => m !== moduleName);
+                if (icon) icon.className = 'fa-solid fa-check';
             }
+        }
+
+        function applyPlanToUi(status, highlightPlan) {
+            userPlanStatus = status;
+            const curPlan = status.plan_id || 'free';
+            const curRank = PLAN_RANK[curPlan] ?? 0;
+
+            const badge = document.getElementById('userPlanBadge');
+            if (badge) {
+                const limitText = status.sites_limit === null
+                    ? `${status.sites_used || 0} sites &bull; Illimit&eacute;`
+                    : `${status.sites_used || 0}/${status.sites_limit} site(s) ce mois`;
+                badge.innerHTML = `<i class="fa-solid fa-circle-check"></i> ${escHtml(status.plan_name)} &bull; ${limitText}`;
+            }
+
+            const sentBtn = document.getElementById('navSentinelBtn');
+            if (sentBtn) {
+                sentBtn.innerHTML = status.sentinel_full_access
+                    ? 'Console Sentinel'
+                    : 'Console Sentinel <span class="ui-badge accent" style="margin-left:4px;font-size:0.65rem">Entreprise</span>';
+            }
+
+            document.querySelectorAll('.module-checkbox-card[data-min-plan]').forEach(card => {
+                const reqRank = PLAN_RANK[card.dataset.minPlan || 'free'] ?? 0;
+                const unlocked = curRank >= reqRank;
+                const icon = card.querySelector('.checkbox-custom i');
+                if (unlocked) {
+                    card.classList.remove('pro-locked');
+                    if (icon && icon.classList.contains('fa-lock')) icon.className = 'fa-solid fa-check';
+                } else {
+                    card.classList.add('pro-locked');
+                    card.classList.remove('checked');
+                    if (icon) icon.className = 'fa-solid fa-lock';
+                }
+            });
+
+            const shieldBanner = document.getElementById('shieldEnterpriseBanner');
+            if (shieldBanner) {
+                shieldBanner.style.display = status.sentinel_full_access ? 'none' : 'flex';
+            }
+
+            renderOfferCards('offersCardsInline', highlightPlan);
+            renderOfferCards('offersCardsModal', highlightPlan);
+            renderComparisonTable('offersCompareInline');
+            renderComparisonTable('offersCompareModal');
+        }
+
+        function renderOfferCards(containerId, highlightPlan) {
+            const box = document.getElementById(containerId);
+            if (!box || !userPlanStatus || !Array.isArray(userPlanStatus.plans)) return;
+            const curPlan = userPlanStatus.plan_id || 'free';
+
+            box.innerHTML = userPlanStatus.plans.map(p => {
+                const isCur = p.id === curPlan;
+                const isFeat = (highlightPlan ? p.id === highlightPlan : p.id === 'pro');
+                const cls = ['offer-card', isFeat ? 'featured' : '', isCur ? 'current' : ''].filter(Boolean).join(' ');
+                const btnText = isCur
+                    ? 'Offre actuelle'
+                    : (p.id === 'free' ? 'Revenir au Gratuit' : `Choisir ${p.name} (${p.price_label})`);
+                const feats = (p.features || []).map(f => `<li><i class="fa-solid fa-check"></i><span>${escHtml(f)}</span></li>`).join('');
+                const excluded = (p.excluded_features || []).map(f => `<li><i class="fa-solid fa-xmark"></i><span>${escHtml(f)}</span></li>`).join('');
+                return `
+                    <div class="${cls}">
+                        <div class="offer-top">
+                            <span class="offer-name">${escHtml(p.name)}</span>
+                            <span class="offer-badge">${isCur ? 'Actif' : escHtml(p.badge)}</span>
+                        </div>
+                        <div>
+                            <div class="offer-price">${escHtml(p.price_label)}</div>
+                            <div class="offer-sub">${escHtml(p.subtitle)}</div>
+                        </div>
+                        <ul class="offer-features">${feats}</ul>
+                        ${excluded ? `<ul class="offer-excluded">${excluded}</ul>` : ''}
+                        <button type="button" class="offer-cta ${p.id !== 'free' && !isCur ? 'primary' : ''}" ${isCur ? 'disabled' : ''} onclick="selectOfferPlan('${p.id}')">
+                            ${escHtml(btnText)}
+                        </button>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function renderComparisonTable(containerId) {
+            const box = document.getElementById(containerId);
+            if (!box || !userPlanStatus || !Array.isArray(userPlanStatus.comparison_rows)) return;
+            const fmtCell = (val) => {
+                if (val === true) return '<span class="cmp-yes" title="Inclus"><i class="fa-solid fa-circle-check"></i></span>';
+                if (val === false) return '<span class="cmp-no" title="Bloqué dans cette offre"><i class="fa-solid fa-circle-xmark"></i></span>';
+                return `<strong>${escHtml(val)}</strong>`;
+            };
+            const rowsHtml = userPlanStatus.comparison_rows.map(r => `
+                <tr>
+                    <td>${escHtml(r.label)}</td>
+                    <td>${fmtCell(r.free)}</td>
+                    <td>${fmtCell(r.pro)}</td>
+                    <td>${fmtCell(r.enterprise)}</td>
+                </tr>
+            `).join('');
+            const bundles = Array.isArray(userPlanStatus.suite_bundles) ? userPlanStatus.suite_bundles : [];
+            const activeBundle = userPlanStatus.bundle_id || '';
+            const suitesHtml = bundles.length ? `
+                <div style="margin-top:1.25rem">
+                    <div class="modules-section-title" style="margin-bottom:.65rem">
+                        <span>💎 Packs Suite Complète (Cloneur + Sécurité Ultron)</span>
+                        <span class="ui-badge">Jusqu'à 29 €/mois économisés</span>
+                    </div>
+                    <div class="offers-grid" style="grid-template-columns:repeat(auto-fit,minmax(260px,1fr))">
+                        ${bundles.map(b => {
+                            const isCur = activeBundle === b.id;
+                            const feats = (b.features || []).map(f => `<li><i class="fa-solid fa-check"></i><span>${escHtml(f)}</span></li>`).join('');
+                            return `
+                                <div class="offer-card ${b.id === 'suite_pro' ? 'featured' : ''} ${isCur ? 'current' : ''}">
+                                    <div class="offer-top">
+                                        <span class="offer-name">${escHtml(b.name)}</span>
+                                        <span class="offer-badge">${isCur ? 'Actif' : escHtml(b.badge)}</span>
+                                    </div>
+                                    <div>
+                                        <div class="offer-price">${escHtml(b.price_label)}</div>
+                                        <div class="offer-sub">${escHtml(b.subtitle)}</div>
+                                    </div>
+                                    <ul class="offer-features">${feats}</ul>
+                                    <button type="button" class="offer-cta ${isCur ? '' : 'primary'}" ${isCur ? 'disabled' : ''} onclick="selectOfferPlan('${b.id}', 'bundle')">
+                                        ${isCur ? 'Pack actuel' : escHtml(`Choisir ${b.name}`)}
+                                    </button>
+                                </div>
+                            `;
+                        }).join('')}
+                    </div>
+                </div>
+            ` : '';
+            box.innerHTML = `
+                <table class="offers-compare-table">
+                    <thead>
+                        <tr>
+                            <th>Fonctionnalité</th>
+                            <th>Gratuit (0 €)</th>
+                            <th>Pro (29 €/mois)</th>
+                            <th>Entreprise (149 €/mois)</th>
+                        </tr>
+                    </thead>
+                    <tbody>${rowsHtml}</tbody>
+                </table>
+                ${suitesHtml}
+            `;
+        }
+
+        function openLastScanReport() {
+            const curPlan = (userPlanStatus && userPlanStatus.plan_id) || 'free';
+            if ((PLAN_RANK[curPlan] ?? 0) < (PLAN_RANK.pro ?? 1)) {
+                openProModal('Patchs serveur & Rapport complet', 'pro');
+                return;
+            }
+            if (!lastScanId) {
+                alert("Lancez d'abord un audit pour afficher le rapport détaillé et les patchs serveur.");
+                return;
+            }
+            window.open(`/__sc/security/api/scans/${encodeURIComponent(lastScanId)}/report`, '_blank', 'noopener');
+        }
+
+        async function loadUserPlanStatus(highlightPlan) {
+            try {
+                const res = await fetch('/__sc/security/api/plans');
+                if (!res.ok) return;
+                const data = await res.json();
+                applyPlanToUi(data, highlightPlan);
+            } catch (e) {
+                console.error('Erreur chargement offres:', e);
+            }
+        }
+
+        async function selectOfferPlan(planId, scope = 'security') {
+            const statusEl = document.getElementById('offerCheckoutStatus');
+            try {
+                const res = await fetch('/__sc/security/api/plans/checkout', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ plan_id: planId, scope })
+                });
+                const data = await res.json();
+                if (data.checkout_url) {
+                    window.location.href = data.checkout_url;
+                    return;
+                }
+                if (data.success && data.plan_status) {
+                    applyPlanToUi(data.plan_status, planId);
+                    document.getElementById('scanLimitNotice').style.display = 'none';
+                    if (statusEl) {
+                        statusEl.style.display = 'block';
+                        statusEl.style.color = 'var(--ok)';
+                        statusEl.textContent = data.message || 'Offre activ\u00e9e !';
+                    }
+                } else if (statusEl) {
+                    statusEl.style.display = 'block';
+                    statusEl.style.color = 'var(--danger)';
+                    statusEl.textContent = data.error || 'Impossible de modifier cette offre.';
+                }
+            } catch (e) {
+                if (statusEl) {
+                    statusEl.style.display = 'block';
+                    statusEl.style.color = 'var(--danger)';
+                    statusEl.textContent = 'Erreur r\u00e9seau : ' + e.message;
+                }
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            await loadUserPlanStatus();
+            const params = new URLSearchParams(window.location.search);
+            const scanId = params.get('scan_id');
+            if (scanId) {
+                try {
+                    const r = await fetch(`/__sc/security/api/scans/${encodeURIComponent(scanId)}`);
+                    const scanData = await r.json().catch(() => ({}));
+                    if (r.ok && scanData && !scanData.requires_account) {
+                        const input = document.getElementById('targetUrlInput');
+                        if (input && scanData.target_url) input.value = scanData.target_url;
+                        renderAuditResults(scanData, scanData.target_url || '');
+                    } else if (r.status === 401 && scanData.redirect) {
+                        renderAccountGateForAudit({
+                            id: scanId,
+                            target_url: scanData.target_url || '',
+                            findings_count: scanData.findings_count,
+                            register_url: scanData.redirect,
+                            login_url: scanData.redirect.replace('/account/register', '/account/login')
+                        }, scanData.target_url || 'Site audité');
+                    }
+                } catch (_) {}
+            }
+        });
+
+        function renderAccountGateForAudit(data, targetUrl) {
+            lastScanId = data.id || null;
+            const gate = document.getElementById('auditAccountGate');
+            const dashboard = document.getElementById('resultsDashboard');
+            if (dashboard) dashboard.style.display = 'none';
+            if (!gate) return;
+            const regUrl = escHtml(data.register_url || `/account/register?gate=ultron&next=${encodeURIComponent('/__sc/security/?scan_id=' + (data.id || ''))}`);
+            const logUrl = escHtml(data.login_url || `/account/login?gate=ultron&next=${encodeURIComponent('/__sc/security/?scan_id=' + (data.id || ''))}`);
+            const fCount = Number.isFinite(Number(data.findings_count)) ? Number(data.findings_count) : null;
+            const countLine = fCount !== null
+                ? `<span style="display:inline-flex;align-items:center;gap:6px;padding:4px 11px;border-radius:999px;background:rgba(16,185,129,.14);border:1px solid rgba(16,185,129,.38);color:#6ee7b7;font-size:.82rem;font-weight:700;">${fCount} point(s) analysé(s) — rapport prêt</span>`
+                : `<span style="display:inline-flex;align-items:center;gap:6px;padding:4px 11px;border-radius:999px;background:rgba(16,185,129,.14);border:1px solid rgba(16,185,129,.38);color:#6ee7b7;font-size:.82rem;font-weight:700;">Analyse terminée — rapport prêt</span>`;
+            gate.innerHTML = `
+                <div style="display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px;">
+                    ${countLine}
+                    <span style="font-size:.8rem;color:var(--text-muted);">${escHtml(targetUrl || data.target_url || '')}</span>
+                </div>
+                <h3 style="margin:0 0 8px;font-size:1.35rem;font-weight:800;color:#fff;">Créez votre compte gratuit pour accéder au rapport complet</h3>
+                <p style="margin:0 0 18px;color:var(--text-secondary);font-size:.95rem;line-height:1.55;">
+                    L'audit de sécurité est terminé. Votre score de risque, la liste des vulnérabilités détectées et le rapport téléchargeable sont prêts et conservés dans votre espace personnel.
+                </p>
+                <div style="display:flex;flex-wrap:wrap;gap:12px;align-items:center;">
+                    <a href="${regUrl}" class="btn-upgrade-pro" style="text-decoration:none;display:inline-flex;align-items:center;gap:8px;padding:12px 22px;font-size:.96rem;">
+                        <i class="fa-solid fa-user-plus"></i> Créer mon compte gratuit
+                    </a>
+                    <a href="${logUrl}" style="text-decoration:none;display:inline-flex;align-items:center;gap:8px;padding:11px 18px;border-radius:10px;border:1px solid rgba(148,163,184,.3);color:#e2e8f0;font-weight:600;font-size:.9rem;">
+                        J'ai déjà un compte — Se connecter
+                    </a>
+                </div>
+            `;
+            gate.style.display = 'block';
+            gate.scrollIntoView({ behavior: 'smooth' });
         }
 
         function setTarget(url) {
@@ -1314,9 +1668,13 @@ def ulton_waf_shield():
                 alert("Veuillez entrer une URL valide à auditer.");
                 return;
             }
+            const limitNotice = document.getElementById('scanLimitNotice');
+            if (limitNotice) limitNotice.style.display = 'none';
 
             // UI states
             document.getElementById('resultsDashboard').style.display = 'none';
+            const gateEl = document.getElementById('auditAccountGate');
+            if (gateEl) gateEl.style.display = 'none';
             const progressCard = document.getElementById('scanProgressCard');
             progressCard.style.display = 'block';
             progressCard.scrollIntoView({ behavior: 'smooth' });
@@ -1351,13 +1709,31 @@ def ulton_waf_shield():
                 clearTimeout(t1);
                 clearTimeout(t2);
 
+                if (resp.status === 403) {
+                    progressCard.style.display = 'none';
+                    if (data.plan_status) applyPlanToUi(data.plan_status, data.required_plan);
+                    const notice = document.getElementById('scanLimitNotice');
+                    if (notice) {
+                        notice.style.display = 'flex';
+                        notice.innerHTML = `<span><i class="fa-solid fa-lock"></i> ${escHtml(data.error || 'Quota atteint.')}</span>
+                            <button type="button" class="btn-upgrade-pro" onclick="openProModal('', '${escHtml(data.required_plan || 'pro')}')">Voir les 3 offres</button>`;
+                    }
+                    openProModal('', data.required_plan || 'pro');
+                    return;
+                }
+                if (data.plan_status) applyPlanToUi(data.plan_status);
+
                 fill.style.width = '100%';
                 step3.className = 'step-item done';
                 step4.className = 'step-item done';
 
                 setTimeout(() => {
                     progressCard.style.display = 'none';
-                    renderAuditResults(data, targetUrl);
+                    if (data.requires_account) {
+                        renderAccountGateForAudit(data, targetUrl);
+                    } else {
+                        renderAuditResults(data, targetUrl);
+                    }
                 }, 500);
 
             } catch (err) {
@@ -1370,6 +1746,7 @@ def ulton_waf_shield():
 
         // 4. RENDU DES RÉSULTATS VULGARISÉS
         function renderAuditResults(data, targetUrl) {
+            lastScanId = data.id || null;
             const dashboard = document.getElementById('resultsDashboard');
             dashboard.style.display = 'block';
             dashboard.scrollIntoView({ behavior: 'smooth' });
@@ -1548,13 +1925,20 @@ def ulton_waf_shield():
                     body: JSON.stringify({
                         message: text,
                         conversation_id: copilotConvId,
-                        provider: 'mock'
+                        provider: 'mock',
+                        origin: 'copilot'
                     })
                 });
 
                 const data = await res.json();
                 const l = document.getElementById('copilotLoader');
                 if (l) l.remove();
+
+                if (res.status === 403 && data.error_code === 'PLAN_UPGRADE_REQUIRED') {
+                    appendCopilotMessage('assistant', data.error || "Le Copilote IA Ulton nécessite l'offre Pro ou Entreprise.");
+                    openProModal('Copilote IA Ulton', data.required_plan || 'pro');
+                    return;
+                }
 
                 if (data.reply) {
                     if (data.conversation_id) copilotConvId = data.conversation_id;
@@ -1584,13 +1968,25 @@ def ulton_waf_shield():
             }
         });
 
-        // 6. MODAL PRO
-        function openProModal(featureContext) {
+        // 6. MODAL 3 OFFRES
+        function openProModal(featureContext, highlightPlan) {
             const modal = document.getElementById('proModalOverlay');
-            if (featureContext) {
-                document.getElementById('proModalFeatureContext').textContent = `Le module "${featureContext}" est réservé aux abonnés Ulton PRO pour garantir une analyse approfondie sans impacter vos serveurs.`;
+            const ctxEl = document.getElementById('proModalFeatureContext');
+            const statusEl = document.getElementById('offerCheckoutStatus');
+            if (statusEl) statusEl.style.display = 'none';
+            if (ctxEl) {
+                if (featureContext) {
+                    const targetName = highlightPlan === 'enterprise' ? 'Entreprise (Tout Sentinel)' : 'Pro';
+                    ctxEl.textContent = `Le module "${featureContext}" est inclus dans l'offre ${targetName}.`;
+                } else {
+                    ctxEl.textContent = "Comparez l'offre Gratuite (1 site/mois), Pro (audits avancés) et Entreprise (tout Sentinel).";
+                }
+            }
+            if (userPlanStatus) {
+                renderOfferCards('offersCardsModal', highlightPlan);
+                renderComparisonTable('offersCompareModal');
             } else {
-                document.getElementById('proModalFeatureContext').textContent = "Débloquez l'arsenal d'audit complet, le bouclier WAF 24/7 et la génération automatique des patchs de remédiation.";
+                loadUserPlanStatus(highlightPlan);
             }
             modal.classList.add('open');
         }
@@ -1601,6 +1997,10 @@ def ulton_waf_shield():
 
         // 7. BOUCLIER WAF ACTIONS
         async function setShieldTier(tier) {
+            if (!userPlanStatus || !userPlanStatus.sentinel_full_access) {
+                openProModal('Bouclier WAF 24/7', 'enterprise');
+                return;
+            }
             try {
                 const resp = await fetch('/__sc/security/api/sentinel/shield/tier', {
                     method: 'POST',

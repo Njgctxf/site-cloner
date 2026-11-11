@@ -27,6 +27,7 @@ from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 from curl_cffi import requests
+from rea_engine import analyze_site_rea, collect_cdp_page_runtime
 
 UA = ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) "
       "Chrome/128.0.0.0 Safari/537.36")
@@ -288,11 +289,14 @@ def _rewrite_flight(html, held, sub):
 
 
 class Cloner:
-    def __init__(self, url, dest_dir, max_pages=60, progress_callback=None):
+    def __init__(self, url, dest_dir, max_pages=60, progress_callback=None, rea_mode=False):
         self.start_url = urllib.parse.urldefrag(url)[0]
         self.dest = Path(dest_dir)
         self.max_pages = max_pages
         self.cb = progress_callback or (lambda *a: None)
+        self.rea_mode = bool(rea_mode)
+        self._rea_trace = {}
+        self.rea_summary = None
         self.origin = norm_host(urllib.parse.urlparse(self.start_url).netloc)
         self.map = {}            # key -> {"f","t"} | {"r"}
         self.captured = {}       # absolute url -> relative file
@@ -480,12 +484,15 @@ class Cloner:
         """Open one page like a visitor; returns (final url, title, links)."""
         page = context.new_page()
         final, title, hrefs = url, None, []
+        rea_finish = collect_cdp_page_runtime(page, context, self._rea_trace, self._lock) if self.rea_mode else None
         try:
             try:
                 page.goto(url, wait_until="load", timeout=60000)
             except Exception:
                 pass
             interact(page, long=long)
+            if rea_finish:
+                rea_finish()
             final = page.url
             title = page.title()
             hrefs = page.eval_on_selector_all("a[href]", "els => els.map(e => e.href)")
@@ -1208,6 +1215,24 @@ class Cloner:
             _phase[0] = 6
             self.complete()
             (self.dest / "_map.json").write_text(json.dumps(self.map, ensure_ascii=False), encoding="utf-8")
+            if self.rea_mode:
+                outer_cb(960, 1000, "Rétro-ingénierie R.E.A. (Source Maps, APIs, OpenAPI)...")
+                try:
+                    rea_rep = analyze_site_rea(
+                        self.dest,
+                        origin_url=self.start_url,
+                        runtime_trace=self._rea_trace,
+                        fetch_url=self._rea_fetch,
+                    )
+                    sm = rea_rep.get("sourcemaps") or {}
+                    self.rea_summary = {
+                        "sourcemaps_count": sm.get("sourcemaps_count", 0),
+                        "app_files_count": sm.get("app_files_count", 0),
+                        "apis_count": rea_rep.get("apis_count", 0),
+                        "tech_stack": [t["name"] for t in (rea_rep.get("tech_stack") or [])],
+                    }
+                except Exception as rea_err:
+                    self.errors.append(f"R.E.A.: {rea_err}")
             report = [f"Source : {self.start_url}", f"Pages : {len(self.pages)}", f"Fichiers : {len(self.captured)}",
                       f"Hôtes tiers embarqués : {sorted(self.hosts)}", f"Erreurs : {len(self.errors)}"] + self.errors[:50]
             (self.dest / "_clone-report.txt").write_text("\n".join(report), encoding="utf-8")
@@ -1227,11 +1252,28 @@ class Cloner:
             "errors": len(self.errors),
             "duration": duration,
             "dest_dir": str(self.dest),
+            "has_rea": bool(self.rea_summary),
+            "rea_summary": self.rea_summary,
         }
 
+    def _rea_fetch(self, url):
+        try:
+            r = self.session.get(url, timeout=15)
+            if r.status_code == 200:
+                return r.content
+        except Exception:
+            pass
+        return None
 
-def clone_site(url, dest_dir, crawl_all_pages=True, max_pages=15, progress_callback=None):
-    cl = Cloner(url, dest_dir, max_pages=max_pages if crawl_all_pages else 1, progress_callback=progress_callback)
+
+def clone_site(url, dest_dir, crawl_all_pages=True, max_pages=15, progress_callback=None, rea_mode=False):
+    cl = Cloner(
+        url,
+        dest_dir,
+        max_pages=max_pages if crawl_all_pages else 1,
+        progress_callback=progress_callback,
+        rea_mode=rea_mode,
+    )
     try:
         return cl.run()
     except Exception as e:

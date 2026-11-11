@@ -96,6 +96,7 @@
         <button class="m-fav" data-fav="{{ p.id }}" title="Favori" style="flex:0 0 38px"></button>
       </div>
       <h1>{{ p.title }}</h1>
+      {% if p.author_name %}<div class="ui-muted" style="font-size:.86rem">Créé par <b style="color:var(--text)">{{ p.author_name }}</b></div>{% endif %}
       {% if p.tagline %}<p class="ui-muted" style="margin:0;line-height:1.5">{{ p.tagline }}</p>{% endif %}
       <div class="bigprice {{ 'free' if p.free }}">{{ p.price }}</div>
       {% if error %}<div class="ui-badge danger" style="padding:8px 12px">{{ error }}</div>{% endif %}
@@ -112,6 +113,8 @@
           <button class="ui-btn primary" type="submit">Acheter &bull; {{ p.price }}</button>
           <small class="ui-muted">Paiement sécurisé par Stripe. Lien de téléchargement valable 7 jours.</small>
         </form>
+      {% elif seller_payout_missing %}
+        <span class="ui-badge warn" style="padding:8px 12px">Le créateur finalise son compte Stripe Connect (paiement bientôt actif)</span>
       {% else %}
         <span class="ui-badge warn" style="padding:8px 12px">Achat indisponible pour le moment</span>
       {% endif %}
@@ -126,6 +129,9 @@
         <div>{{ "Téléchargements" if p.free else "Médias" }}<b data-count="{{ p.downloads if p.free else p.media|length }}">0</b></div>
         <div>Catégorie<b>{{ p.category_label }}</b></div>
         <div>Livrable<b>{{ "Inclus" if p.has_file else "À venir" }}</b></div>
+        {% for sp in p.specs_list %}
+        <div>{{ sp.label }}<b>{{ sp.value }}</b></div>
+        {% endfor %}
       </div>
     </aside>
   </div>

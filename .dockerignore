@@ -1,0 +1,21 @@
+.git/
+__pycache__/
+*.py[cod]
+*.pyo
+.venv/
+.env
+.env.*
+!.env.example
+.claude/
+
+# Local runtime state & databases (must live on persistent volume in production)
+data/
+cloned_sites/
+projets/
+cyberlab.db
+*.zip
+security/sentinel/tools_bin/
+
+# Local test & verification scripts
+test_*.py
+verify_*.py

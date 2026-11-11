@@ -17,7 +17,7 @@ from datetime import datetime
 from pathlib import Path
 from http.server import ThreadingHTTPServer, SimpleHTTPRequestHandler
 import hmac
-from flask import Flask, request, jsonify, render_template, send_file, send_from_directory, Response, redirect
+from flask import Flask, request, jsonify, render_template, send_file, send_from_directory, Response, redirect, session
 
 if hasattr(sys.stdout, "reconfigure"):
     try:
@@ -29,6 +29,7 @@ if hasattr(sys.stdout, "reconfigure"):
 from cloner import clone_site
 from site_server import resolve, resolve_post, make_server
 from admin import init_admin
+from accounts import init_accounts
 from shop import init_shop
 from studio import init_studio
 from security import init_security, self_protect_check
@@ -52,7 +53,7 @@ def ultron_self_shield():
     return None
 
 BASE_DIR = Path(__file__).resolve().parent
-CLONED_DIR = BASE_DIR / "cloned_sites"
+CLONED_DIR = Path(os.environ.get("CLONED_DIR") or (BASE_DIR / "cloned_sites"))
 MANIFEST_FILE = CLONED_DIR / "manifest.json"
 
 CLONED_DIR.mkdir(parents=True, exist_ok=True)
@@ -160,7 +161,8 @@ SITE_COOKIE = "sc_site"
 def serve_active_clone():
     """While a clone is open (cookie), the whole origin belongs to it: root-absolute paths
     and client-side routers (Next.js, Framer, Astro...) then work exactly as on the real site."""
-    if request.path.startswith(("/__sc/", "/preview/", "/admin", "/shop")):
+    path = request.path
+    if path in ("/account", "/admin", "/shop") or path.startswith(("/__sc/", "/preview/", "/admin/", "/shop/", "/account/", "/lab/")):
         return None
     sid = request.cookies.get(SITE_COOKIE)
     if not sid or not (CLONED_DIR / sid).is_dir():
@@ -194,11 +196,28 @@ def start_clone():
     if not url:
         return jsonify({"error": "URL is required"}), 400
 
+    from security.plans import check_and_authorize_clone, record_clone_usage
+    from security.sentinel.user_llm_manager import get_current_user_id
+
+    user_id = get_current_user_id()
+    is_admin = bool(session.get("admin"))
     crawl_all_pages = bool(data.get("crawl_all_pages", True))
-    max_pages = min(int(data.get("max_pages", 15)), 30)  # hard cap: 30 pages max
+    requested_max_pages = int(data.get("max_pages", 5))
+    rea_mode = bool(data.get("rea_mode", False))
 
     if not url.startswith("http://") and not url.startswith("https://"):
         url = "https://" + url
+
+    auth = check_and_authorize_clone(
+        user_id=user_id,
+        target_url=url,
+        requested_max_pages=requested_max_pages,
+        rea_mode=rea_mode,
+        is_admin=is_admin,
+    )
+    if not auth.get("allowed"):
+        return jsonify(auth), auth.get("status_code", 403)
+    max_pages = auth["effective_max_pages"]
 
     job_id = str(uuid.uuid4())[:8]
     domain = urllib.parse.urlparse(url).netloc.replace(":", "_").replace(".", "_")
@@ -225,8 +244,16 @@ def start_clone():
                 }
 
         try:
-            res = clone_site(url, dest_dir, crawl_all_pages=crawl_all_pages, max_pages=max_pages, progress_callback=update_progress)
+            res = clone_site(
+                url,
+                dest_dir,
+                crawl_all_pages=crawl_all_pages,
+                max_pages=max_pages,
+                progress_callback=update_progress,
+                rea_mode=rea_mode,
+            )
             if res.get("success"):
+                record_clone_usage(user_id, url)
                 manifest = load_manifest()
                 manifest[site_id] = {
                     "id": site_id,
@@ -236,6 +263,7 @@ def start_clone():
                     "total_pages": res.get("total_pages", 1),
                     "total_files": res.get("total_files", 0),
                     "total_size": res.get("total_size", 0),
+                    "has_rea": bool(res.get("has_rea")),
                     "folder": str(dest_dir)
                 }
                 save_manifest(manifest)
@@ -277,6 +305,7 @@ def list_sites():
         s["incomplete"] = sid not in running and not (CLONED_DIR / sid / "_map.json").exists()
         thumbs_dir = CLONED_DIR / sid / "_studio" / "thumbs"
         s["has_cover"] = thumbs_dir.is_dir() and any(thumbs_dir.glob("*.jpg"))
+        s["has_rea"] = (CLONED_DIR / sid / "_rea" / "rea-report.json").is_file()
         if sid in active_servers:
             s["active_port"] = active_servers[sid]["port"]
         else:
@@ -315,6 +344,9 @@ def _send_resolved(dest_dir, raw_path):
 @app.route("/preview/<site_id>/", defaults={"filename": ""})
 @app.route("/preview/<site_id>/<path:filename>")
 def preview_site(site_id, filename):
+    from accounts import account_gate_url, has_registered_account
+    if not has_registered_account():
+        return redirect(account_gate_url("cloner", f"/__sc/studio/{site_id}"))
     if not (CLONED_DIR / site_id).is_dir():
         return jsonify({"error": "Site not found"}), 404
     target = "/" + filename
@@ -327,6 +359,13 @@ def preview_site(site_id, filename):
 
 @app.route("/__sc/api/sites/<site_id>/serve", methods=["POST"])
 def serve_site(site_id):
+    from accounts import account_gate_url, has_registered_account
+    if not has_registered_account():
+        return jsonify({
+            "error_code": "ACCOUNT_REQUIRED",
+            "redirect": account_gate_url("cloner", f"/__sc/studio/{site_id}"),
+            "error": "Créez un compte gratuit pour accéder aux résultats du clonage.",
+        }), 401
     dest_dir = CLONED_DIR / site_id
     if not dest_dir.exists():
         return jsonify({"error": "Site directory not found"}), 404
@@ -368,6 +407,19 @@ def stop_serve(site_id):
 
 @app.route("/__sc/api/sites/<site_id>/download", methods=["GET"])
 def download_zip(site_id):
+    from accounts import account_gate_url, has_registered_account
+    if not has_registered_account():
+        return jsonify({
+            "error_code": "ACCOUNT_REQUIRED",
+            "redirect": account_gate_url("cloner", f"/__sc/studio/{site_id}"),
+            "error": "Créez un compte gratuit pour accéder aux résultats.",
+        }), 401
+    from security.plans import check_cloner_plan_requirement
+    from security.sentinel.user_llm_manager import get_current_user_id
+    gate = check_cloner_plan_requirement(get_current_user_id(), "pro", is_admin=bool(session.get("admin")))
+    if not gate.get("allowed"):
+        return jsonify(gate), gate.get("status_code", 403)
+
     dest_dir = CLONED_DIR / site_id
     if not dest_dir.exists():
         return jsonify({"error": "Site not found"}), 404
@@ -404,6 +456,19 @@ def delete_site(site_id):
 
 @app.route("/__sc/api/sites/<site_id>/publish", methods=["POST"])
 def publish_github(site_id):
+    from accounts import account_gate_url, has_registered_account
+    if not has_registered_account():
+        return jsonify({
+            "error_code": "ACCOUNT_REQUIRED",
+            "redirect": account_gate_url("cloner", f"/__sc/studio/{site_id}"),
+            "error": "Créez un compte gratuit pour accéder aux résultats.",
+        }), 401
+    from security.plans import check_cloner_plan_requirement
+    from security.sentinel.user_llm_manager import get_current_user_id
+    gate = check_cloner_plan_requirement(get_current_user_id(), "pro", is_admin=bool(session.get("admin")))
+    if not gate.get("allowed"):
+        return jsonify(gate), gate.get("status_code", 403)
+
     dest_dir = CLONED_DIR / site_id
     if not dest_dir.exists():
         return jsonify({"error": "Site directory not found"}), 404
@@ -438,10 +503,13 @@ def publish_github(site_id):
 
 init_admin(app, load_manifest=load_manifest, jobs=jobs, active_servers=active_servers,
            CLONED_DIR=CLONED_DIR, delete_site=delete_site, stop_serve=stop_serve)
+init_accounts(app)
 init_shop(app)
 init_studio(app, CLONED_DIR=CLONED_DIR, find_free_port=find_free_port)
 init_security(app)
-if ONLINE:
+app.config.setdefault("SESSION_COOKIE_HTTPONLY", True)
+app.config.setdefault("SESSION_COOKIE_SAMESITE", "Lax")
+if ONLINE or os.environ.get("PUBLIC_URL", "").startswith("https://"):
     app.config["SESSION_COOKIE_SECURE"] = True
 
 if __name__ == "__main__":

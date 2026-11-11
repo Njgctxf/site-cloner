@@ -260,18 +260,44 @@ def get_overview():
 
 @bp.route("/api/scan", methods=["POST"])
 def run_scan():
+    from .plans import (
+        check_and_authorize_scan,
+        get_user_plan_status,
+        record_scan_usage,
+    )
+
     req_json = request.get_json(silent=True) or {}
     target_url = (req_json.get("target_url") or "").strip()
     user_b_headers = req_json.get("user_b_headers")
-    categories = req_json.get("categories")  # optional list of category keys; None (not sent) = run everything
+    categories = req_json.get("categories")  # optional list of category keys; None = clamp to plan
 
     if not target_url:
         return jsonify({"error": "L'URL cible est requise"}), 400
+
+    user_id = get_current_user_id()
+    is_admin = bool(session.get("admin"))
+    gate = check_and_authorize_scan(
+        user_id=user_id,
+        target_url=target_url,
+        requested_categories=categories,
+        is_admin=is_admin,
+    )
+    if not gate["allowed"]:
+        log_event("SCAN_QUOTA_BLOCKED", "WARN", "PLAN_MGR", f"Audit refuse sur {target_url}: {gate['error']}")
+        return jsonify({
+            "success": False,
+            "error": gate["error"],
+            "error_code": gate.get("error_code"),
+            "required_plan": gate.get("required_plan"),
+            "plan_status": get_user_plan_status(user_id, is_admin=is_admin, is_local=_is_loopback_request()),
+        }), gate.get("status_code", 403)
+
     log_event("SCAN_INITIATED", "INFO", "SCANNER_MODULE", f"Démarrage de l'analyse défensive sur {target_url}")
-    res = scan_target(target_url, auth_headers_user_b=user_b_headers, categories=categories)
+    res = scan_target(target_url, auth_headers_user_b=user_b_headers, categories=gate["effective_categories"])
     if not res.get("success"):
         log_event("SCAN_REJECTED", "WARN", "POLICY_MGR", f"Analyse refusée sur {target_url}: {res.get('error')}")
         return jsonify(res), 400
+    record_scan_usage(user_id, res["target_url"])
     conn = get_connection()
     c = conn.cursor()
     c.execute("""INSERT INTO scans (target_url, timestamp, risk_score, grade, critical_count, high_count, medium_count,
@@ -283,7 +309,25 @@ def run_scan():
     conn.close()
     log_event("SCAN_COMPLETED", "INFO", "SCANNER_MODULE",
               f"Analyse #{scan_id} terminée. Score: {res['risk_score']}/100 (Grade {res['grade']})")
+    plan_status = get_user_plan_status(user_id, is_admin=is_admin, is_local=_is_loopback_request())
+
+    from accounts import account_gate_url, has_registered_account
+    if not has_registered_account():
+        next_url = f"/__sc/security/?scan_id={scan_id}"
+        return jsonify({
+            "success": True,
+            "id": scan_id,
+            "target_url": res["target_url"],
+            "timestamp": res["timestamp"],
+            "requires_account": True,
+            "findings_count": len(res.get("findings") or []),
+            "register_url": account_gate_url("ultron", next_url, mode="register"),
+            "login_url": account_gate_url("ultron", next_url, mode="login"),
+            "plan_status": plan_status,
+        })
+
     res["id"] = scan_id
+    res["plan_status"] = plan_status
     return jsonify(res)
 
 
@@ -312,12 +356,29 @@ def _scan(scan_id):
 
 @bp.route("/api/scans/<int:scan_id>")
 def get_scan_details(scan_id):
+    from accounts import account_gate_url, has_registered_account
+    if not has_registered_account():
+        return jsonify({
+            "error_code": "ACCOUNT_REQUIRED",
+            "redirect": account_gate_url("ultron", f"/__sc/security/?scan_id={scan_id}"),
+            "error": "Créez votre compte gratuit pour consulter le rapport d'audit.",
+        }), 401
     d = _scan(scan_id)
     return jsonify(d) if d else (jsonify({"error": "Rapport d'analyse introuvable"}), 404)
 
 
 @bp.route("/api/scans/<int:scan_id>/patch")
 def get_scan_patch(scan_id):
+    from accounts import account_gate_url, has_registered_account
+    if not has_registered_account():
+        return jsonify({
+            "error_code": "ACCOUNT_REQUIRED",
+            "redirect": account_gate_url("ultron", f"/__sc/security/?scan_id={scan_id}"),
+            "error": "Créez votre compte gratuit pour consulter les correctifs.",
+        }), 401
+    gate = check_plan_requirement(get_current_user_id(), "pro", is_admin=bool(session.get("admin")))
+    if not gate["allowed"]:
+        return jsonify(gate), 403
     d = _scan(scan_id)
     if not d:
         return jsonify({"error": "Rapport introuvable"}), 404
@@ -336,6 +397,12 @@ def get_scan_patch(scan_id):
 
 @bp.route("/api/scans/<int:scan_id>/report")
 def view_report_html(scan_id):
+    from accounts import account_gate_url, has_registered_account
+    if not has_registered_account():
+        return redirect(account_gate_url("ultron", f"/__sc/security/?scan_id={scan_id}"))
+    gate = check_plan_requirement(get_current_user_id(), "pro", is_admin=bool(session.get("admin")))
+    if not gate["allowed"]:
+        return ("Rapport complet réservé à l'offre Pro ou Entreprise.", 403)
     d = _scan(scan_id)
     if not d:
         return ("Rapport introuvable", 404)
@@ -783,6 +850,11 @@ from .sentinel.kali_connector import (
 from .sentinel.user_llm_manager import (
     init_user_llm_tables, user_llm_manager, get_current_user_id
 )
+from .plans import (
+    init_plan_tables, get_user_plan_status, create_plan_checkout,
+    confirm_stripe_checkout_session, set_user_plan, list_all_subscriptions,
+    check_plan_requirement
+)
 from .sentinel.pentagi_engine import (
     init_pentagi_tables, pentagi_engine, PENTAGI_CAPABILITIES
 )
@@ -795,13 +867,19 @@ from .sentinel.realtime import (
 @bp.route("/sentinel")
 @bp.route("/ulton")
 def sentinel_workspace():
-    """Renders the Ulton AI dedicated interactive cyber workspace."""
+    """Renders the Ulton AI dedicated interactive cyber workspace (Enterprise / Admin)."""
     config = get_sentinel_config()
+    is_admin = bool(session.get("admin"))
+    user_id = get_current_user_id()
+    plan_status = get_user_plan_status(user_id, is_admin=is_admin, is_local=_is_loopback_request())
     return render_template(
         "security/sentinel.html",
         lab_url=lab_url(),
         active_provider=config.get("active_provider", "mock"),
-        kill_switch=guardian.is_kill_switch_active()
+        kill_switch=guardian.is_kill_switch_active(),
+        is_admin=is_admin,
+        sentinel_locked=(not plan_status["sentinel_full_access"]),
+        plan_status=plan_status,
     )
 
 
@@ -879,11 +957,15 @@ def sentinel_chat_api():
     if not user_prompt:
         return jsonify({"error": "Message vide."}), 400
 
+    user_id = get_current_user_id()
+    if data.get("origin") == "copilot":
+        gate = check_plan_requirement(user_id, "pro", is_admin=bool(session.get("admin")))
+        if not gate["allowed"]:
+            return jsonify(gate), 403
+
     if not conv_id:
         conv_id = create_conversation(title=user_prompt[:35] + "...")
 
-    # Resolve user identity and per-user LLM connection
-    user_id = get_current_user_id()
     requested_p_id = data.get("provider")
     requested_model = data.get("model")
     explicit_key = data.get("api_key")
@@ -1857,8 +1939,129 @@ def sentinel_admin_llm_stats_api():
     return jsonify(stats)
 
 
+# ==============================================================================
+# CLAUDE PRO/MAX VIA LOCAL MCP CONNECTOR (1-CLICK SETUP)
+# ==============================================================================
+
+def _is_loopback_request() -> bool:
+    """True only when the HTTP client connects directly from localhost."""
+    addr = (request.remote_addr or "").strip()
+    return addr in ("127.0.0.1", "::1")
+
+
+@bp.route("/api/mcp/config", methods=["GET"])
+def mcp_setup_config_api():
+    """Returns 1-click Claude Desktop / Claude Code MCP installation snippets."""
+    from .mcp_setup import build_mcp_setup_payload
+
+    base_url = request.host_url.rstrip("/")
+    payload = build_mcp_setup_payload(base_url=base_url, is_local=_is_loopback_request())
+    return jsonify(payload)
+
+
+@bp.route("/api/mcp/install-local", methods=["POST"])
+def mcp_install_local_api():
+    """Installs SiteCloner MCP entry into local Claude Desktop config (localhost only)."""
+    if not _is_loopback_request():
+        return jsonify({
+            "success": False,
+            "error": "Installation locale directe reservee a une instance localhost. Copiez la config ou la commande CLI."
+        }), 403
+
+    from .mcp_setup import install_in_claude_desktop
+
+    base_url = request.host_url.rstrip("/")
+    result = install_in_claude_desktop(base_url=base_url)
+    return jsonify(result), (200 if result.get("success") else 400)
+
+
+@bp.route("/api/mcp/test", methods=["POST"])
+def mcp_test_server_api():
+    """Validates that mcp_server.py loads cleanly and lists available MCP tools."""
+    from .mcp_setup import test_mcp_server_health
+
+    health = test_mcp_server_health()
+    return jsonify(health), (200 if health.get("healthy") else 500)
+
+
+# ==============================================================================
+# SAAS PLANS & QUOTAS API (FREE / PRO / ENTERPRISE)
+# ==============================================================================
+
+@bp.route("/api/plans", methods=["GET"])
+def security_plans_status_api():
+    """Returns the 3-tier catalog, active offer, and current monthly scan quota."""
+    user_id = get_current_user_id()
+    is_admin = bool(session.get("admin"))
+    return jsonify(get_user_plan_status(user_id, is_admin=is_admin, is_local=_is_loopback_request()))
+
+
+@bp.route("/api/plans/checkout", methods=["POST"])
+def security_plans_checkout_api():
+    """Starts a Stripe subscription Checkout or local/admin activation for an offer."""
+    data = request.get_json(silent=True) or {}
+    plan_id = (data.get("plan_id") or "").strip().lower()
+    scope = (data.get("scope") or "").strip().lower() or None
+    email = (data.get("email") or "").strip()
+    user_id = get_current_user_id()
+    is_admin = bool(session.get("admin"))
+    result = create_plan_checkout(
+        user_id=user_id,
+        plan_id=plan_id,
+        origin_url=request.host_url.rstrip("/"),
+        email=email,
+        is_admin=is_admin,
+        is_local=_is_loopback_request(),
+        scope=scope,
+    )
+    status_code = result.pop("status_code", 200 if result.get("success") else 400)
+    return jsonify(result), status_code
+
+
+@bp.route("/api/plans/stripe-success", methods=["GET"])
+def security_plans_stripe_success_api():
+    """Verifies Stripe Checkout session server-side before activating the plan."""
+    session_id = (request.args.get("session_id") or "").strip()
+    user_id = get_current_user_id()
+    res = confirm_stripe_checkout_session(session_id, expected_user_id=user_id)
+    if not res.get("success"):
+        return redirect(f"{BASE}/?plan_error={urllib.parse.quote(res.get('error', 'Paiement invalide'))}")
+    plan_id = res["plan_id"]
+    if res.get("scope") == "cloner":
+        return redirect(f"/__sc/?plan_activated={plan_id}")
+    if plan_id in ("enterprise", "suite_enterprise"):
+        return redirect(f"{BASE}/sentinel?plan_activated={plan_id}")
+    return redirect(f"{BASE}/?plan_activated={plan_id}")
+
+
+@bp.route("/api/admin/plans", methods=["GET"])
+@admin_owner_required
+def security_admin_plans_list_api():
+    """Lists user subscriptions and monthly usage for SaaS administrators."""
+    return jsonify({"subscriptions": list_all_subscriptions()})
+
+
+@bp.route("/api/admin/plans/assign", methods=["POST"])
+@admin_owner_required
+def security_admin_plans_assign_api():
+    """Manually assigns an Ultron plan, Cloner plan, or Suite Bundle to a user_id."""
+    data = request.get_json(silent=True) or {}
+    target_uid = (data.get("user_id") or "").strip()
+    plan_id = (data.get("plan_id") or "").strip().lower()
+    scope = (data.get("scope") or "").strip().lower() or None
+    email = (data.get("email") or "").strip()
+    if not target_uid or not plan_id:
+        return jsonify({"error": "user_id et plan_id sont obligatoires."}), 400
+    try:
+        sub = set_user_plan(target_uid, plan_id, source="admin_assign", email=email, scope=scope)
+        return jsonify({"success": True, "subscription": sub})
+    except ValueError as exc:
+        return jsonify({"error": str(exc)}), 400
+
+
 def init_security(app):
     init_db()
+    init_plan_tables()
     init_sentinel_tables()
     init_asset_tables()
     init_shield_tables()

@@ -84,6 +84,15 @@
     .toast.on { opacity: 1; }
     .shadowbox { height: 46px; border-radius: 10px; background: var(--card); margin-bottom: 8px; display: flex; align-items: center;
                  padding: 0 10px; font-size: 10.5px; font-family: 'JetBrains Mono', monospace; color: var(--muted); }
+    .rea-kpis { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-bottom: 12px; }
+    .rea-kpi { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 10px; }
+    .rea-kpi b { display: block; font-size: 18px; color: var(--text); }
+    .rea-kpi span { font-size: 11px; color: var(--muted); }
+    .rea-list { display: flex; flex-direction: column; gap: 6px; max-height: 220px; overflow: auto; margin-bottom: 10px; }
+    .rea-item { background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 7px 9px; font-size: 11.5px; font-family: 'JetBrains Mono', monospace; cursor: pointer; display: flex; align-items: center; gap: 8px; }
+    .rea-item:hover { border-color: var(--accent); }
+    .rea-method { padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: 700; background: var(--accent-soft); color: #a5b4fc; }
+    .rea-lock { background: rgba(99,102,241,.08); border: 1px solid rgba(139,92,246,.35); border-radius: 12px; padding: 14px; font-size: 13px; line-height: 1.5; }
   </style>
   <link rel="stylesheet" href="/__sc/static/ui.css">
   <link rel="stylesheet" href="/__sc/static/tool.css">
@@ -97,6 +106,7 @@
     <span class="sp"></span>
     <button class="btn" id="btnThumbs" title="Refaire toutes les miniatures">Miniatures</button>
     <button class="btn" id="btnDesign">Design system</button>
+    <button class="btn" id="btnREA" title="Rétro-ingénierie avancée R.E.A. (Source Maps, APIs, OpenAPI, Blueprint)" style="border-color:rgba(139,92,246,.55)">⚡ R.E.A. Inspect</button>
     <button class="btn" id="btnAll">Tout sélectionner</button>
     <button class="btn primary" id="btnExport" disabled>Exporter la sélection</button>
   </div>
@@ -122,7 +132,7 @@ const SITE = {{ site_id|tojson }};
 const API = `/__sc/api/studio/${SITE}`;
 const $ = id => document.getElementById(id);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-let pages = [], selected = new Set(), view = {x: 40, y: 40, k: 1}, servedUrl = null, thumbStamp = Date.now();
+let pages = [], selected = new Set(), view = {x: 40, y: 40, k: 1}, servedUrl = null, thumbStamp = Date.now(), canEditExport = true;
 const CARD_W = 360, CARD_H = 286, GAP = 48;
 
 function toast(msg) { const t = $('toast'); t.textContent = msg; t.classList.add('on'); clearTimeout(t._h); t._h = setTimeout(() => t.classList.remove('on'), 2200); }
@@ -225,11 +235,12 @@ function panel(title, html) { $('pTitle').textContent = title; $('pBody').innerH
 $('pClose').onclick = () => $('panel').classList.remove('open');
 
 async function openPage(p) {
+  const lk = canEditExport ? '' : '🔒 ';
   panel(p.title || p.key, `<div class="row">
-      <a class="btn primary" href="/__sc/studio/${SITE}/inspect?key=${encodeURIComponent(p.key)}" title="Arbre des composants de la page, modification en direct">Inspecter et modifier</a>
+      <a class="btn primary" href="/__sc/studio/${SITE}/inspect?key=${encodeURIComponent(p.key)}" title="Arbre des composants de la page, modification en direct">${lk}Inspecter et modifier</a>
       <button class="btn" id="pOpen">Ouvrir la page</button>
-      <button class="btn" id="pExport">Exporter cette page</button>
-      <button class="btn" id="pClean" title="HTML et CSS lisibles, composant React, tokens Tailwind">&lt;/&gt; Code propre</button>
+      <button class="btn" id="pExport">${lk}Exporter cette page</button>
+      <button class="btn" id="pClean" title="HTML et CSS lisibles, composant React, tokens Tailwind">${lk}&lt;/&gt; Code propre</button>
       <button class="btn" id="pSections">Détecter les sections</button></div>
     <div class="k empty" style="font-family:'JetBrains Mono';margin-bottom:10px">${esc(p.key)}</div>
     <div id="secList"><p class="empty">Chargement des sections…</p></div>`);
@@ -301,6 +312,138 @@ $('btnDesign').onclick = async () => {
   $('cpCode').onclick = () => { navigator.clipboard.writeText(codes[cur]); toast('Code copié'); };
   $('pBody').querySelectorAll('[data-copy]').forEach(el => el.onclick = () => { navigator.clipboard.writeText(el.dataset.copy); toast('Copié : ' + el.dataset.copy); });
 };
+
+// ---- R.E.A. (Reverse Engineer Anything) Inspector
+function renderREALocked(msg) {
+  $('pBody').innerHTML = `<div class="rea-lock">
+    <p style="font-weight:700;margin-bottom:6px">🔒 Fonctionnalité avancée Pro / Entreprise</p>
+    <p style="color:var(--muted);margin-bottom:12px">${esc(msg || "Le moteur R.E.A. (Source Maps, APIs/HAR, OpenAPI & Mocks locaux) est réservé aux offres Pro et Entreprise.")}</p>
+    <a class="btn primary" href="/__sc/security/#plans">Voir les offres Pro / Entreprise</a>
+  </div>`;
+}
+
+function renderREAReport(rep) {
+  if (!rep.available) {
+    $('pBody').innerHTML = `<p class="empty" style="margin-bottom:12px">Aucune analyse R.E.A. n'a encore été exécutée sur ce clone. Lancez l'analyse pour extraire les Source Maps, cartographier les APIs, générer la spec OpenAPI 3.0 et activer les mocks locaux.</p>
+      <button class="btn primary" id="reaRunBtn">⚡ Lancer la rétro-ingénierie R.E.A.</button>`;
+    $('reaRunBtn').onclick = runREAAnalyze;
+    return;
+  }
+  const sm = rep.sourcemaps || {};
+  const apis = rep.apis || [];
+  const stack = rep.tech_stack || [];
+  const storage = rep.storage || {};
+  const files = sm.files || [];
+
+  $('pBody').innerHTML = `
+    <div class="row">
+      <button class="btn primary" id="reaReRun">↻ Ré-analyser</button>
+      <a class="btn" href="${API}/rea/bundle.zip">⬇ Pack R.E.A. (.zip)</a>
+      <a class="btn" href="${API}/rea/openapi.json">⬇ OpenAPI 3.0</a>
+    </div>
+    <div class="rea-kpis">
+      <div class="rea-kpi"><b>${sm.sourcemaps_count || 0}</b><span>Source Maps</span></div>
+      <div class="rea-kpi"><b>${sm.app_files_count || 0} <small style="font-size:11px;color:var(--muted)">(${sm.files_count || 0})</small></b><span>Fichiers reconstruits</span></div>
+      <div class="rea-kpi"><b>${apis.length}</b><span>Endpoints API / GraphQL</span></div>
+      <div class="rea-kpi"><b>${rep.mocks_count || 0}</b><span>Mocks locaux actifs</span></div>
+    </div>
+    <h3>Stack détectée</h3>
+    <div class="chips" style="margin-bottom:12px">${stack.length ? stack.map(s => `<span class="chip">${esc(s.name)} <small style="color:var(--muted)">· ${esc(s.category)}</small></span>`).join('') : '<span class="empty">HTML/CSS/JS standard</span>'}</div>
+    <div class="tabs">
+      <button class="on" data-rtab="src">Sources (${files.length})</button>
+      <button data-rtab="api">APIs (${apis.length})</button>
+      <button data-rtab="bp">Blueprint IA</button>
+    </div>
+    <div id="reaTabBody"></div>
+  `;
+
+  $('reaReRun').onclick = runREAAnalyze;
+
+  const drawSrc = () => {
+    const box = $('reaTabBody');
+    if (!files.length) {
+      box.innerHTML = '<p class="empty">Aucune Source Map publique (.map) exposée par ce site. Utilisez <b>&lt;/&gt; Code propre</b> sur une page pour convertir le HTML rendu en React/Tailwind.</p>';
+      return;
+    }
+    box.innerHTML = `<div class="rea-list">${files.slice(0, 120).map(f =>
+      `<div class="rea-item" data-spath="${esc(f.path)}"><span class="rea-method">${esc(f.ext)}</span><span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(f.path)}</span><span style="color:var(--muted)">${f.lines}L</span></div>`
+    ).join('')}</div><pre id="reaCodePreview">Cliquez sur un fichier source pour l'inspecter…</pre>`;
+    box.querySelectorAll('[data-spath]').forEach(el => el.onclick = async () => {
+      $('reaCodePreview').textContent = 'Chargement…';
+      const r = await fetch(`${API}/rea/source?path=${encodeURIComponent(el.dataset.spath)}`);
+      const d = await r.json();
+      $('reaCodePreview').textContent = d.content || d.error || 'Vide';
+    });
+  };
+
+  const drawApi = () => {
+    const box = $('reaTabBody');
+    if (!apis.length) {
+      box.innerHTML = '<p class="empty">Aucun appel REST / GraphQL détecté. (Site majoritairement statique/SSG.)</p>';
+      return;
+    }
+    box.innerHTML = `<div class="rea-list">${apis.map((a, idx) =>
+      `<div class="rea-item" data-aidx="${idx}"><span class="rea-method">${esc(a.method)}</span><span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(a.path)}</span><span style="color:${a.has_local_mock ? 'var(--ok)' : 'var(--muted)'}">${a.has_local_mock ? 'MOCK' : esc(a.source)}</span></div>`
+    ).join('')}</div><pre id="reaApiPreview">Cliquez sur un endpoint pour voir son schéma JSON…</pre>`;
+    box.querySelectorAll('[data-aidx]').forEach(el => el.onclick = () => {
+      const ep = apis[+el.dataset.aidx];
+      $('reaApiPreview').textContent = JSON.stringify({
+        method: ep.method, path: ep.path, host: ep.host, status: ep.status,
+        has_local_mock: ep.has_local_mock, schema: ep.schema, sample: ep.sample_preview
+      }, null, 2);
+    });
+  };
+
+  const drawBp = () => {
+    const box = $('reaTabBody');
+    const lsCount = Object.keys(storage.localStorage || {}).length;
+    box.innerHTML = `<div class="row" style="margin-bottom:8px">
+        <button class="btn" id="reaCopyBp">Copier le Blueprint</button>
+        <span class="empty">localStorage: ${lsCount} clé(s) · WS: ${(storage.websockets || []).length}</span>
+      </div>
+      <pre style="white-space:pre-wrap">${esc(rep.clean_room_blueprint || '')}</pre>`;
+    $('reaCopyBp').onclick = () => { navigator.clipboard.writeText(rep.clean_room_blueprint || ''); toast('Blueprint R.E.A. copié'); };
+  };
+
+  drawSrc();
+  $('pBody').querySelectorAll('[data-rtab]').forEach(b => b.onclick = () => {
+    $('pBody').querySelectorAll('[data-rtab]').forEach(x => x.classList.remove('on'));
+    b.classList.add('on');
+    if (b.dataset.rtab === 'src') drawSrc();
+    else if (b.dataset.rtab === 'api') drawApi();
+    else drawBp();
+  });
+}
+
+async function runREAAnalyze() {
+  $('pBody').innerHTML = '<p class="empty">⚡ Rétro-ingénierie R.E.A. en cours (Source Maps, APIs, OpenAPI, Blueprint)…</p>';
+  const r = await fetch(`${API}/rea/analyze`, {method: 'POST'});
+  const d = await r.json();
+  if (r.status === 403) return renderREALocked(d.error);
+  renderREAReport(d);
+  toast('Analyse R.E.A. terminée');
+}
+
+$('btnREA').onclick = async () => {
+  panel('⚡ R.E.A. Inspect', '<p class="empty">Chargement du moteur R.E.A.…</p>');
+  const r = await fetch(`${API}/rea`);
+  const d = await r.json();
+  if (r.status === 403) return renderREALocked(d.error);
+  renderREAReport(d);
+};
+
+(async () => {
+  try {
+    const r = await fetch('/__sc/security/api/plans');
+    if (r.ok) {
+      const p = await r.json();
+      canEditExport = Boolean(p.cloner_studio_edit);
+      if (!canEditExport) {
+        $('btnExport').title = 'Réservé aux offres Pro / Entreprise';
+      }
+    }
+  } catch (e) {}
+})();
 
 load(true);
 </script>

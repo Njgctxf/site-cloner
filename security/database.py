@@ -11,7 +11,7 @@ from datetime import datetime
 from typing import Dict, Any, List, Optional
 
 # SiteCloner's data/ folder (git-ignored), next to the shop and admin databases
-DB_PATH = Path(__file__).resolve().parent.parent / "data" / "cyberlab.db"
+DB_PATH = Path(os.environ.get("DATA_DIR") or (Path(__file__).resolve().parent.parent / "data")) / "cyberlab.db"
 
 def get_connection():
     DB_PATH.parent.mkdir(parents=True, exist_ok=True)

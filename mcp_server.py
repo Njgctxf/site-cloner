@@ -47,7 +47,11 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 import requests
-from mcp.server.mcpserver import MCPServer
+
+try:
+    from mcp.server.fastmcp import FastMCP as MCPServer
+except ImportError:  # mcp >= 2.x compatibility
+    from mcp.server.mcpserver import MCPServer
 
 from security.database import (
     list_domains as _list_domains,
@@ -58,9 +62,12 @@ from security.database import (
 from security.domain_verifier import generate_challenge_token, normalize_domain, verify_domain_ownership
 from security.scanner import scan_target
 from security.sentinel.realtime import list_incidents as _list_incidents
+from security.sentinel import skills_registry
 
 SITECLONER_PORT = int(os.environ.get("PORT", 5050))
-SITECLONER_BASE_URL = f"http://127.0.0.1:{SITECLONER_PORT}"
+SITECLONER_BASE_URL = (
+    os.environ.get("SITECLONER_BASE_URL") or f"http://127.0.0.1:{SITECLONER_PORT}"
+).rstrip("/")
 
 # Hard safety floor: the MCP connector can NEVER run the active-probe category,
 # no matter what a caller asks for. Same passive set offered as default in the
@@ -183,5 +190,14 @@ def list_security_incidents(domain: str = "") -> dict:
     return {"incidents": _list_incidents(domain=domain or None)}
 
 
+@mcp.tool()
+def search_security_skills(query: str, limit: int = 8) -> dict:
+    """Searches Sentinel's defensive cybersecurity skills library (OWASP, MITRE ATT&CK, CWE)
+    for analysis procedures (read-only)."""
+    capped = max(1, min(int(limit), 15))
+    results = skills_registry.search_skills(query=query or "", limit=capped)
+    return {"query": query, "count": len(results), "results": results}
+
+
 if __name__ == "__main__":
-    mcp.run(transport="stdio")
+    mcp.run(transport=os.environ.get("MCP_TRANSPORT", "stdio"))

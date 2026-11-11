@@ -8,3 +8,4 @@ playwright
 curl_cffi
 stripe
 mcp
+cryptography

@@ -433,9 +433,9 @@
         <a href="/__sc/">Cloneur</a>
         <a href="/shop/">Marketplace</a>
         <a href="/__sc/security/">Sécurité IA</a>
-        <a href="/admin">Admin</a>
       </div>
-      <div class="rx-nav-actions">
+      <div class="rx-nav-actions" id="homeNavActions" style="display:flex;align-items:center;gap:8px">
+        <a class="rx-btn sm" id="homeAuthLink" href="/account/login">Connexion</a>
         <a class="rx-btn sm primary" href="/__sc/">Ouvrir le Cloneur</a>
       </div>
     </nav>
@@ -689,6 +689,17 @@
       }
       requestAnimationFrame(animate);
     })();
+
+    fetch('/account/api/me', { credentials: 'same-origin' })
+      .then(r => r.ok ? r.json() : null)
+      .then(data => {
+        const link = document.getElementById('homeAuthLink');
+        if (link && data && data.authenticated && data.user) {
+          link.href = '/account/profile';
+          link.textContent = data.user.display_name || ('@' + data.user.username);
+        }
+      })
+      .catch(() => {});
   </script>
 </body>
 </html>

@@ -6,11 +6,16 @@ let currentConversationId = null;
 let currentProvider = "mock";
 
 document.addEventListener("DOMContentLoaded", () => {
+    if (document.getElementById("sentinelEnterpriseGate")) return;
+    const isAdmin = document.body?.dataset?.admin === "1";
     loadConversations();
     loadProviderConfig();
     loadUserLlmProviders();
-    loadKaliStatus();
-    loadPentagiStatus();
+    if (isAdmin) {
+        loadKaliStatus();
+        loadPentagiStatus();
+    }
+    loadClaudeMcpConfig();
     setupEventListeners();
 });
 
@@ -22,28 +27,35 @@ function setupEventListeners() {
     const openByokBtn = document.getElementById("openByokBtn");
     const killSwitchBtn = document.getElementById("killSwitchBtn");
 
-    sendBtn.addEventListener("click", () => sendMessage());
-    chatInput.addEventListener("keydown", (e) => {
-        if (e.key === "Enter" && !e.shiftKey) {
+    if (sendBtn) sendBtn.addEventListener("click", () => sendMessage());
+    if (chatInput) {
+        chatInput.addEventListener("keydown", (e) => {
+            if (e.key === "Enter" && !e.shiftKey) {
+                e.preventDefault();
+                sendMessage();
+            }
+        });
+    }
+
+    if (newChatBtn) newChatBtn.addEventListener("click", () => startNewConversation());
+
+    if (providerSelect) {
+        providerSelect.addEventListener("change", (e) => {
+            currentProvider = e.target.value;
+            const tag = document.getElementById("activeModelTag");
+            if (tag) tag.textContent = `Modèle: ${e.target.options[e.target.selectedIndex].text}`;
+            updateActiveProvider(currentProvider);
+        });
+    }
+
+    if (openByokBtn) {
+        openByokBtn.addEventListener("click", (e) => {
             e.preventDefault();
-            sendMessage();
-        }
-    });
+            openByokModal();
+        });
+    }
 
-    newChatBtn.addEventListener("click", () => startNewConversation());
-
-    providerSelect.addEventListener("change", (e) => {
-        currentProvider = e.target.value;
-        document.getElementById("activeModelTag").textContent = `Modèle: ${e.target.options[e.target.selectedIndex].text}`;
-        updateActiveProvider(currentProvider);
-    });
-
-    openByokBtn.addEventListener("click", (e) => {
-        e.preventDefault();
-        openByokModal();
-    });
-
-    killSwitchBtn.addEventListener("click", () => toggleKillSwitch());
+    if (killSwitchBtn) killSwitchBtn.addEventListener("click", () => toggleKillSwitch());
 
     const openSkillsLibBtn = document.getElementById("openSkillsLibBtn");
     if (openSkillsLibBtn) {
@@ -90,6 +102,14 @@ function setupEventListeners() {
         openUserLlmBtn.addEventListener("click", (e) => {
             e.preventDefault();
             openByokModal();
+        });
+    }
+
+    const openClaudeMcpBtn = document.getElementById("openClaudeMcpBtn");
+    if (openClaudeMcpBtn) {
+        openClaudeMcpBtn.addEventListener("click", (e) => {
+            e.preventDefault();
+            openClaudeMcpModal();
         });
     }
 }
@@ -460,9 +480,11 @@ function onProviderSelectChanged(providerId) {
     const quickModelsRow = document.getElementById("quickModelsRow");
     const apiKeyInput = document.getElementById("modalApiKey");
     const testResultBox = document.getElementById("testResultBox");
+    const claudeMcpHint = document.getElementById("claudeMcpHintRow");
 
     if (testResultBox) testResultBox.style.display = "none";
     if (apiKeyInput) apiKeyInput.value = "";
+    if (claudeMcpHint) claudeMcpHint.style.display = (providerId === "claude") ? "block" : "none";
 
     if (titleEl) titleEl.textContent = `Connecter : ${meta.name || providerId}`;
     if (iconEl) iconEl.className = `fa-solid ${meta.icon || 'fa-key'}`;
@@ -1696,5 +1718,221 @@ async function remediateSelectedCampaign() {
     }
 }
 
+// ==============================================================================
+// CLAUDE PRO / MAX VIA MCP CONNECTOR (1-CLICK SETUP)
+// ==============================================================================
 
+let _mcpConfigCache = null;
+
+function openClaudeMcpModal() {
+    const modal = document.getElementById("claudeMcpModal");
+    if (modal) {
+        modal.classList.add("active");
+        switchMcpTab("desktop");
+        loadClaudeMcpConfig();
+    }
+}
+
+function closeClaudeMcpModal() {
+    const modal = document.getElementById("claudeMcpModal");
+    if (modal) modal.classList.remove("active");
+}
+
+function switchMcpTab(tabName) {
+    const panels = {
+        desktop: document.getElementById("mcpTabDesktop"),
+        cli: document.getElementById("mcpTabCli"),
+        tools: document.getElementById("mcpTabTools"),
+    };
+    const buttons = {
+        desktop: document.getElementById("mcpTabBtnDesktop"),
+        cli: document.getElementById("mcpTabBtnCli"),
+        tools: document.getElementById("mcpTabBtnTools"),
+    };
+    Object.keys(panels).forEach((k) => {
+        if (panels[k]) panels[k].style.display = (k === tabName) ? "block" : "none";
+        if (buttons[k]) {
+            buttons[k].style.borderColor = (k === tabName) ? "var(--accent)" : "";
+            buttons[k].style.color = (k === tabName) ? "var(--text)" : "";
+        }
+    });
+}
+
+function showMcpFeedback(message, isOk) {
+    const box = document.getElementById("mcpFeedbackBox");
+    if (!box) return;
+    box.style.display = "block";
+    box.style.borderColor = isOk ? "rgba(52, 211, 153, 0.45)" : "rgba(251, 113, 133, 0.45)";
+    box.style.color = isOk ? "#34d399" : "#fda4af";
+    box.textContent = message;
+}
+
+function renderMcpTools(tools) {
+    const listEl = document.getElementById("mcpToolsList");
+    const countTag = document.getElementById("mcpToolsCountTag");
+    if (countTag) countTag.textContent = String((tools || []).length);
+    if (!listEl) return;
+
+    listEl.innerHTML = (tools || []).map((t) => `
+        <div style="background: rgba(2, 6, 23, 0.65); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; gap: 6px; margin-bottom: 4px;">
+                <code style="font-size: 0.76rem; color: #93c5fd; font-weight: 600;">${escapeHtml(t.name)}</code>
+                <span style="font-size: 0.64rem; padding: 2px 7px; border-radius: 999px; background: rgba(96, 165, 250, 0.14); color: #93c5fd;">${escapeHtml(t.category || "MCP")}</span>
+            </div>
+            <div style="font-size: 0.72rem; color: var(--muted); line-height: 1.4;">${escapeHtml(t.description || "")}</div>
+        </div>
+    `).join("");
+}
+
+async function loadClaudeMcpConfig() {
+    try {
+        const res = await fetch("/__sc/security/api/mcp/config");
+        const data = await res.json();
+        _mcpConfigCache = data;
+
+        const badge = document.getElementById("claudeMcpBadge");
+        const topPill = document.getElementById("claudeMcpStatusPill");
+        const pathEl = document.getElementById("mcpDesktopPathText");
+        const installBtn = document.getElementById("mcpInstallLocalBtn");
+        const desktopPre = document.getElementById("mcpDesktopJsonCode");
+        const cliPre = document.getElementById("mcpClaudeCodeCmd");
+        const cursorPre = document.getElementById("mcpCursorJsonCode");
+
+        if (desktopPre) desktopPre.textContent = data.claude_desktop_json || "";
+        if (cliPre) cliPre.textContent = data.claude_code_command || "";
+        if (cursorPre) cursorPre.textContent = data.cursor_json || "";
+        renderMcpTools(data.tools || []);
+
+        if (data.is_local) {
+            if (pathEl && data.desktop_config_path) {
+                pathEl.innerHTML = `Cible locale : <code>${escapeHtml(data.desktop_config_path)}</code>`;
+            }
+            if (installBtn) {
+                installBtn.disabled = false;
+                installBtn.style.opacity = "1";
+                installBtn.innerHTML = data.already_installed
+                    ? `<i class="fa-solid fa-rotate"></i> Mettre &agrave; jour Claude Desktop`
+                    : `<i class="fa-solid fa-wand-magic-sparkles"></i> Installer dans Claude Desktop (1 clic)`;
+            }
+            if (badge) {
+                badge.textContent = data.already_installed ? "Install\u00e9 localement" : "Pr\u00eat (Localhost)";
+                badge.style.color = data.already_installed ? "#34d399" : "#93c5fd";
+            }
+            if (topPill) topPill.textContent = data.already_installed ? "ACTIF" : "PRO/MAX";
+        } else {
+            if (pathEl) pathEl.textContent = "Instance distante : copiez la commande CLI ou le JSON dans votre poste local.";
+            if (installBtn) {
+                installBtn.disabled = true;
+                installBtn.style.opacity = "0.5";
+            }
+            if (badge) badge.textContent = "Configuration distante";
+        }
+    } catch (e) {
+        showMcpFeedback(`Impossible de charger la configuration MCP : ${e.message}`, false);
+    }
+}
+
+async function installClaudeDesktopLocal() {
+    const btn = document.getElementById("mcpInstallLocalBtn");
+    if (btn) btn.disabled = true;
+    try {
+        const res = await fetch("/__sc/security/api/mcp/install-local", {method: "POST"});
+        const data = await res.json();
+        if (data.success) {
+            showMcpFeedback(`${data.message} (${data.config_path})`, true);
+            await loadClaudeMcpConfig();
+        } else {
+            showMcpFeedback(data.error || "\u00c9chec de l'installation locale.", false);
+        }
+    } catch (e) {
+        showMcpFeedback(`Erreur r\u00e9seau : ${e.message}`, false);
+    } finally {
+        if (btn) btn.disabled = false;
+    }
+}
+
+async function testClaudeMcpServer() {
+    const btn = document.getElementById("mcpTestBtn");
+    if (btn) btn.disabled = true;
+    showMcpFeedback("V\u00e9rification du serveur MCP en cours...", true);
+    try {
+        const res = await fetch("/__sc/security/api/mcp/test", {method: "POST"});
+        const data = await res.json();
+        if (data.healthy) {
+            showMcpFeedback(data.message || "Serveur MCP op\u00e9rationnel.", true);
+            if (data.tools && data.tools.length) renderMcpTools(data.tools);
+        } else {
+            showMcpFeedback(data.message || data.error || "Erreur MCP", false);
+        }
+    } catch (e) {
+        showMcpFeedback(`Erreur r\u00e9seau : ${e.message}`, false);
+    } finally {
+        if (btn) btn.disabled = false;
+    }
+}
+
+async function copyMcpSnippet(elementId, btnEl) {
+    const el = document.getElementById(elementId);
+    if (!el) return;
+    const text = el.textContent || "";
+    try {
+        await navigator.clipboard.writeText(text);
+        if (btnEl) {
+            const orig = btnEl.innerHTML;
+            btnEl.innerHTML = `<i class="fa-solid fa-check"></i> Copi\u00e9`;
+            setTimeout(() => { btnEl.innerHTML = orig; }, 1600);
+        }
+    } catch (e) {
+        showMcpFeedback("Copie automatique refus\u00e9e par le navigateur : s\u00e9lectionnez le texte manuellement.", false);
+    }
+}
+
+function downloadMcpConfigJson() {
+    const jsonText = (_mcpConfigCache && _mcpConfigCache.claude_desktop_json) ||
+        (document.getElementById("mcpDesktopJsonCode")?.textContent || "{}");
+    const blob = new Blob([jsonText + "\n"], {type: "application/json;charset=utf-8"});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "claude_desktop_config.sitecloner.json";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+}
+
+async function activateEnterprisePlan() {
+    const btn = document.getElementById("unlockEnterpriseBtn");
+    const box = document.getElementById("enterpriseUpgradeFeedback");
+    if (btn) btn.disabled = true;
+    try {
+        const res = await fetch("/__sc/security/api/plans/checkout", {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify({plan_id: "enterprise"})
+        });
+        const data = await res.json();
+        if (data.checkout_url) {
+            window.location.href = data.checkout_url;
+            return;
+        }
+        if (data.success) {
+            window.location.reload();
+            return;
+        }
+        if (box) {
+            box.style.display = "block";
+            box.style.color = "#fda4af";
+            box.textContent = data.error || "Impossible d'activer l'offre Entreprise.";
+        }
+    } catch (e) {
+        if (box) {
+            box.style.display = "block";
+            box.style.color = "#fda4af";
+            box.textContent = `Erreur réseau : ${e.message}`;
+        }
+    } finally {
+        if (btn) btn.disabled = false;
+    }
+}
 

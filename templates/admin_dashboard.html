@@ -33,9 +33,42 @@
     section.tab { display: none; }
     section.tab.on { display: block; animation: tab-in .5s var(--ease); }
     @keyframes tab-in { from { opacity: 0; transform: translateY(10px); } }
-    .cols { display: grid; grid-template-columns: 1.3fr 1fr; gap: 18px; margin-top: 18px; }
-    @media (max-width: 1000px) { .cols { grid-template-columns: 1fr; } }
+    .cols { display: grid; grid-template-columns: 1.45fr 1fr; gap: 18px; margin-top: 18px; }
+    .cols-even { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; margin-top: 18px; }
+    @media (max-width: 1000px) { .cols, .cols-even { grid-template-columns: 1fr; } }
     .panel { padding: 20px; }
+    .chart-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; }
+    .chart-head h2 { margin: 0; font-size: 1.04rem; letter-spacing: -.01em; }
+    .chart-legend { display: flex; gap: 7px; flex-wrap: wrap; }
+    .leg-btn { display: inline-flex; align-items: center; gap: 7px; padding: 5px 11px; border-radius: 999px; border: 1px solid var(--line); background: rgba(255,255,255,.035); color: var(--text); font-size: .76rem; font-weight: 600; cursor: pointer; transition: opacity .2s, border-color .2s, transform .15s; }
+    .leg-btn:hover { border-color: var(--line-strong); transform: translateY(-1px); }
+    .leg-btn.off { opacity: .36; }
+    .leg-btn .leg-cnt { color: var(--muted); font-variant-numeric: tabular-nums; font-weight: 700; }
+    .leg-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+    .chart-box { position: relative; width: 100%; height: 245px; }
+    .chart-canvas { width: 100%; height: 100%; display: block; cursor: crosshair; }
+    .chart-tip { position: absolute; pointer-events: none; background: rgba(10,14,32,.92); backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,.14); border-radius: 12px; padding: 10px 12px; font-size: .78rem; box-shadow: 0 14px 36px rgba(0,0,0,.55); z-index: 20; white-space: nowrap; display: none; min-width: 175px; }
+    .donut-wrap { display: flex; align-items: center; gap: 22px; flex-wrap: wrap; padding-top: 4px; }
+    .donut-canvas-box { position: relative; width: 176px; height: 176px; flex-shrink: 0; }
+    .donut-canvas-box canvas { width: 176px; height: 176px; display: block; }
+    .donut-center { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; pointer-events: none; text-align: center; }
+    .donut-center b { font-size: 1.55rem; font-weight: 800; line-height: 1.05; letter-spacing: -.03em; }
+    .donut-center span { font-size: .72rem; color: var(--muted); margin-top: 2px; }
+    .donut-list { flex: 1; min-width: 175px; display: flex; flex-direction: column; gap: 11px; }
+    .donut-item { display: flex; flex-direction: column; gap: 5px; }
+    .donut-row { display: flex; align-items: center; gap: 9px; font-size: .85rem; }
+    .donut-row b { margin-left: auto; font-variant-numeric: tabular-nums; }
+    .donut-bar { height: 5px; border-radius: 99px; background: rgba(255,255,255,.06); overflow: hidden; }
+    .donut-bar i { display: block; height: 100%; border-radius: inherit; transition: width .8s var(--ease); }
+    .score-pill-bar { display: flex; align-items: center; gap: 12px; padding: 11px 14px; border-radius: 12px; background: rgba(255,255,255,.03); border: 1px solid var(--line); margin-bottom: 14px; }
+    .score-track { flex: 1; height: 8px; border-radius: 99px; background: rgba(255,255,255,.06); overflow: hidden; }
+    .score-track i { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, #ef4444, #eab308, #2ee6a6); }
+    .grade-pills { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 16px; }
+    .grade-pill { display: inline-flex; align-items: center; gap: 7px; padding: 6px 11px; border-radius: 10px; background: rgba(255,255,255,.035); border: 1px solid var(--line); font-size: .8rem; font-weight: 600; }
+    .grade-pill i { width: 7px; height: 7px; border-radius: 50%; }
+    .assign-bar { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-bottom: 14px; padding: 12px; border-radius: 12px; background: rgba(255,255,255,.025); border: 1px solid var(--line); }
+    .assign-bar .ui-input { max-width: 220px; padding: 8px 10px; }
+    .assign-bar .ui-select { width: auto; padding: 8px 10px; }
     .bars { display: flex; flex-direction: column; gap: 12px; }
     .bar .l { display: flex; justify-content: space-between; font-size: .85rem; margin-bottom: 6px; }
     .bar .t { height: 8px; border-radius: 99px; background: rgba(255, 255, 255, .05); overflow: hidden; }
@@ -112,12 +145,15 @@
     <button data-tab="jobs"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="3"/><path d="M12 2v3m0 14v3M4.9 4.9l2.1 2.1m9.9 9.9 2.1 2.1M2 12h3m14 0h3M4.9 19.1l2.1-2.1m9.9-9.9 2.1-2.1"/></svg></span> Jobs <span class="n" id="n-jobs"></span></button>
     <button data-tab="products"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M6 7h12l1 13H5L6 7z"/><path d="M9 7V5a3 3 0 0 1 6 0v2"/></svg></span> Marketplace <span class="n" id="n-products"></span></button>
     <button data-tab="orders"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/></svg></span> Commandes</button>
+    <button data-tab="security"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 3l8 3.5v5.5c0 4.5-3.4 8.5-8 9.5-4.6-1-8-5-8-9.5V6.5L12 3z"/></svg></span> Sécurité &amp; Offres <span class="n" id="n-alerts"></span></button>
     <button data-tab="settings"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg></span> Compte</button>
     <div class="bottom">
       <a class="link" href="/__sc/home"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6h-6v6H4a1 1 0 0 1-1-1z"/></svg></span> Accueil</a>
       <a class="link" href="/__sc/" target="_blank" rel="noopener"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.7 1.7"/><path d="M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7l1.7-1.7"/></svg></span> Cloneur</a>
       <a class="link" href="/shop/" target="_blank" rel="noopener"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 9l2-5h14l2 5"/><path d="M4 9v10a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1V9"/></svg></span> Marketplace</a>
       <a class="link" href="/__sc/security/" target="_blank" rel="noopener"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 3l8 3.5v5.5c0 4.5-3.4 8.5-8 9.5-4.6-1-8-5-8-9.5V6.5L12 3z"/></svg></span> Sécurité IA</a>
+      <a class="link" href="/__sc/security/sentinel" target="_blank" rel="noopener"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M9 10h6M9 14h4"/></svg></span> Sentinel IA</a>
+      <a class="link" href="/__sc/security/admin-space" target="_blank" rel="noopener"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 2v4M12 18v4M4.9 4.9l2.8 2.8M16.3 16.3l2.8 2.8M2 12h4M18 12h4"/></svg></span> Domaines Admin</a>
       <form method="post" action="/admin/logout" style="margin:0">
         <input type="hidden" name="csrf" value="{{ csrf }}">
         <button type="submit"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5M21 12H9"/></svg></span> Déconnexion <span class="n">{{ username }}</span></button>
@@ -128,14 +164,41 @@
   <div class="main">
     <!-- ===== overview ===== -->
     <section class="tab on" id="tab-overview">
-      <div class="top"><div><h1>Bonjour {{ username }}</h1><div class="sub">Tout ce qui se passe sur la plateforme, en un coup d'œil.</div></div>
-        <div class="actions"><button class="ui-btn primary" data-goto="products" data-new>+ Nouveau produit</button></div></div>
+      <div class="top"><div><h1>Bonjour {{ username }}</h1><div class="sub">Tout ce qui se passe sur l'outil (Cloneur, Boutique, Sécurité IA, Offres &amp; Sentinel), en un coup d'œil.</div></div>
+        <div class="actions">
+          <button class="ui-btn" id="refresh-overview">Actualiser</button>
+          <a class="ui-btn" href="/__sc/security/sentinel" target="_blank" rel="noopener">Console Sentinel</a>
+          <button class="ui-btn primary" data-goto="products" data-new>+ Nouveau produit</button>
+        </div></div>
       <div class="ui-stats" id="stats" data-stagger></div>
       <div class="cols">
+        <div class="ui-card panel" data-reveal>
+          <div class="chart-head">
+            <h2 class="ui-h2">Activité globale sur 14 jours</h2>
+            <div class="chart-legend" id="activity-legend"></div>
+          </div>
+          <div class="chart-box" id="activity-chart"></div>
+        </div>
+        <div class="ui-card panel" data-reveal style="--d:.08s">
+          <div class="chart-head"><h2 class="ui-h2">Offres SaaS &amp; MRR</h2><span class="ui-badge grad" id="mrr-badge">0 €/mois</span></div>
+          <div id="plans-donut"></div>
+        </div>
+      </div>
+      <div class="cols-even">
+        <div class="ui-card panel" data-reveal>
+          <div class="chart-head"><h2 class="ui-h2">Failles &amp; Notes des Audits</h2><span class="ui-muted" id="avg-score-lbl" style="font-size:.82rem"></span></div>
+          <div id="security-chart"></div>
+        </div>
+        <div class="ui-card panel" data-reveal style="--d:.08s">
+          <div class="chart-head"><h2 class="ui-h2">Activité sécurité en direct</h2><button class="ui-btn sm ghost" data-goto="security">Tout voir</button></div>
+          <div id="live-feed"></div>
+        </div>
+      </div>
+      <div class="cols-even">
         <div class="ui-card panel" data-reveal><h2 class="ui-h2">Produits les plus vus</h2><div id="top-products"></div></div>
         <div class="ui-card panel" data-reveal style="--d:.08s"><h2 class="ui-h2">Catalogue par catégorie</h2><div class="bars" id="cat-bars"></div></div>
       </div>
-      <div class="cols">
+      <div class="cols-even">
         <div class="ui-card panel" data-reveal><h2 class="ui-h2">Derniers sites clonés</h2><div id="recent-sites"></div></div>
         <div class="ui-card panel" data-reveal style="--d:.08s"><h2 class="ui-h2">Système</h2><div id="system"></div></div>
       </div>
@@ -160,13 +223,14 @@
 
     <!-- ===== marketplace ===== -->
     <section class="tab" id="tab-products">
-      <div class="top"><div><h1>Marketplace</h1><div class="sub">Designs, prompts, skills, logiciels… Gratuits ou payants.</div></div>
+      <div class="top"><div><h1>Marketplace</h1><div class="sub">Designs, prompts, skills, logiciels, sites et applications (tes produits + soumissions utilisateurs).</div></div>
         <div class="actions"><a class="ui-btn" href="/shop/" target="_blank" rel="noopener">Voir</a><button class="ui-btn primary" id="new-product">+ Nouveau produit</button></div></div>
+      <div id="pending-warn" class="warn-box" hidden></div>
       <div id="stripe-warn" class="warn-box" hidden></div>
       <div class="filters">
-        <input class="ui-input" id="prod-q" placeholder="Rechercher un produit…">
+        <input class="ui-input" id="prod-q" placeholder="Rechercher un produit ou créateur…">
         <select class="ui-select" id="prod-cat" style="width:auto"><option value="">Toutes catégories</option></select>
-        <select class="ui-select" id="prod-status" style="width:auto"><option value="">Tous statuts</option><option value="pub">Publiés</option><option value="draft">Brouillons</option><option value="free">Gratuits</option><option value="paid">Payants</option></select>
+        <select class="ui-select" id="prod-status" style="width:auto"><option value="">Tous statuts</option><option value="pending">En attente de validation</option><option value="pub">Publiés</option><option value="draft">Brouillons</option><option value="free">Gratuits</option><option value="paid">Payants</option></select>
       </div>
       <div class="prod-grid" id="products-grid"></div>
     </section>
@@ -179,6 +243,66 @@
         <thead><tr><th>Date</th><th>Produit</th><th>E-mail</th><th>Montant</th><th>Statut</th><th>Téléch.</th></tr></thead>
         <tbody id="orders-body"></tbody>
       </table></div>
+    </section>
+
+    <!-- ===== security & plans ===== -->
+    <section class="tab" id="tab-security">
+      <div class="top">
+        <div><h1>Sécurité, Audits &amp; Offres</h1><div class="sub">Abonnements clients, audits lancés, domaines vérifiés, Bouclier WAF et télémétrie IA.</div></div>
+        <div class="actions">
+          <a class="ui-btn" href="/__sc/security/lab" target="_blank" rel="noopener">Sandbox Lab</a>
+          <a class="ui-btn" href="/__sc/security/admin-space" target="_blank" rel="noopener">Domaines Admin</a>
+          <a class="ui-btn primary" href="/__sc/security/sentinel" target="_blank" rel="noopener">Ouvrir Sentinel IA</a>
+        </div>
+      </div>
+      <div class="ui-stats" id="sec-stats" data-stagger></div>
+
+      <div class="ui-card panel" style="margin-top:18px">
+        <div class="chart-head"><h2 class="ui-h2">Abonnements &amp; Quotas mensuels</h2><span class="ui-muted" style="font-size:.82rem">Passer un utilisateur en Gratuit / Pro / Entreprise</span></div>
+        <form class="assign-bar" id="assign-plan-form">
+          <input class="ui-input" id="assign-uid" placeholder="user_id (ex. usr_abc123)" required>
+          <input class="ui-input" id="assign-email" placeholder="E-mail (optionnel)">
+          <select class="ui-select" id="assign-plan">
+            <option value="free">Gratuit (0 €)</option>
+            <option value="pro">Pro (29 €/mois)</option>
+            <option value="enterprise">Entreprise (149 €/mois)</option>
+          </select>
+          <button class="ui-btn primary sm" type="submit">Attribuer l'offre</button>
+        </form>
+        <div style="overflow-x:auto"><table class="ui-table">
+          <thead><tr><th>Utilisateur</th><th>E-mail</th><th>Offre</th><th>Source</th><th>Sites ce mois</th><th>Maj</th><th>Action</th></tr></thead>
+          <tbody id="subs-body"></tbody>
+        </table></div>
+      </div>
+
+      <div class="cols-even">
+        <div class="ui-card panel">
+          <div class="chart-head"><h2 class="ui-h2">Derniers Audits lancés</h2><span class="ui-muted" id="scans-count-lbl" style="font-size:.82rem"></span></div>
+          <div style="overflow-x:auto"><table class="ui-table">
+            <thead><tr><th>Cible</th><th>Score</th><th>Crit.</th><th>Date</th><th></th></tr></thead>
+            <tbody id="sec-scans-body"></tbody>
+          </table></div>
+        </div>
+        <div class="ui-card panel">
+          <div class="chart-head"><h2 class="ui-h2">Domaines vérifiés &amp; privés</h2></div>
+          <div style="overflow-x:auto"><table class="ui-table">
+            <thead><tr><th>Domaine</th><th>Espace</th><th>Méthode</th><th>Statut</th></tr></thead>
+            <tbody id="sec-domains-body"></tbody>
+          </table></div>
+        </div>
+      </div>
+
+      <div class="cols-even">
+        <div class="ui-card panel">
+          <div class="chart-head"><h2 class="ui-h2">Bouclier WAF &amp; Fournisseurs LLM</h2><span class="ui-badge" id="shield-tier-badge">NORMAL</span></div>
+          <div id="sec-llm-providers" style="margin-bottom:14px"></div>
+          <div id="sec-incidents"></div>
+        </div>
+        <div class="ui-card panel">
+          <div class="chart-head"><h2 class="ui-h2">Journal d'activité Sécurité</h2></div>
+          <div id="sec-logs"></div>
+        </div>
+      </div>
     </section>
 
     <!-- ===== settings ===== -->
@@ -200,14 +324,23 @@
   <form class="panel-d" id="product-form" enctype="multipart/form-data">
     <div class="d-head"><h2 id="pf-title">Nouveau produit</h2><span style="flex:1"></span><a class="ui-btn sm ghost" id="pf-view" target="_blank" rel="noopener" hidden>Voir la page</a><button type="button" class="ui-btn icon ghost" data-dclose aria-label="Fermer">&times;</button></div>
     <div class="d-body">
-      <div class="ui-field"><label class="ui-label">Nom du produit *</label><input class="ui-input" name="title" required maxlength="200" placeholder="Ex. Template SaaS « Nova »"></div>
-      <div class="ui-field"><label class="ui-label">Accroche (une phrase)</label><input class="ui-input" name="tagline" maxlength="160" placeholder="Ce que ça apporte, en quelques mots"></div>
       <div class="grid2">
-        <div class="ui-field"><label class="ui-label">Catégorie</label><select class="ui-select" name="category" id="pf-cat"></select></div>
+        <div class="ui-field"><label class="ui-label">Type de produit *</label><select class="ui-select" name="category" id="pf-cat"></select></div>
         <div class="ui-field"><label class="ui-label">Tags (séparés par des virgules)</label><input class="ui-input" name="tags" placeholder="saas, dark, landing"></div>
       </div>
-      <div class="ui-field"><label class="ui-label">Description</label><textarea class="ui-textarea" name="description" rows="6" maxlength="8000" placeholder="Ce qui est inclus, comment l'utiliser, la licence…"></textarea></div>
-      <div class="ui-field"><label class="ui-label">Aperçu texte (prompt, extrait de code, README…) — affiché avec un bouton Copier</label><textarea class="ui-textarea" name="preview_text" rows="4" maxlength="6000" style="font-family:var(--mono);font-size:.85rem"></textarea></div>
+      <div id="pf-type-hint" class="ui-muted" style="font-size:.82rem;padding:8px 11px;border-radius:10px;background:rgba(255,255,255,.03);border:1px solid var(--line);margin-bottom:12px"></div>
+      <div class="ui-field"><label class="ui-label">Nom du produit *</label><input class="ui-input" name="title" id="pf-title-input" required maxlength="200" placeholder="Ex. Template SaaS « Nova »"></div>
+      <div class="ui-field"><label class="ui-label">Accroche (une phrase)</label><input class="ui-input" name="tagline" id="pf-tagline-input" maxlength="160" placeholder="Ce que ça apporte, en quelques mots"></div>
+      <div class="grid2" id="pf-specs"></div>
+      <div class="grid2">
+        <div class="ui-field"><label class="ui-label">Créateur / Vendeur (optionnel)</label><input class="ui-input" name="author_name" maxlength="120" placeholder="Ex. Studio Nova"></div>
+        <div class="ui-field"><label class="ui-label">E-mail créateur (admin uniquement)</label><input class="ui-input" name="author_email" type="email" maxlength="200" placeholder="createur@domaine.com"></div>
+      </div>
+      <div class="ui-field"><label class="ui-label">Statut de validation</label>
+        <select class="ui-select" name="submission_status"><option value="approved">Validé</option><option value="pending">En attente</option><option value="rejected">Refusé</option></select>
+      </div>
+      <div class="ui-field"><label class="ui-label">Description</label><textarea class="ui-textarea" name="description" id="pf-desc-input" rows="5" maxlength="8000" placeholder="Ce qui est inclus, comment l'utiliser, la licence…"></textarea></div>
+      <div class="ui-field" id="pf-preview-wrap"><label class="ui-label" id="pf-preview-label">Aperçu texte (prompt, extrait de code, README…) — affiché avec un bouton Copier</label><textarea class="ui-textarea" name="preview_text" id="pf-preview-input" rows="4" maxlength="6000" style="font-family:var(--mono);font-size:.85rem"></textarea></div>
 
       <hr class="ui-sep">
       <h3 class="ui-h2" style="font-size:1rem">Prix</h3>
@@ -218,7 +351,7 @@
 
       <hr class="ui-sep">
       <h3 class="ui-h2" style="font-size:1rem">Images &amp; vidéos</h3>
-      <p class="ui-muted" style="font-size:.85rem;margin:-6px 0 12px">La première image sert de couverture. Survole un média pour le déplacer ou le supprimer.</p>
+      <p class="ui-muted" id="pf-media-hint" style="font-size:.85rem;margin:-6px 0 12px">La première image sert de couverture. Survole un média pour le déplacer ou le supprimer.</p>
       <label class="drop" id="media-drop"><span class="big">+</span>Glisse tes images / vidéos ici ou clique pour choisir<br><small>png, jpg, webp, gif, avif &bull; mp4, webm, mov — plusieurs fichiers possibles</small>
         <input type="file" id="media-input" multiple accept=".png,.jpg,.jpeg,.webp,.gif,.avif,.mp4,.webm,.mov" hidden></label>
       <div class="media-list" id="media-list"></div>
@@ -228,7 +361,8 @@
       <div id="pf-file"></div>
       <label class="drop" id="file-drop"><span class="big">+</span><span id="file-label">Choisir le fichier à livrer (zip, pdf, exe, fig, glb, md…)</span>
         <input type="file" name="file" id="file-input" hidden></label>
-      <div class="ui-field" style="margin-top:14px"><label class="ui-label">URL de démo / prévisualisation (optionnel)</label><input class="ui-input" name="demo_url" placeholder="https://… ou /preview/mon-site/"></div>
+      <small class="ui-muted" id="pf-file-hint" style="display:block;font-size:.78rem;margin-top:6px"></small>
+      <div class="ui-field" id="pf-demo-wrap" style="margin-top:14px"><label class="ui-label" id="pf-demo-label">URL de démo / prévisualisation (optionnel)</label><input class="ui-input" name="demo_url" id="pf-demo-input" placeholder="https://… ou /preview/mon-site/"></div>
 
       <hr class="ui-sep">
       <div style="display:flex;gap:24px;flex-wrap:wrap">
@@ -258,7 +392,10 @@ const ADMIN_IC = {
   dl: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4m4-5 5 5 5-5m-5 5V3"/></svg>`,
   job: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="3"/><path d="M12 2v3m0 14v3M4.9 4.9l2.1 2.1m9.9 9.9 2.1 2.1M2 12h3m14 0h3"/></svg>`,
   card: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/></svg>`,
-  ok: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6 9 17l-5-5"/></svg>`
+  ok: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6 9 17l-5-5"/></svg>`,
+  shield: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 3l8 3.5v5.5c0 4.5-3.4 8.5-8 9.5-4.6-1-8-5-8-9.5V6.5L12 3z"/></svg>`,
+  alert: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 9v4m0 4h.01M10.3 3.9 2.4 18a2 2 0 0 0 1.7 3h15.8a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg>`,
+  radar: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4"/><path d="M12 12l5-5"/></svg>`
 };
 function fmtSize(b) {
   if (!b) return '0 o';
@@ -280,23 +417,303 @@ async function api(path, method = 'GET', body) {
 }
 const stat = (ic, v, k, raw) => `<div class="ui-card ui-stat ui-spot"><span class="ic">${ic}</span><div class="k">${esc(k)}</div><div class="v" ${raw != null ? `data-count="${raw}"` : ''}>${esc(v)}</div></div>`;
 const empty = (big, msg) => `<div class="ui-empty"><div class="big">${big}</div><p>${msg}</p></div>`;
+let cachedPlatform = null;
+const SERIES_CFG = [
+  { key: 'scans', label: 'Audits Sécurité', color: '#38bdf8', rgb: '56,189,248' },
+  { key: 'clones', label: 'Sites Clonés', color: '#8b7cff', rgb: '139,124,255' },
+  { key: 'orders', label: 'Commandes', color: '#2ee6a6', rgb: '46,230,166' },
+  { key: 'alerts', label: 'Alertes', color: '#f87171', rgb: '248,113,113' },
+];
+let activeSeries = { scans: true, clones: true, orders: true, alerts: true };
+let hoverDayIdx = -1;
+
+function drawActivityCanvas(canvas, tl) {
+  if (!canvas || !tl) return;
+  const rect = canvas.getBoundingClientRect();
+  const W = Math.max(300, Math.round(rect.width || 620));
+  const H = Math.max(210, Math.round(rect.height || 245));
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  canvas.width = W * dpr;
+  canvas.height = H * dpr;
+  const ctx = canvas.getContext('2d');
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.clearRect(0, 0, W, H);
+
+  const pL = 34, pR = 14, pT = 16, pB = 28;
+  const plotW = W - pL - pR, plotH = H - pT - pB;
+  const visible = SERIES_CFG.filter(s => activeSeries[s.key]);
+  const maxVal = Math.max(4, ...visible.flatMap(s => tl[s.key] || [0]));
+  const stepX = tl.labels.length > 1 ? plotW / (tl.labels.length - 1) : plotW;
+
+  ctx.font = '600 11px Inter, system-ui, sans-serif';
+  [0, 0.25, 0.5, 0.75, 1].forEach((f, idx) => {
+    const y = Math.round(pT + plotH * (1 - f)) + 0.5;
+    ctx.save();
+    ctx.strokeStyle = f === 0 ? 'rgba(255,255,255,0.12)' : 'rgba(255,255,255,0.06)';
+    ctx.setLineDash(f === 0 ? [] : [4, 4]);
+    ctx.beginPath();
+    ctx.moveTo(pL, y);
+    ctx.lineTo(W - pR, y);
+    ctx.stroke();
+    ctx.restore();
+    if (idx % 2 === 0) {
+      ctx.fillStyle = '#7e88a8';
+      ctx.textAlign = 'right';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(String(Math.round(maxVal * f)), pL - 8, y);
+    }
+  });
+
+  ctx.fillStyle = '#8b95b5';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'bottom';
+  tl.labels.forEach((lbl, i) => {
+    if (i % 2 === 0 || i === tl.labels.length - 1) {
+      ctx.fillText(lbl, pL + i * stepX, H - 5);
+    }
+  });
+
+  if (hoverDayIdx >= 0 && hoverDayIdx < tl.labels.length) {
+    const hx = pL + hoverDayIdx * stepX;
+    ctx.save();
+    ctx.strokeStyle = 'rgba(255,255,255,0.22)';
+    ctx.lineWidth = 1;
+    ctx.setLineDash([4, 4]);
+    ctx.beginPath();
+    ctx.moveTo(hx, pT);
+    ctx.lineTo(hx, pT + plotH);
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  visible.forEach(s => {
+    const vals = tl[s.key] || [];
+    const pts = vals.map((v, i) => ({ x: pL + i * stepX, y: pT + plotH * (1 - v / maxVal), v }));
+    if (!pts.length) return;
+
+    const grad = ctx.createLinearGradient(0, pT, 0, pT + plotH);
+    grad.addColorStop(0, `rgba(${s.rgb}, 0.24)`);
+    grad.addColorStop(1, `rgba(${s.rgb}, 0.0)`);
+
+    ctx.beginPath();
+    ctx.moveTo(pts[0].x, pT + plotH);
+    ctx.lineTo(pts[0].x, pts[0].y);
+    for (let i = 0; i < pts.length - 1; i++) {
+      const cx = (pts[i].x + pts[i + 1].x) / 2;
+      ctx.bezierCurveTo(cx, pts[i].y, cx, pts[i + 1].y, pts[i + 1].x, pts[i + 1].y);
+    }
+    ctx.lineTo(pts[pts.length - 1].x, pT + plotH);
+    ctx.closePath();
+    ctx.fillStyle = grad;
+    ctx.fill();
+
+    ctx.save();
+    ctx.shadowColor = `rgba(${s.rgb}, 0.45)`;
+    ctx.shadowBlur = 10;
+    ctx.strokeStyle = s.color;
+    ctx.lineWidth = 2.4;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(pts[0].x, pts[0].y);
+    for (let i = 0; i < pts.length - 1; i++) {
+      const cx = (pts[i].x + pts[i + 1].x) / 2;
+      ctx.bezierCurveTo(cx, pts[i].y, cx, pts[i + 1].y, pts[i + 1].x, pts[i + 1].y);
+    }
+    ctx.stroke();
+    ctx.restore();
+
+    pts.forEach((pt, i) => {
+      const isHover = i === hoverDayIdx;
+      if (!isHover && pt.v <= 0) return;
+      ctx.beginPath();
+      ctx.arc(pt.x, pt.y, isHover ? 5.2 : 3.1, 0, Math.PI * 2);
+      ctx.fillStyle = isHover ? '#0b1024' : s.color;
+      ctx.fill();
+      if (isHover) {
+        ctx.lineWidth = 2.4;
+        ctx.strokeStyle = s.color;
+        ctx.stroke();
+      }
+    });
+  });
+}
+
+function renderActivityChart(tl) {
+  const legEl = $('#activity-legend'), box = $('#activity-chart');
+  if (!tl || !legEl || !box) return;
+  legEl.innerHTML = SERIES_CFG.map(s => {
+    const sum = (tl[s.key] || []).reduce((a, b) => a + b, 0);
+    return `<button type="button" class="leg-btn ${activeSeries[s.key] ? '' : 'off'}" data-series="${s.key}">
+      <i class="leg-dot" style="background:${s.color};box-shadow:0 0 8px ${s.color}"></i>
+      <span>${esc(s.label)}</span><span class="leg-cnt">${sum}</span>
+    </button>`;
+  }).join('');
+  legEl.querySelectorAll('[data-series]').forEach(btn => btn.onclick = () => {
+    activeSeries[btn.dataset.series] = !activeSeries[btn.dataset.series];
+    renderActivityChart(tl);
+  });
+
+  box.innerHTML = `<canvas class="chart-canvas" id="activity-canvas"></canvas><div class="chart-tip" id="chart-tip"></div>`;
+  const canvas = $('#activity-canvas'), tip = $('#chart-tip');
+  drawActivityCanvas(canvas, tl);
+
+  canvas.addEventListener('mousemove', e => {
+    const rect = canvas.getBoundingClientRect();
+    const pL = 34, pR = 14, plotW = Math.max(10, rect.width - pL - pR);
+    const relX = Math.max(0, Math.min(plotW, e.clientX - rect.left - pL));
+    const idx = Math.round((relX / plotW) * (tl.labels.length - 1));
+    if (idx !== hoverDayIdx) {
+      hoverDayIdx = idx;
+      drawActivityCanvas(canvas, tl);
+    }
+    const rows = SERIES_CFG.map(s => `<div style="display:flex;align-items:center;gap:7px;margin-top:3px">
+      <i class="leg-dot" style="background:${s.color}"></i><span style="color:#b4bdd6">${esc(s.label)}</span>
+      <b style="margin-left:auto;color:#fff">${(tl[s.key] || [])[idx] || 0}</b></div>`).join('');
+    tip.innerHTML = `<div style="font-weight:700;margin-bottom:4px;color:#fff;border-bottom:1px solid rgba(255,255,255,.1);padding-bottom:4px">${esc(tl.days[idx])}</div>${rows}`;
+    tip.style.display = 'block';
+    tip.style.left = Math.min(rect.width - 190, Math.max(8, e.clientX - rect.left + 14)) + 'px';
+    tip.style.top = '10px';
+  });
+  canvas.addEventListener('mouseleave', () => {
+    hoverDayIdx = -1;
+    tip.style.display = 'none';
+    drawActivityCanvas(canvas, tl);
+  });
+}
+
+function renderPlansDonut(plans) {
+  const box = $('#plans-donut'), mrrEl = $('#mrr-badge');
+  if (!plans || !box) return;
+  if (mrrEl) mrrEl.textContent = `${plans.mrr_eur || 0} € / mois MRR`;
+  const items = [
+    { label: 'Entreprise (149 €)', count: plans.counts?.enterprise || 0, color: '#2ee6a6' },
+    { label: 'Pro (29 €)', count: plans.counts?.pro || 0, color: '#8b7cff' },
+    { label: 'Gratuit (0 €)', count: plans.counts?.free || 0, color: '#38bdf8' },
+  ];
+  const total = items.reduce((a, b) => a + b.count, 0);
+
+  box.innerHTML = `<div class="donut-wrap">
+    <div class="donut-canvas-box">
+      <canvas id="donut-canvas"></canvas>
+      <div class="donut-center"><b>${total}</b><span>compte(s)</span></div>
+    </div>
+    <div class="donut-list">${items.map(it => {
+      const pct = total ? Math.round((it.count / total) * 100) : 0;
+      return `<div class="donut-item">
+        <div class="donut-row"><i class="leg-dot" style="background:${it.color};box-shadow:0 0 8px ${it.color}"></i><span>${esc(it.label)}</span><b>${it.count} (${pct}%)</b></div>
+        <div class="donut-bar"><i style="width:${pct}%;background:${it.color}"></i></div>
+      </div>`;
+    }).join('')}
+      <div class="donut-row" style="padding-top:8px;border-top:1px solid var(--line);color:var(--muted)"><span>Sites audités ce mois</span><b>${plans.monthly_sites_audited || 0}</b></div>
+    </div>
+  </div>`;
+
+  const canvas = $('#donut-canvas');
+  if (!canvas) return;
+  const S = 176, dpr = Math.min(window.devicePixelRatio || 1, 2);
+  canvas.width = S * dpr;
+  canvas.height = S * dpr;
+  const ctx = canvas.getContext('2d');
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  const cx = S / 2, cy = S / 2, r = 68, lw = 16;
+
+  ctx.beginPath();
+  ctx.arc(cx, cy, r, 0, Math.PI * 2);
+  ctx.strokeStyle = 'rgba(255,255,255,0.06)';
+  ctx.lineWidth = lw;
+  ctx.stroke();
+
+  if (total > 0) {
+    let ang = -Math.PI / 2;
+    const gap = items.filter(i => i.count > 0).length > 1 ? 0.05 : 0;
+    items.forEach(it => {
+      if (!it.count) return;
+      const sweep = (it.count / total) * (Math.PI * 2) - gap;
+      ctx.save();
+      ctx.beginPath();
+      ctx.arc(cx, cy, r, ang + gap / 2, ang + gap / 2 + Math.max(0.04, sweep));
+      ctx.strokeStyle = it.color;
+      ctx.lineWidth = lw;
+      ctx.lineCap = 'round';
+      ctx.shadowColor = it.color;
+      ctx.shadowBlur = 10;
+      ctx.stroke();
+      ctx.restore();
+      ang += (it.count / total) * (Math.PI * 2);
+    });
+  }
+}
+
+function renderSecurityChart(sec) {
+  const box = $('#security-chart'), lbl = $('#avg-score-lbl');
+  if (!sec || !box) return;
+  const avg = Math.round(sec.avg_score || 0);
+  if (lbl) lbl.textContent = `${sec.total_scans || 0} audit(s) analysé(s)`;
+  const sev = sec.severity_totals || {};
+  const bars = [
+    { label: 'Critique', val: sev.critical || 0, color: '#ef4444' },
+    { label: 'Élevée', val: sev.high || 0, color: '#f97316' },
+    { label: 'Moyenne', val: sev.medium || 0, color: '#eab308' },
+    { label: 'Faible', val: sev.low || 0, color: '#38bdf8' },
+  ];
+  const max = Math.max(1, ...bars.map(b => b.val));
+  const gradeColor = { A: '#2ee6a6', B: '#38bdf8', C: '#eab308', D: '#f97316', F: '#ef4444' };
+  const grades = Object.entries(sec.grade_counts || {}).map(([g, n]) =>
+    `<span class="grade-pill"><i style="background:${gradeColor[g] || '#8b95b5'}"></i><span>Grade ${esc(g)}</span><b>${n}</b></span>`
+  ).join('');
+  box.innerHTML = `<div class="score-pill-bar">
+      <span style="font-size:.82rem;color:var(--muted)">Score moyen</span>
+      <div class="score-track"><i style="width:${Math.min(100, Math.max(0, avg))}%"></i></div>
+      <b style="font-variant-numeric:tabular-nums">${avg}/100</b>
+    </div>
+    <div class="bars">${bars.map(b => `<div class="bar"><div class="l"><span style="display:inline-flex;align-items:center;gap:7px"><i class="leg-dot" style="background:${b.color}"></i>${b.label}</span><b>${b.val}</b></div>
+    <div class="t"><i style="width:${(b.val / max * 100).toFixed(1)}%;background:${b.color};box-shadow:0 0 10px ${b.color}55"></i></div></div>`).join('')}</div>
+    <div class="grade-pills">${grades}</div>`;
+}
+
+function renderLiveFeed(p) {
+  const box = $('#live-feed');
+  if (!p || !box) return;
+  const events = (p.logs?.recent || []).slice(0, 6);
+  const badgeCls = s => (['HIGH', 'CRITICAL', 'ERROR'].includes(String(s).toUpperCase()) ? 'danger' : (String(s).toUpperCase().startsWith('WARN') ? 'warn' : 'ok'));
+  box.innerHTML = events.length ? events.map(ev => `<div class="list-row">
+    <span class="ui-badge ${badgeCls(ev.severity)}">${esc(ev.severity)}</span>
+    <div style="flex:1;min-width:0"><div class="trunc"><b>${esc(ev.event_type)}</b> — ${esc(ev.message)}</div>
+    <div class="mono ui-muted">${esc(ev.timestamp)} · ${esc(ev.source)}</div></div>
+  </div>`).join('') : empty(ADMIN_IC.shield, 'Aucun événement enregistré.');
+}
 
 // ---------- overview ----------
 async function loadOverview() {
-  const [o, m, s] = await Promise.all([api('/overview'), api('/shop/stats'), api('/sites')]);
+  const [o, m, s, p] = await Promise.all([api('/overview'), api('/shop/stats'), api('/sites'), api('/platform-overview')]);
+  cachedPlatform = p;
   $('#n-sites').textContent = o.sites || '';
   $('#n-products').textContent = m.products || '';
   $('#n-jobs').textContent = o.jobs_running || '';
+  const alertTotal = (p.shield?.incidents_open || 0) + (p.security?.severity_totals?.critical || 0);
+  $('#n-alerts').textContent = alertTotal || '';
+
+  const paidSubs = (p.plans?.counts?.pro || 0) + (p.plans?.counts?.enterprise || 0);
   $('#stats').innerHTML = [
-    stat(ADMIN_IC.globe, o.sites, 'Sites clonés', o.sites), stat(ADMIN_IC.pages, o.total_pages, 'Pages clonées', o.total_pages),
-    stat(ADMIN_IC.bag, `${m.published}/${m.products}`, 'Produits publiés'), stat(ADMIN_IC.rev, m.revenue, "Chiffre d'affaires"),
-    stat(ADMIN_IC.eye, m.views, 'Vues produits', m.views), stat(ADMIN_IC.dl, m.free_downloads, 'Téléch. gratuits', m.free_downloads),
-    stat(ADMIN_IC.job, o.jobs_running, 'Jobs en cours', o.jobs_running), stat(ADMIN_IC.card, m.sales, 'Ventes', m.sales),
+    stat(ADMIN_IC.globe, o.sites, 'Sites clonés', o.sites),
+    stat(ADMIN_IC.shield, p.security?.total_scans || 0, 'Audits Sécurité', p.security?.total_scans || 0),
+    stat(ADMIN_IC.alert, p.security?.severity_totals?.critical || 0, 'Failles critiques', p.security?.severity_totals?.critical || 0),
+    stat(ADMIN_IC.rev, `${p.plans?.mrr_eur || 0} € (${paidSubs})`, 'MRR Offres / payants'),
+    stat(ADMIN_IC.radar, `${p.domains?.verified || 0}/${(p.domains?.verified || 0) + (p.domains?.pending || 0)}`, 'Domaines vérifiés'),
+    stat(ADMIN_IC.shield, `${p.shield?.tier || 'NORMAL'} (${p.shield?.incidents_open || 0})`, 'Bouclier WAF / ouv.'),
+    stat(ADMIN_IC.bag, `${m.sales} (${m.revenue})`, 'Ventes / CA Boutique'),
+    stat(ADMIN_IC.job, p.llm?.total_operations_routed || 0, 'Requêtes IA LLM', p.llm?.total_operations_routed || 0),
   ].join('');
   UI.reveal($('#stats').parentNode); UI.count($('#stats'));
-  $('#top-products').innerHTML = m.top.length ? m.top.map((p, i) => `<div class="list-row"><span class="ui-badge ${i ? '' : 'grad'}">#${i + 1}</span>
-    <a href="/shop/p/${esc(p.slug)}" target="_blank" rel="noopener" style="text-decoration:none;flex:1" class="trunc">${esc(p.title)}</a>
-    <span class="ui-muted">${p.views} vues</span><span class="ui-muted">${p.free_downloads} dl</span></div>`).join('') : empty(ADMIN_IC.bag, 'Aucun produit pour le moment.');
+
+  renderActivityChart(p.timeline_14d);
+  renderPlansDonut(p.plans);
+  renderSecurityChart(p.security);
+  renderLiveFeed(p);
+
+  $('#top-products').innerHTML = m.top.length ? m.top.map((pr, i) => `<div class="list-row"><span class="ui-badge ${i ? '' : 'grad'}">#${i + 1}</span>
+    <a href="/shop/p/${esc(pr.slug)}" target="_blank" rel="noopener" style="text-decoration:none;flex:1" class="trunc">${esc(pr.title)}</a>
+    <span class="ui-muted">${pr.views} vues</span><span class="ui-muted">${pr.free_downloads} dl</span></div>`).join('') : empty(ADMIN_IC.bag, 'Aucun produit pour le moment.');
   const cats = Object.entries(m.by_category), max = Math.max(1, ...cats.map(c => c[1]));
   $('#cat-bars').innerHTML = cats.length ? cats.map(([k, v]) => `<div class="bar"><div class="l"><span>${esc(k)}</span><b>${v}</b></div><div class="t"><i data-w="${v / max * 100}"></i></div></div>`).join('') : empty(ADMIN_IC.pages, 'Les catégories apparaîtront ici.');
   requestAnimationFrame(() => document.querySelectorAll('#cat-bars i').forEach(i => i.style.width = i.dataset.w + '%'));
@@ -310,6 +727,95 @@ async function loadOverview() {
     <div class="list-row"><span style="flex:1">Aperçus actifs</span><b>${o.active_previews}</b></div>
     <div class="list-row"><span style="flex:1">Jobs réussis / échoués</span><b>${o.jobs_completed} / ${o.jobs_failed}</b></div>`;
   requestAnimationFrame(() => document.querySelectorAll('#system i').forEach(i => i.style.width = i.dataset.w + '%'));
+}
+
+// ---------- security & plans ----------
+async function loadSecurityTab() {
+  const p = await api('/platform-overview');
+  cachedPlatform = p;
+  const paidSubs = (p.plans?.counts?.pro || 0) + (p.plans?.counts?.enterprise || 0);
+  $('#sec-stats').innerHTML = [
+    stat(ADMIN_IC.shield, p.security?.total_scans || 0, 'Audits exécutés', p.security?.total_scans || 0),
+    stat(ADMIN_IC.alert, p.security?.severity_totals?.critical || 0, 'Failles critiques', p.security?.severity_totals?.critical || 0),
+    stat(ADMIN_IC.rev, `${p.plans?.mrr_eur || 0} €`, 'Revenu MRR offres'),
+    stat(ADMIN_IC.ok, paidSubs, 'Abonnés Pro/Ent.', paidSubs),
+    stat(ADMIN_IC.radar, p.shield?.incidents_open || 0, 'Incidents WAF ouv.', p.shield?.incidents_open || 0),
+    stat(ADMIN_IC.job, p.llm?.total_users_with_llm || 0, 'Users LLM connectés', p.llm?.total_users_with_llm || 0),
+  ].join('');
+  UI.reveal($('#sec-stats').parentNode); UI.count($('#sec-stats'));
+
+  const subs = p.plans?.subscriptions || [];
+  const pBadge = pid => (pid === 'enterprise' || pid === 'agency') ? 'ok' : (pid === 'pro' ? 'grad' : '');
+  $('#subs-body').innerHTML = subs.length ? subs.map(u => {
+    const cpid = u.cloner_plan_id || 'free';
+    const curSel = u.bundle_id || u.plan_id || 'free';
+    const who = u.username ? `<div><b>${esc(u.display_name || u.username)}</b> <span class="ui-muted">@${esc(u.username)}</span></div><div class="mono ui-muted" style="font-size:.72rem">${esc(u.user_id)}</div>` : `<span class="mono">${esc(u.user_id)}</span>`;
+    return `<tr>
+    <td>${who}</td>
+    <td>${esc(u.email || '—')}</td>
+    <td><div style="display:flex;gap:4px;flex-wrap:wrap">
+      <span class="ui-badge ${pBadge(u.plan_id)}" title="Ultron Sécurité">Ultron: ${esc(u.plan_id)}</span>
+      <span class="ui-badge ${pBadge(cpid)}" title="Cloneur & Studio">Cloneur: ${esc(cpid)}</span>
+      ${u.bundle_id ? `<span class="ui-badge ok">${esc(u.bundle_id)}</span>` : ''}
+    </div></td>
+    <td class="ui-muted">${esc(u.source || 'default')}</td>
+    <td><b>${esc(u.sites_used_month || 0)}</b> audits · <b>${esc(u.clones_used_month || 0)}</b> clones</td>
+    <td class="mono ui-muted">${esc((u.updated_at || '').slice(0, 16).replace('T', ' '))}</td>
+    <td><div style="display:flex;gap:6px;align-items:center">
+      <select class="ui-select" data-plan-for="${esc(u.user_id)}" style="width:auto;padding:4px 8px;font-size:.78rem">
+        <option value="free" ${curSel === 'free' ? 'selected' : ''}>Ultron Gratuit (0€)</option>
+        <option value="pro" ${curSel === 'pro' ? 'selected' : ''}>Ultron Pro (29€)</option>
+        <option value="enterprise" ${curSel === 'enterprise' ? 'selected' : ''}>Ultron Ent. (149€)</option>
+        <option value="cloner_free">Cloneur Gratuit (0€)</option>
+        <option value="cloner_pro">Cloneur Pro (19€)</option>
+        <option value="cloner_agency">Cloneur Agence (49€)</option>
+        <option value="suite_pro" ${curSel === 'suite_pro' ? 'selected' : ''}>Suite Pro (39€)</option>
+        <option value="suite_enterprise" ${curSel === 'suite_enterprise' ? 'selected' : ''}>Suite Ent. (169€)</option>
+      </select>
+      <button class="ui-btn sm primary" data-assign-uid="${esc(u.user_id)}">Appliquer</button>
+    </div></td></tr>`;
+  }).join('') : `<tr><td colspan="7">${empty(ADMIN_IC.shield, 'Aucun abonné ni audit enregistré ce mois-ci.')}</td></tr>`;
+
+  const scans = p.security?.recent_scans || [];
+  $('#scans-count-lbl').textContent = `${p.security?.total_scans || 0} au total`;
+  $('#sec-scans-body').innerHTML = scans.length ? scans.map(sc => `<tr>
+    <td class="mono trunc" style="max-width:200px">${esc(sc.target_url)}</td>
+    <td><b>${esc(sc.risk_score)}</b> <span class="ui-badge">${esc(sc.grade)}</span></td>
+    <td>${sc.critical_count ? `<span class="ui-badge danger">${sc.critical_count}</span>` : '0'}</td>
+    <td class="mono ui-muted">${esc((sc.timestamp || '').slice(0, 16))}</td>
+    <td><a class="ui-btn sm" href="/__sc/security/api/scans/${sc.id}/report" target="_blank" rel="noopener">Rapport</a></td>
+  </tr>`).join('') : `<tr><td colspan="5">${empty(ADMIN_IC.shield, 'Aucun audit lancé.')}</td></tr>`;
+
+  const domRows = [
+    ...(p.domains?.items || []).map(d => ({ ...d, space: 'Client' })),
+    ...(p.domains?.admin_items || []).map(d => ({ ...d, space: 'Admin' })),
+  ];
+  $('#sec-domains-body').innerHTML = domRows.length ? domRows.map(d => `<tr>
+    <td class="mono">${esc(d.domain)}</td>
+    <td><span class="ui-badge">${esc(d.space)}</span></td>
+    <td class="ui-muted">${esc(d.verification_method || '—')}</td>
+    <td><span class="ui-badge ${d.status === 'verified' ? 'ok' : 'warn'}">${esc(d.status)}</span></td>
+  </tr>`).join('') : `<tr><td colspan="4">${empty(ADMIN_IC.globe, 'Aucun domaine enregistré.')}</td></tr>`;
+
+  const tier = p.shield?.tier || 'NORMAL';
+  $('#shield-tier-badge').textContent = tier;
+  $('#shield-tier-badge').className = 'ui-badge ' + (tier === 'NORMAL' ? 'ok' : 'danger');
+  const provEntries = Object.entries(p.llm?.providers || {});
+  $('#sec-llm-providers').innerHTML = provEntries.length ? provEntries.map(([name, st]) => `<div class="list-row">
+    <b style="text-transform:capitalize;flex:1">${esc(name)}</b>
+    <span class="ui-muted">${st.active_connections}/${st.total_connected} actives</span>
+    <b>${st.total_usage_count} req.</b></div>`).join('') : '<div class="ui-muted" style="font-size:.85rem">Aucun fournisseur LLM externe connecté par les utilisateurs.</div>';
+  const incs = p.shield?.recent_incidents || [];
+  $('#sec-incidents').innerHTML = incs.length ? incs.map(inc => `<div class="list-row">
+    <span class="ui-badge ${inc.status === 'resolved' ? 'ok' : 'danger'}">${esc(inc.status)}</span>
+    <div style="flex:1;min-width:0"><div class="trunc"><b>${esc(inc.title || inc.domain)}</b></div>
+    <div class="mono ui-muted">${esc(inc.domain)} · ${esc(inc.severity || '')}</div></div></div>`).join('') : '<div class="ui-muted" style="font-size:.85rem;padding-top:8px">Aucun incident WAF détecté.</div>';
+
+  const logs = p.logs?.recent || [];
+  $('#sec-logs').innerHTML = logs.length ? logs.slice(0, 12).map(ev => `<div class="list-row">
+    <span class="ui-badge ${(['HIGH', 'CRITICAL', 'ERROR'].includes(String(ev.severity).toUpperCase()) ? 'danger' : (String(ev.severity).toUpperCase().startsWith('WARN') ? 'warn' : 'ok'))}">${esc(ev.severity)}</span>
+    <div style="flex:1;min-width:0"><div class="trunc"><b>${esc(ev.event_type)}</b> — ${esc(ev.message)}</div>
+    <div class="mono ui-muted">${esc(ev.timestamp)} · ${esc(ev.source)}</div></div></div>`).join('') : empty(ADMIN_IC.shield, 'Journal vide.');
 }
 
 // ---------- sites ----------
@@ -355,10 +861,10 @@ async function loadJobs() {
 }
 
 // ---------- marketplace ----------
-let products = [], categories = {};
+let products = [], categories = {}, categoryConfig = {};
 async function loadProducts() {
   const r = await api('/shop/products');
-  products = r.products; categories = r.categories;
+  products = r.products; categories = r.categories; categoryConfig = r.category_config || {};
   $('#n-products').textContent = products.length || '';
   if ($('#prod-cat').options.length === 1) {
     $('#prod-cat').insertAdjacentHTML('beforeend', Object.entries(categories).map(([k, v]) => `<option value="${k}">${esc(v)}</option>`).join(''));
@@ -369,24 +875,38 @@ async function loadProducts() {
   if (!r.webhook_ready) missing.push('STRIPE_WEBHOOK_SECRET');
   $('#stripe-warn').hidden = !missing.length;
   $('#stripe-warn').textContent = missing.length ? `Paiement non configuré (${missing.join(', ')}). Les produits gratuits fonctionnent ; les achats payants sont désactivés tant que STRIPE_SECRET_KEY est absente.` : '';
+  const pendingCount = r.pending_count || products.filter(p => p.submission_status === 'pending').length;
+  const pw = $('#pending-warn');
+  if (pw) {
+    pw.hidden = !pendingCount;
+    pw.innerHTML = pendingCount ? `<b>${pendingCount} soumission(s) d'utilisateurs</b> en attente de vérification. <button type="button" class="ui-btn sm primary" style="margin-left:10px" onclick="document.querySelector('#prod-status').value='pending';renderProducts();">Filtrer en attente</button>` : '';
+  }
   renderProducts();
 }
 function renderProducts() {
   const q = $('#prod-q').value.toLowerCase(), cat = $('#prod-cat').value, st = $('#prod-status').value;
-  const list = products.filter(p => (!q || (p.title + ' ' + p.tags + ' ' + p.tagline).toLowerCase().includes(q)) && (!cat || p.category === cat) &&
-    (!st || (st === 'pub' && p.published) || (st === 'draft' && !p.published) || (st === 'free' && !p.price_cents) || (st === 'paid' && p.price_cents)));
+  const list = products.filter(p => (!q || (p.title + ' ' + p.tags + ' ' + p.tagline + ' ' + (p.author_name || '') + ' ' + (p.author_email || '')).toLowerCase().includes(q)) && (!cat || p.category === cat) &&
+    (!st || (st === 'pending' && p.submission_status === 'pending') || (st === 'pub' && p.published) || (st === 'draft' && !p.published) || (st === 'free' && !p.price_cents) || (st === 'paid' && p.price_cents)));
   $('#products-grid').innerHTML = list.length ? list.map((p, i) => {
     const img = p.media.find(m => m.kind === 'image');
     const cover = img ? img.url : (p.cover ? `/shop/cover/${p.id}` : '');
+    const stBadge = p.submission_status === 'pending'
+      ? '<span class="ui-badge warn">En attente</span>'
+      : p.submission_status === 'rejected'
+        ? '<span class="ui-badge danger">Refusé</span>'
+        : `<span class="ui-badge ${p.published ? 'ok' : 'warn'}">${p.published ? 'publié' : 'brouillon'}</span>`;
     return `<div class="ui-card hover ui-spot prod-card" data-reveal style="--d:${Math.min(i, 8) * .04}s">
       <div class="thumb"><span style="width:36px;color:var(--accent);opacity:.45">${ADMIN_IC.bag}</span>${cover ? `<img src="${cover}" alt="" loading="lazy">` : ''}
-        <div class="badges"><span class="ui-badge ${p.published ? 'ok' : 'warn'}">${p.published ? 'publié' : 'brouillon'}</span>${p.featured ? '<span class="ui-badge grad">À la une</span>' : ''}${p.media.some(m => m.kind === 'video') ? '<span class="ui-badge">Vidéo</span>' : ''}</div></div>
+        <div class="badges">${stBadge}${p.featured ? '<span class="ui-badge grad">À la une</span>' : ''}${p.media.some(m => m.kind === 'video') ? '<span class="ui-badge">Vidéo</span>' : ''}</div></div>
       <div class="card-body">
         <div style="display:flex;justify-content:space-between;gap:8px;align-items:center"><span class="ui-badge accent">${esc(p.category_label)}</span><b>${esc(p.price)}</b></div>
         <h3>${esc(p.title)}</h3>
+        ${p.author_name ? `<div class="ui-muted" style="font-size:.78rem">Soumis par <b>${esc(p.author_name)}</b>${p.author_email ? ` (${esc(p.author_email)})` : ''}</div>` : ''}
         <div class="meta"><span>${p.views} vues</span><span>${p.free_downloads} dl</span><span>${p.sales} ventes &bull; ${esc(p.revenue)}</span><span>${p.media.length} médias</span><span style="color:${p.has_file ? 'var(--ok)' : 'var(--warn)'}">${p.has_file ? 'Fichier prêt' : 'Sans fichier'}</span></div>
         <div class="acts">
-          <button class="ui-btn sm primary" data-edit="${p.id}">Modifier</button>
+          ${p.submission_status === 'pending' ? `<button class="ui-btn sm primary" data-review="${p.id}" data-action="approve">Valider &amp; Publier</button><button class="ui-btn sm danger" data-review="${p.id}" data-action="reject">Refuser</button>` : ''}
+          <button class="ui-btn sm ${p.submission_status === 'pending' ? '' : 'primary'}" data-edit="${p.id}">Modifier</button>
+          ${p.has_file ? `<a class="ui-btn sm" href="/admin/api/shop/products/${p.id}/download" title="Inspecter le fichier soumis">Fichier</a>` : ''}
           <button class="ui-btn sm" data-toggle="${p.id}" data-field="published">${p.published ? 'Dépublier' : 'Publier'}</button>
           <button class="ui-btn sm" data-toggle="${p.id}" data-field="featured" title="À la une">${p.featured ? 'En une' : 'Mettre en une'}</button>
           <a class="ui-btn sm" href="/shop/p/${esc(p.slug)}" target="_blank" rel="noopener" title="Voir">Voir</a>
@@ -400,21 +920,64 @@ function renderProducts() {
 // ---------- editor ----------
 const pf = $('#product-form'), drawer = $('#drawer');
 let editing = null, pendingMedia = [];
+function applyAdminCategory(cat, specsData) {
+  const cfg = categoryConfig[cat] || categoryConfig.other;
+  if (!cfg) return;
+  if ($('#pf-type-hint')) $('#pf-type-hint').textContent = cfg.hint || '';
+  if ($('#pf-title-input')) $('#pf-title-input').placeholder = cfg.title_ph || '';
+  if ($('#pf-tagline-input')) $('#pf-tagline-input').placeholder = cfg.tagline_ph || '';
+  if ($('#pf-desc-input')) $('#pf-desc-input').placeholder = cfg.desc_ph || '';
+  const specsEl = $('#pf-specs');
+  if (specsEl) {
+    const existing = specsData || {};
+    specsEl.querySelectorAll("input[name^='spec_']").forEach(inp => {
+      const k = inp.name.slice(5);
+      if (!(k in existing) && inp.value) existing[k] = inp.value;
+    });
+    specsEl.innerHTML = (cfg.specs || []).map(s => `
+      <div class="ui-field"><label class="ui-label">${esc(s.label)}</label>
+      <input class="ui-input" name="spec_${esc(s.key)}" maxlength="120" value="${esc(existing[s.key] || '')}" placeholder="${esc(s.placeholder)}"></div>
+    `).join('');
+    specsEl.style.display = (cfg.specs && cfg.specs.length) ? 'grid' : 'none';
+  }
+  if ($('#pf-preview-wrap')) {
+    $('#pf-preview-wrap').style.display = cfg.show_preview ? '' : 'none';
+    if ($('#pf-preview-label')) $('#pf-preview-label').textContent = cfg.preview_label || 'Aperçu texte';
+    if ($('#pf-preview-input')) $('#pf-preview-input').placeholder = cfg.preview_ph || '';
+  }
+  if ($('#pf-demo-wrap')) {
+    $('#pf-demo-wrap').style.display = cfg.show_demo ? '' : 'none';
+    if ($('#pf-demo-label')) $('#pf-demo-label').textContent = cfg.demo_label || 'URL de démo (optionnel)';
+    if ($('#pf-demo-input')) $('#pf-demo-input').placeholder = cfg.demo_ph || 'https://…';
+  }
+  if (!$('#file-input')?.files?.length && $('#file-label')) {
+    $('#file-label').textContent = cfg.file_label || 'Choisir le fichier à livrer';
+  }
+  if ($('#file-input')) $('#file-input').accept = cfg.file_accept || '';
+  if ($('#pf-file-hint')) $('#pf-file-hint').textContent = cfg.file_hint || '';
+  if ($('#pf-media-hint')) $('#pf-media-hint').textContent = `${cfg.media_label || 'Images & vidéos'}. La première image sert de couverture.`;
+}
+$('#pf-cat').addEventListener('change', () => applyAdminCategory($('#pf-cat').value));
+
 function openEditor(p) {
   editing = p || null; pendingMedia = [];
   pf.reset();
   $('#pf-title').textContent = p ? 'Modifier le produit' : 'Nouveau produit';
   $('#pf-delete').hidden = !p;
   $('#pf-view').hidden = !p; if (p) $('#pf-view').href = '/shop/p/' + p.slug;
-  $('#file-label').textContent = 'Choisir le fichier à livrer (zip, pdf, exe, fig, glb, md…)';
-  $('#pf-file').innerHTML = p && p.has_file ? `<div class="file-pill"><b>${esc(p.file)}</b><span class="ui-muted" style="margin-left:auto">actuel — choisis-en un autre pour le remplacer</span></div>` : '';
+  $('#pf-file').innerHTML = p && p.has_file ? `<div class="file-pill"><b>${esc(p.file || p.clone_id)}</b><span class="ui-muted" style="margin-left:auto">actuel — choisis-en un autre pour le remplacer</span></div>` : '';
   if (p) {
-    for (const k of ['title', 'tagline', 'description', 'preview_text', 'demo_url', 'tags']) pf[k].value = p[k] || '';
+    for (const k of ['title', 'tagline', 'description', 'preview_text', 'demo_url', 'tags', 'author_name', 'author_email']) pf[k].value = p[k] || '';
     pf.category.value = p.category;
+    pf.submission_status.value = p.submission_status || 'approved';
     pf.free.checked = !p.price_cents;
     pf.price.value = p.price_cents ? (p.price_cents / 100).toFixed(2) : '';
     pf.published.checked = !!p.published; pf.featured.checked = !!p.featured;
-  } else { pf.published.checked = true; }
+    applyAdminCategory(p.category, p.specs || {});
+  } else {
+    pf.submission_status.value = 'approved'; pf.published.checked = true;
+    applyAdminCategory(pf.category.value || 'design', {});
+  }
   syncPrice(); renderMedia();
   drawer.classList.add('open');
   setTimeout(() => pf.title.focus(), 350);
@@ -485,7 +1048,12 @@ $('#new-product').onclick = () => openEditor(null);
 // ---------- orders ----------
 async function loadOrders() {
   const r = await api('/shop/orders');
-  $('#order-stats').innerHTML = [stat(ADMIN_IC.rev, r.revenue, "Chiffre d'affaires"), stat(ADMIN_IC.ok, r.paid_count, 'Commandes payées', r.paid_count), stat(ADMIN_IC.card, r.orders.length, 'Commandes (total)', r.orders.length)].join('');
+  $('#order-stats').innerHTML = [
+    stat(ADMIN_IC.rev, r.revenue, "Chiffre d'affaires"),
+    stat(ADMIN_IC.rev, r.platform_fees || '0,00 €', 'Commission plateforme (1 %)'),
+    stat(ADMIN_IC.ok, r.paid_count, 'Commandes payées', r.paid_count),
+    stat(ADMIN_IC.card, r.orders.length, 'Commandes (total)', r.orders.length)
+  ].join('');
   UI.reveal($('#order-stats').parentNode); UI.count($('#order-stats'));
   const fmt = t => t ? new Date(t * 1000).toLocaleString('fr-FR') : '—';
   $('#orders-body').innerHTML = r.orders.length ? r.orders.map(o => `
@@ -495,7 +1063,7 @@ async function loadOrders() {
 }
 
 // ---------- tabs & actions ----------
-const loaders = {overview: loadOverview, sites: loadSites, jobs: loadJobs, products: loadProducts, orders: loadOrders, settings: async () => {}};
+const loaders = {overview: loadOverview, sites: loadSites, jobs: loadJobs, products: loadProducts, orders: loadOrders, security: loadSecurityTab, settings: async () => {}};
 let current = 'overview';
 function show(tab) {
   current = tab;
@@ -505,13 +1073,38 @@ function show(tab) {
   return loaders[tab]().catch(e => toast(e.message, 'err'));
 }
 $('#tabs').addEventListener('click', e => { const b = e.target.closest('[data-tab]'); if (b) show(b.dataset.tab); });
+$('#refresh-overview')?.addEventListener('click', () => loadOverview().then(() => toast('Vue actualisée', 'ok')).catch(e => toast(e.message, 'err')));
+$('#assign-plan-form')?.addEventListener('submit', async e => {
+  e.preventDefault();
+  try {
+    await api('/platform/assign-plan', 'POST', {
+      user_id: $('#assign-uid').value.trim(),
+      email: $('#assign-email').value.trim(),
+      plan_id: $('#assign-plan').value,
+    });
+    e.target.reset();
+    toast('Offre attribuée', 'ok');
+    await loadSecurityTab();
+  } catch (err) { toast(err.message, 'err'); }
+});
 
 document.addEventListener('click', async e => {
-  const el = e.target.closest('[data-del],[data-stop],[data-edit],[data-toggle],[data-clear],[data-mdel],[data-mmove],[data-goto]');
+  const el = e.target.closest('[data-del],[data-stop],[data-edit],[data-toggle],[data-review],[data-clear],[data-mdel],[data-mmove],[data-goto],[data-assign-uid]');
   if (!el) return;
   const d = el.dataset;
   try {
     if (d.goto) { await show(d.goto); if ('new' in d) openEditor(null); }
+    if (d.review) {
+      await api(`/shop/products/${d.review}/review`, 'POST', { action: d.action });
+      toast(d.action === 'approve' ? 'Produit validé et publié' : 'Soumission refusée', 'ok');
+      await loadProducts();
+    }
+    if (d.assignUid) {
+      const sel = document.querySelector(`select[data-plan-for="${CSS.escape(d.assignUid)}"]`);
+      await api('/platform/assign-plan', 'POST', { user_id: d.assignUid, plan_id: sel ? sel.value : 'free' });
+      toast('Offre mise à jour', 'ok');
+      await loadSecurityTab();
+    }
     if (d.del && await UI.confirm('Supprimer définitivement ce site cloné ?', {ok: 'Supprimer'})) { await api('/sites/' + encodeURIComponent(d.del), 'DELETE'); toast('Site supprimé', 'ok'); loadSites(); }
     if (d.stop) { await api('/sites/' + encodeURIComponent(d.stop) + '/stop', 'POST'); toast('Aperçu arrêté', 'ok'); loadSites(); }
     if (d.edit) openEditor(products.find(p => String(p.id) === d.edit));
@@ -530,6 +1123,7 @@ $('#pw-form').addEventListener('submit', async e => {
 
 show(loaders[location.hash.slice(1)] ? location.hash.slice(1) : 'overview');
 setInterval(() => { if (current === 'jobs') loadJobs().catch(() => {}); }, 5000);
+window.addEventListener('resize', () => { if (current === 'overview' && cachedPlatform?.timeline_14d) drawActivityCanvas($('#activity-canvas'), cachedPlatform.timeline_14d); });
 </script>
 </body>
 </html>

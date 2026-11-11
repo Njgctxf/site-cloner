@@ -213,11 +213,40 @@
     tick();
   };
 
+  UI.mountAccountNav = () => {
+    if (document.querySelector(".sc-acc-wrap")) return;
+    const nav = document.querySelector(".ui-nav");
+    if (!nav) return;
+    const wrap = document.createElement("div");
+    wrap.className = "sc-acc-wrap";
+    wrap.innerHTML = `<a class="sc-acc-btn" href="/account/login">Connexion</a><a class="sc-acc-btn primary" href="/account/register">Créer un compte</a>`;
+    const themeSwitch = nav.querySelector(".sc-theme-switch");
+    if (themeSwitch) nav.insertBefore(wrap, themeSwitch);
+    else nav.appendChild(wrap);
+
+    fetch("/account/api/me", { credentials: "same-origin" })
+      .then(r => r.ok ? r.json() : null)
+      .then(data => {
+        if (!data) return;
+        window.__scCurrentUser = data.user || null;
+        document.dispatchEvent(new CustomEvent("sc-account", { detail: data }));
+        if (data.authenticated && data.user) {
+          const u = data.user;
+          const avHtml = u.avatar_url
+            ? `<span class="sc-acc-av"><img src="${UI.esc(u.avatar_url)}" alt=""></span>`
+            : `<span class="sc-acc-av" style="background:${UI.esc(u.avatar_color || "#6366f1")}">${UI.esc(u.initials || "U")}</span>`;
+          wrap.innerHTML = `<a class="sc-acc-pill" href="/account/profile" title="Mon profil (@${UI.esc(u.username)})">${avHtml}<span>${UI.esc(u.display_name || u.username)}</span></a>`;
+        }
+      })
+      .catch(() => {});
+  };
+
   const boot = () => {
     ensureFavicon();
     UI.setTheme(UI.getTheme());
     if (document.body.classList.contains("ui")) UI.backdrop();
     UI.mountThemeSwitch();
+    UI.mountAccountNav();
     document.querySelectorAll("[data-typewriter]").forEach(host => {
       try {
         const phrases = JSON.parse(host.dataset.typewriter || "[]");

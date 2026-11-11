@@ -41,7 +41,10 @@
   <section class="hero">
     <span class="ui-eyebrow" data-reveal><span class="dot"></span> Designs &bull; Prompts &bull; Skills &bull; Logiciels</span>
     <h1 class="ui-title" data-reveal style="--d:.08s">La marketplace des <span class="ui-grad-text">créateurs du web</span></h1>
-    <p class="ui-lead" data-reveal style="--d:.16s">Designs de site, templates, prompts, skills d'agents IA, logiciels et assets 3D. Prévisualise, mets en favori, télécharge en un clic.</p>
+    <p class="ui-lead" data-reveal style="--d:.16s">Produits digitaux, logiciels, applications, sites web, prompts &amp; skills IA. Prévisualise, achète ou publie tes créations.</p>
+    <div style="display:flex;justify-content:center;gap:10px;flex-wrap:wrap;margin-top:20px" data-reveal style="--d:.2s">
+      <button type="button" class="ui-btn primary" id="openSubmitBtn">+ Publier un outil / logiciel / skill</button>
+    </div>
     <label class="search ui-card ui-border-glow" data-reveal style="--d:.24s">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:var(--accent);flex-shrink:0"><circle cx="11" cy="11" r="7.5"/><path d="m20 20-3.5-3.5"/></svg>
       <input id="q" placeholder="Rechercher un design, un prompt, un logiciel…" autocomplete="off">
@@ -81,10 +84,69 @@
     <div class="qv" id="qv"></div>
   </div>
 </div>
+
+<div class="ui-modal" id="submitModal">
+  <div class="box ui-card" style="max-width:720px;padding:24px;position:relative;max-height:92vh;overflow:auto">
+    <button class="ui-btn icon ghost x" data-close aria-label="Fermer">&times;</button>
+    <h2 style="margin:0 0 6px;font-size:1.35rem;letter-spacing:-.02em">Publier un outil ou produit digital</h2>
+    <p class="ui-muted" style="margin:0 0 14px;font-size:.9rem">Choisissez d'abord le type de produit : le formulaire et les formats demandés s'adaptent automatiquement.</p>
+    <form id="submitForm" enctype="multipart/form-data" style="display:flex;flex-direction:column;gap:14px">
+      <div class="ui-field">
+        <label class="ui-label">Type de produit *</label>
+        <div id="subCatPills" style="display:flex;flex-wrap:wrap;gap:6px">
+          {% for key, label in categories.items() %}
+          <button type="button" class="ui-chip {{ 'on' if loop.first else '' }}" data-subcat="{{ key }}" style="font-size:.82rem">{{ label }}</button>
+          {% endfor %}
+        </div>
+        <select class="ui-select" name="category" id="subCategory" style="display:none">
+          {% for key, label in categories.items() %}
+          <option value="{{ key }}">{{ label }}</option>
+          {% endfor %}
+        </select>
+        <div id="subTypeHint" class="ui-muted" style="font-size:.82rem;margin-top:6px;padding:8px 11px;border-radius:10px;background:rgba(255,255,255,.03);border:1px solid var(--line)"></div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <div class="ui-field"><label class="ui-label">Ton nom ou studio *</label><input class="ui-input" name="author_name" required maxlength="120" placeholder="Ex. Studio Nova"></div>
+        <div class="ui-field"><label class="ui-label">Ton e-mail *</label><input class="ui-input" name="author_email" type="email" required maxlength="200" placeholder="toi@domaine.com"></div>
+      </div>
+      <div class="ui-field"><label class="ui-label">Nom du produit *</label><input class="ui-input" name="title" id="subTitleInput" required maxlength="200" placeholder="Ex. Landing Page SaaS"></div>
+      <div class="ui-field"><label class="ui-label">Accroche courte</label><input class="ui-input" name="tagline" id="subTaglineInput" maxlength="160" placeholder="Ce que fait ton outil en une phrase"></div>
+      <div id="subSpecsGrid" style="display:grid;grid-template-columns:1fr 1fr;gap:12px"></div>
+      <div class="ui-field"><label class="ui-label">Description complète</label><textarea class="ui-textarea" name="description" id="subDescInput" rows="4" maxlength="8000" placeholder="Fonctionnalités, prérequis, installation, licence…"></textarea></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <div class="ui-field" id="subDemoWrap"><label class="ui-label" id="subDemoLabel">URL de démo / site (optionnel)</label><input class="ui-input" name="demo_url" id="subDemoInput" placeholder="https://…"></div>
+        <div class="ui-field"><label class="ui-label">Tags (séparés par des virgules)</label><input class="ui-input" name="tags" placeholder="python, cli, saas, ai"></div>
+      </div>
+      <div class="ui-field" id="subPreviewWrap"><label class="ui-label" id="subPreviewLabel">Aperçu texte / code / commande (optionnel)</label><textarea class="ui-textarea" name="preview_text" id="subPreviewInput" rows="4" maxlength="6000" placeholder="Ex. extrait de skill SKILL.md, prompt ou commande d'installation…" style="font-family:var(--mono);font-size:.84rem"></textarea></div>
+      <div style="display:flex;gap:14px;align-items:flex-end;flex-wrap:wrap">
+        <label style="display:inline-flex;align-items:center;gap:8px;cursor:pointer;font-size:.9rem"><input type="checkbox" name="free" value="1" id="subFree"> Gratuit</label>
+        <div style="flex:1;min-width:160px" id="subPriceWrap"><label class="ui-label">Prix (€)</label><input class="ui-input" name="price" id="subPriceInput" type="number" step="0.50" min="0.50" placeholder="19.00"></div>
+      </div>
+      <div id="subSplitHint" class="ui-badge accent" style="padding:9px 12px;display:block;font-size:.82rem;line-height:1.45">
+        Encaissement direct sur votre compte Stripe : <strong>vous recevez 99 %</strong> de chaque vente (<strong>1 %</strong> de commission plateforme).
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <div class="ui-field">
+          <label class="ui-label" id="subFileLabel">Fichier à livrer (zip, exe, dmg, apk, py, md, json…)</label>
+          <input class="ui-input" type="file" name="file" id="subFileInput">
+          <small class="ui-muted" id="subFileHint" style="font-size:.76rem;margin-top:4px;display:block"></small>
+        </div>
+        <div class="ui-field"><label class="ui-label" id="subMediaLabel">Captures / vidéos de présentation (optionnel)</label><input class="ui-input" type="file" name="media" multiple accept=".png,.jpg,.jpeg,.webp,.gif,.avif,.mp4,.webm,.mov"></div>
+      </div>
+      <div id="submitStatus" style="font-size:.88rem;display:none"></div>
+      <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:4px">
+        <button type="button" class="ui-btn ghost" data-close>Annuler</button>
+        <button type="submit" class="ui-btn primary" id="submitSendBtn">Envoyer pour validation</button>
+      </div>
+    </form>
+  </div>
+</div>
 {% endblock %}
 {% block scripts %}
 <script>
   const ITEMS = {{ items|tojson }};
+  const CATEGORY_CONFIG = {{ category_config|tojson }};
   const PH_SVG = `<svg width="42" height="42" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M3 9h18M9 21V9"/></svg>`;
   const st = {q: "", cat: new URLSearchParams(location.search).get("cat") || "", price: "", favs: location.hash === "#favoris", sort: "new"};
   const $ = s => document.querySelector(s), esc = UI.esc;
@@ -104,7 +166,10 @@
         <span class="m-quick ui-btn sm" data-qv="${p.id}">Aperçu rapide</span>
       </div>
       <div class="m-body">
-        <span class="ui-badge accent" style="align-self:flex-start">${esc(p.category_label)}</span>
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+          <span class="ui-badge accent">${esc(p.category_label)}</span>
+          ${p.author_name ? `<span class="ui-muted" style="font-size:.76rem">Par ${esc(p.author_name)}</span>` : ""}
+        </div>
         <h3>${esc(p.title)}</h3>
         <p>${esc(p.tagline || p.description)}</p>
         <div class="m-foot">
@@ -182,10 +247,139 @@
   $("#favBtn").onclick = () => { st.favs = !st.favs; history.replaceState(null, "", st.favs ? "#favoris" : location.pathname); render(); };
   $("#sort").onchange = e => { st.sort = e.target.value; render(); };
   let t; $("#q").oninput = e => { clearTimeout(t); t = setTimeout(() => { st.q = e.target.value.trim(); render(); }, 120); };
-  addEventListener("keydown", e => { if (e.key === "/" && document.activeElement.tagName !== "INPUT") { e.preventDefault(); $("#q").focus(); } });
-  addEventListener("hashchange", () => { st.favs = location.hash === "#favoris"; render(); });
+  addEventListener("keydown", e => { if (e.key === "/" && !["INPUT", "TEXTAREA", "SELECT"].includes(document.activeElement.tagName)) { e.preventDefault(); $("#q").focus(); } });
+  addEventListener("hashchange", () => {
+    st.favs = location.hash === "#favoris";
+    if (location.hash === "#soumettre") UI.open("submitModal");
+    render();
+  });
   document.addEventListener("favs", () => { if (st.favs) render(); });
   if (st.cat) $("#cats").querySelectorAll(".ui-chip").forEach(x => x.classList.toggle("on", x.dataset.cat === st.cat));
+
+  // Public product / tool / skill submission modal (adapted per category)
+  const openSubBtn = $("#openSubmitBtn"), subForm = $("#submitForm"), subFree = $("#subFree");
+  const subCatSel = $("#subCategory"), subCatPills = $("#subCatPills");
+
+  function applySubCategory(cat) {
+    const cfg = CATEGORY_CONFIG[cat] || CATEGORY_CONFIG.other;
+    if (!cfg || !subForm) return;
+    if (subCatSel) subCatSel.value = cat;
+    subCatPills?.querySelectorAll("[data-subcat]").forEach(b => b.classList.toggle("on", b.dataset.subcat === cat));
+
+    if ($("#subTypeHint")) $("#subTypeHint").textContent = cfg.hint || "";
+    if ($("#subTitleInput")) $("#subTitleInput").placeholder = cfg.title_ph || "";
+    if ($("#subTaglineInput")) $("#subTaglineInput").placeholder = cfg.tagline_ph || "";
+    if ($("#subDescInput")) $("#subDescInput").placeholder = cfg.desc_ph || "";
+
+    const specsGrid = $("#subSpecsGrid");
+    if (specsGrid) {
+      const prevVals = {};
+      specsGrid.querySelectorAll("input[name^='spec_']").forEach(inp => { prevVals[inp.name] = inp.value; });
+      specsGrid.innerHTML = (cfg.specs || []).map(s => `
+        <div class="ui-field">
+          <label class="ui-label">${esc(s.label)}</label>
+          <input class="ui-input" name="spec_${esc(s.key)}" maxlength="120" value="${esc(prevVals['spec_' + s.key] || '')}" placeholder="${esc(s.placeholder)}">
+        </div>
+      `).join("");
+      specsGrid.style.display = (cfg.specs && cfg.specs.length) ? "grid" : "none";
+    }
+
+    const demoWrap = $("#subDemoWrap");
+    if (demoWrap) {
+      demoWrap.style.display = cfg.show_demo ? "" : "none";
+      if (!cfg.show_demo && $("#subDemoInput")) $("#subDemoInput").value = "";
+      if ($("#subDemoLabel")) $("#subDemoLabel").textContent = cfg.demo_label || "URL de démo (optionnel)";
+      if ($("#subDemoInput")) $("#subDemoInput").placeholder = cfg.demo_ph || "https://…";
+    }
+
+    const prevWrap = $("#subPreviewWrap");
+    if (prevWrap) {
+      prevWrap.style.display = cfg.show_preview ? "" : "none";
+      if (!cfg.show_preview && $("#subPreviewInput")) $("#subPreviewInput").value = "";
+      if ($("#subPreviewLabel")) $("#subPreviewLabel").textContent = cfg.preview_label || "Aperçu texte / code";
+      if ($("#subPreviewInput")) $("#subPreviewInput").placeholder = cfg.preview_ph || "";
+    }
+
+    if ($("#subFileLabel")) $("#subFileLabel").textContent = cfg.file_label || "Fichier à livrer";
+    if ($("#subFileInput")) $("#subFileInput").accept = cfg.file_accept || "";
+    if ($("#subFileHint")) $("#subFileHint").textContent = cfg.file_hint || "";
+    if ($("#subMediaLabel")) $("#subMediaLabel").textContent = cfg.media_label || "Captures / vidéos de présentation (optionnel)";
+  }
+
+  subCatPills?.addEventListener("click", e => {
+    const b = e.target.closest("[data-subcat]");
+    if (b) applySubCategory(b.dataset.subcat);
+  });
+  subCatSel?.addEventListener("change", () => applySubCategory(subCatSel.value));
+  applySubCategory(subCatSel ? subCatSel.value : "design");
+
+  const prefillAuthor = (u) => {
+    if (!u || !subForm) return;
+    const nEl = subForm.querySelector('[name="author_name"]');
+    const eEl = subForm.querySelector('[name="author_email"]');
+    if (nEl && !nEl.value) nEl.value = u.display_name || u.username || "";
+    if (eEl && !eEl.value) eEl.value = u.email || "";
+  };
+  document.addEventListener("sc-account", e => prefillAuthor(e.detail?.user));
+  if (window.__scCurrentUser) prefillAuthor(window.__scCurrentUser);
+  if (openSubBtn) openSubBtn.onclick = () => {
+    prefillAuthor(window.__scCurrentUser);
+    if (st.cat && CATEGORY_CONFIG[st.cat]) applySubCategory(st.cat);
+    UI.open("submitModal");
+  };
+  const updateSplitHint = () => {
+    const box = $("#subSplitHint"), inp = $("#subPriceInput");
+    if (!box) return;
+    if (subFree?.checked) {
+      box.style.display = "none";
+      return;
+    }
+    box.style.display = "block";
+    const val = parseFloat((inp?.value || "").replace(",", "."));
+    if (Number.isFinite(val) && val >= 0.5) {
+      const fee = Math.max(0.01, Math.round(val * 100 * 0.01) / 100);
+      const net = Math.max(0, val - fee);
+      box.innerHTML = `Paiement direct vendeur : vous recevez <strong>${net.toFixed(2).replace(".", ",")} € (99 %)</strong> &bull; commission plateforme <strong>${fee.toFixed(2).replace(".", ",")} € (1 %)</strong>.`;
+    } else {
+      box.innerHTML = `Encaissement direct sur votre compte Stripe : <strong>vous recevez 99 %</strong> de chaque vente (<strong>1 %</strong> de commission plateforme).`;
+    }
+  };
+  if (subFree) subFree.onchange = () => { $("#subPriceWrap").style.display = subFree.checked ? "none" : ""; updateSplitHint(); };
+  $("#subPriceInput")?.addEventListener("input", updateSplitHint);
+  if (location.hash === "#soumettre") UI.open("submitModal");
+  subForm?.addEventListener("submit", async e => {
+    e.preventDefault();
+    const btn = $("#submitSendBtn"), stBox = $("#submitStatus");
+    btn.disabled = true;
+    btn.textContent = "Envoi…";
+    stBox.style.display = "none";
+    try {
+      const res = await fetch("/shop/api/submit", { method: "POST", body: new FormData(subForm) });
+      const data = await res.json().catch(() => ({}));
+      if (res.status === 401 && data.redirect) {
+        window.location.href = data.redirect;
+        return;
+      }
+      if (!res.ok) throw new Error(data.error || "Erreur lors de la soumission");
+      subForm.reset();
+      applySubCategory(subCatSel ? subCatSel.value : "design");
+      $("#subPriceWrap").style.display = "";
+      updateSplitHint();
+      stBox.style.display = "block";
+      const setupBtn = data.payout_setup_required
+        ? ` <a href="${esc(data.payout_setup_url || '/account/profile?tab=payouts')}" class="ui-btn sm primary" style="margin-top:8px;display:inline-flex">Connecter mon compte Stripe (99 %)</a>`
+        : "";
+      stBox.innerHTML = `<div class="ui-badge ok" style="padding:10px 14px;display:block">${esc(data.message || "Soumission enregistrée !")}${setupBtn}</div>`;
+      UI.toast("Outil soumis pour validation admin", "ok");
+    } catch (err) {
+      stBox.style.display = "block";
+      stBox.innerHTML = `<div class="ui-badge danger" style="padding:10px 14px;display:block">${esc(err.message)}</div>`;
+      UI.toast(err.message, "err");
+    } finally {
+      btn.disabled = false;
+      btn.textContent = "Envoyer pour validation";
+    }
+  });
   render();
 </script>
 {% endblock %}
