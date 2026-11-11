@@ -9,3 +9,4 @@ curl_cffi
 stripe
 mcp
 cryptography
+semgrep

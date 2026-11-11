@@ -19,9 +19,12 @@ Two families of tools, two authorization models:
 """
 
 import os
+import sys
 import json
 import time
 import uuid
+import shutil
+import tempfile
 import logging
 import subprocess
 from datetime import datetime
@@ -34,6 +37,37 @@ logger = logging.getLogger("sentinel.external_scanners")
 _SENTINEL_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))  # .../security
 _PROJECT_ROOT = os.path.dirname(_SENTINEL_DIR)  # .../SiteCloner-SaaS
 _TOOLS_BIN = os.path.join(os.path.dirname(os.path.abspath(__file__)), "tools_bin")
+_IS_WINDOWS = os.name == "nt"
+
+
+def _resolve_binary(local_candidates: List[str], path_names: List[str]) -> str:
+    """Finds the scanner binary locally (tools_bin or /opt) or on PATH."""
+    for candidate in local_candidates:
+        if candidate and os.path.isfile(candidate):
+            return candidate
+    for name in path_names:
+        found = shutil.which(name)
+        if found:
+            return found
+    return local_candidates[0] if local_candidates else path_names[0]
+
+
+def _resolve_semgrep_binary() -> str:
+    py_dir = os.path.dirname(sys.executable)
+    exe_name = "semgrep.exe" if _IS_WINDOWS else "semgrep"
+    return _resolve_binary([os.path.join(py_dir, exe_name)], ["semgrep"])
+
+
+_ZAP_CANDIDATES = (
+    [os.path.join(_TOOLS_BIN, "zap", "ZAP_2.17.0", "zap.bat")]
+    if _IS_WINDOWS
+    else [
+        "/opt/zap/ZAP_2.17.0/zap.sh",
+        os.path.join(_TOOLS_BIN, "zap", "ZAP_2.17.0", "zap.sh"),
+    ]
+)
+
+_WINDOWS_JAVA_HOME = os.path.join(_TOOLS_BIN, "jre", "jdk-17.0.21+9-jre")
 
 TOOL_REGISTRY: Dict[str, Dict[str, Any]] = {
     "nuclei": {
@@ -41,7 +75,12 @@ TOOL_REGISTRY: Dict[str, Dict[str, Any]] = {
         "description": "Détection de vulnérabilités via des milliers de templates communautaires (CVE connues, mauvaises configurations, expositions).",
         "category": "vuln_scan",
         "target_type": "network",
-        "binary": os.path.join(_TOOLS_BIN, "nuclei", "nuclei.exe"),
+        "binary": _resolve_binary(
+            [
+                os.path.join(_TOOLS_BIN, "nuclei", "nuclei.exe" if _IS_WINDOWS else "nuclei"),
+            ],
+            ["nuclei"],
+        ),
         "max_timeout": 180
     },
     "zap": {
@@ -49,8 +88,8 @@ TOOL_REGISTRY: Dict[str, Dict[str, Any]] = {
         "description": "Scan de sécurité applicatif web automatisé (OWASP Top 10) en mode rapide (quick scan).",
         "category": "web_vuln",
         "target_type": "network",
-        "binary": os.path.join(_TOOLS_BIN, "zap", "ZAP_2.17.0", "zap.bat"),
-        "java_home": os.path.join(_TOOLS_BIN, "jre", "jdk-17.0.21+9-jre"),
+        "binary": _resolve_binary(_ZAP_CANDIDATES, ["zap.bat" if _IS_WINDOWS else "zap.sh", "zaproxy"]),
+        "java_home": _WINDOWS_JAVA_HOME if (_IS_WINDOWS and os.path.isdir(_WINDOWS_JAVA_HOME)) else None,
         "max_timeout": 300
     },
     "semgrep": {
@@ -58,7 +97,7 @@ TOOL_REGISTRY: Dict[str, Dict[str, Any]] = {
         "description": "Analyse statique de code source (SAST) - détecte des dizaines de familles de failles directement dans le code, sans exécuter l'application.",
         "category": "sast",
         "target_type": "local_path",
-        "binary": "semgrep",  # installed on PATH via pip
+        "binary": _resolve_semgrep_binary(),
         "max_timeout": 600
     },
     "trivy": {
@@ -66,7 +105,12 @@ TOOL_REGISTRY: Dict[str, Dict[str, Any]] = {
         "description": "Scan des dépendances/librairies et fichiers pour vulnérabilités connues (CVE) et secrets exposés.",
         "category": "dependency_scan",
         "target_type": "local_path",
-        "binary": os.path.join(_TOOLS_BIN, "trivy", "trivy.exe"),
+        "binary": _resolve_binary(
+            [
+                os.path.join(_TOOLS_BIN, "trivy", "trivy.exe" if _IS_WINDOWS else "trivy"),
+            ],
+            ["trivy"],
+        ),
         "max_timeout": 600
     },
     "gitleaks": {
@@ -74,7 +118,12 @@ TOOL_REGISTRY: Dict[str, Dict[str, Any]] = {
         "description": "Détection de secrets exposés dans le code source (clés API, mots de passe, tokens codés en dur).",
         "category": "secret_scan",
         "target_type": "local_path",
-        "binary": os.path.join(_TOOLS_BIN, "gitleaks", "gitleaks.exe"),
+        "binary": _resolve_binary(
+            [
+                os.path.join(_TOOLS_BIN, "gitleaks", "gitleaks.exe" if _IS_WINDOWS else "gitleaks"),
+            ],
+            ["gitleaks"],
+        ),
         "max_timeout": 600
     }
 }
@@ -137,26 +186,30 @@ def _is_tool_installed(tool_id: str) -> bool:
     if not meta:
         return False
     binary = meta["binary"]
-    if os.path.isabs(binary) or os.sep in binary:
+    if os.path.isabs(binary) or os.sep in binary or (os.altsep and os.altsep in binary):
         return os.path.isfile(binary)
-    # On PATH (e.g. semgrep via pip)
-    from shutil import which
-    return which(binary) is not None
+    return shutil.which(binary) is not None
 
 
 def _count_nuclei_templates() -> int:
     """Counts .yaml template files in Nuclei's configured templates directory."""
     try:
-        cfg_path = os.path.join(os.path.expanduser("~"), "AppData", "Roaming", "nuclei", ".templates-config.json")
-        templates_dir = os.path.join(os.path.expanduser("~"), "nuclei-templates")
-        if os.path.isfile(cfg_path):
-            with open(cfg_path, "r", encoding="utf-8") as f:
-                cfg = json.load(f)
-            templates_dir = cfg.get("nuclei-templates-directory", templates_dir)
+        home = os.path.expanduser("~")
+        templates_dir = os.environ.get("NUCLEI_TEMPLATES_DIR") or os.path.join(home, "nuclei-templates")
+        cfg_candidates = [
+            os.path.join(home, "AppData", "Roaming", "nuclei", ".templates-config.json"),
+            os.path.join(home, ".config", "nuclei", ".templates-config.json"),
+        ]
+        for cfg_path in cfg_candidates:
+            if os.path.isfile(cfg_path):
+                with open(cfg_path, "r", encoding="utf-8") as f:
+                    cfg = json.load(f)
+                templates_dir = cfg.get("nuclei-templates-directory", templates_dir)
+                break
         if not os.path.isdir(templates_dir):
             return 0
         count = 0
-        for root, _dirs, files in os.walk(templates_dir):
+        for _root, _dirs, files in os.walk(templates_dir):
             count += sum(1 for fn in files if fn.endswith((".yaml", ".yml")))
         return count
     except Exception:
@@ -354,10 +407,17 @@ def _build_command(tool_id: str, target: str, options: Dict[str, Any], report_pa
                 "-timeout", "10", "-severity", options.get("severity", "low,medium,high,critical")]
 
     if tool_id == "zap":
-        return [binary, "-cmd", "-quickurl", target, "-quickout", report_path, "-quickprogress"]
+        cmd = [binary]
+        if not _IS_WINDOWS:
+            # Cap JVM heap inside containers where zap.sh would otherwise read host RAM.
+            heap = os.environ.get("ZAP_MAX_HEAP", "-Xmx384m")
+            if heap:
+                cmd.append(heap)
+        cmd.extend(["-cmd", "-quickurl", target, "-quickout", report_path, "-quickprogress"])
+        return cmd
 
     if tool_id == "semgrep":
-        return ["semgrep", "scan", "--config", options.get("config", "auto"),
+        return [binary, "scan", "--config", options.get("config", "auto"),
                 "--json", "--output", report_path, "--quiet", target]
 
     if tool_id == "trivy":
@@ -552,16 +612,17 @@ def execute_tool(tool_id: str, target: str, options: Optional[Dict[str, Any]] = 
         _log_execution(execution_id, tool_id, target, "not_installed", -1, [], "", 0.0, triggered_by, err)
         return {"success": False, "execution_id": execution_id, "status": "not_installed", "error": err}
 
-    report_path = os.path.join(_TOOLS_BIN, f"_report_{execution_id}.json")
+    report_path = os.path.join(tempfile.gettempdir(), f"sentinel_report_{execution_id}.json")
     try:
         cmd = _build_command(tool_id, target, options, report_path)
     except Exception as e:
         return {"success": False, "execution_id": execution_id, "status": "error", "error": str(e)}
 
     env = os.environ.copy()
-    if meta.get("java_home"):
-        env["JAVA_HOME"] = meta["java_home"]
-        env["PATH"] = os.path.join(meta["java_home"], "bin") + os.pathsep + env.get("PATH", "")
+    java_home = meta.get("java_home")
+    if java_home and os.path.isdir(java_home):
+        env["JAVA_HOME"] = java_home
+        env["PATH"] = os.path.join(java_home, "bin") + os.pathsep + env.get("PATH", "")
 
     start_time = time.time()
     status = "completed"

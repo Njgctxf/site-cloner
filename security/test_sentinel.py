@@ -1605,6 +1605,41 @@ NullSessionShares: 1
         self.assertEqual(res["depth"], "deep")
         self.assertIsInstance(res["findings"], list)
 
+    def test_78_external_scanners_cross_platform(self):
+        """Verifies cross-platform resolution, ZAP container heap cap, and Nuclei template counting."""
+        import os
+        import tempfile
+        from unittest import mock
+        from security.sentinel import external_scanners as es
+
+        # 1. PATH fallback when local binary does not exist (Linux Docker layout)
+        with mock.patch("os.path.isfile", return_value=False), \
+             mock.patch("shutil.which", side_effect=lambda name: f"/usr/local/bin/{name}"):
+            self.assertEqual(es._resolve_binary(["/missing/nuclei"], ["nuclei"]), "/usr/local/bin/nuclei")
+
+        # 2. Container heap cap (-Xmx384m) is injected for ZAP on non-Windows hosts
+        with mock.patch.object(es, "_IS_WINDOWS", False), \
+             mock.patch.dict(es.os.environ, {}, clear=False):
+            es.os.environ.pop("ZAP_MAX_HEAP", None)
+            cmd = es._build_command("zap", "https://example.com", {}, "/tmp/zap_out.json")
+            self.assertIn("-Xmx384m", cmd)
+            self.assertIn("-quickurl", cmd)
+
+        # 3. _count_nuclei_templates reads ~/.config/nuclei/.templates-config.json
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tpl_dir = os.path.join(tmpdir, "tpls")
+            cfg_dir = os.path.join(tmpdir, ".config", "nuclei")
+            os.makedirs(tpl_dir, exist_ok=True)
+            os.makedirs(cfg_dir, exist_ok=True)
+            with open(os.path.join(cfg_dir, ".templates-config.json"), "w", encoding="utf-8") as f:
+                json.dump({"nuclei-templates-directory": tpl_dir}, f)
+            with open(os.path.join(tpl_dir, "cve-test.yaml"), "w", encoding="utf-8") as f:
+                f.write("id: cve-test\n")
+            with mock.patch("os.path.expanduser", return_value=tmpdir), \
+                 mock.patch.dict(es.os.environ, {}, clear=False):
+                es.os.environ.pop("NUCLEI_TEMPLATES_DIR", None)
+                self.assertEqual(es._count_nuclei_templates(), 1)
+
 
 if __name__ == "__main__":
     unittest.main()
