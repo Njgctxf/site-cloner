@@ -193,11 +193,38 @@
     }
   };
 
+  UI.typewriter = (el, phrases) => {
+    if (!el || !phrases || !phrases.length) return;
+    let pIdx = 0, cIdx = 0, erasing = false;
+    function tick() {
+      const text = phrases[pIdx];
+      if (!erasing) {
+        cIdx++;
+        el.textContent = text.slice(0, cIdx);
+        if (cIdx === text.length) { erasing = true; setTimeout(tick, 1800); return; }
+        setTimeout(tick, 38 + Math.random() * 20);
+      } else {
+        cIdx--;
+        el.textContent = text.slice(0, cIdx);
+        if (cIdx === 0) { erasing = false; pIdx = (pIdx + 1) % phrases.length; setTimeout(tick, 340); return; }
+        setTimeout(tick, 22);
+      }
+    }
+    tick();
+  };
+
   const boot = () => {
     ensureFavicon();
     UI.setTheme(UI.getTheme());
     if (document.body.classList.contains("ui")) UI.backdrop();
     UI.mountThemeSwitch();
+    document.querySelectorAll("[data-typewriter]").forEach(host => {
+      try {
+        const phrases = JSON.parse(host.dataset.typewriter || "[]");
+        const target = host.querySelector(".ui-type-text") || host;
+        UI.typewriter(target, phrases);
+      } catch (_) {}
+    });
     UI.reveal();
     UI.count();
   };
