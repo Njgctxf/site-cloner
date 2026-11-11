@@ -1672,6 +1672,34 @@ NullSessionShares: 1
             self.assertTrue(res_sg["success"])
             self.assertEqual(seen_semgrep[0][1]["env"].get("PYTHONUTF8"), "1")
 
+        # 5. ZAP structured JSON report parsing
+        with tempfile.TemporaryDirectory() as tmpdir:
+            zap_json = os.path.join(tmpdir, "zap_out.json")
+            with open(zap_json, "w", encoding="utf-8") as f:
+                json.dump({
+                    "site": [{
+                        "@name": "https://innotech-lab.local",
+                        "alerts": [{
+                            "pluginid": "10038",
+                            "name": "Content Security Policy (CSP) Header Not Set",
+                            "riskcode": "2",
+                            "desc": "<p>CSP missing</p>",
+                            "count": "3",
+                            "instances": [{"uri": "https://innotech-lab.local/"}]
+                        }]
+                    }]
+                }, f)
+            parsed_zap = es._parse_findings("zap", zap_json, "raw fallback")
+            self.assertEqual(len(parsed_zap), 1)
+            self.assertEqual(parsed_zap[0]["id"], "zap-10038")
+            self.assertEqual(parsed_zap[0]["severity"], "MEDIUM")
+            self.assertEqual(parsed_zap[0]["description"], "CSP missing")
+
+        # 6. scanner.check_target_authorization accepts Guardian enterprise mandates
+        from security.scanner import check_target_authorization
+        ok_mandate, _ = check_target_authorization("https://innotech-lab.local")
+        self.assertTrue(ok_mandate)
+
 
 if __name__ == "__main__":
     unittest.main()

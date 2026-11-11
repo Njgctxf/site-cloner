@@ -49,8 +49,6 @@ SENSITIVE_PATHS = [
     (".env", "Configuration & secrets d'environnement"),
     (".git/config", "Dépôt Git exposé"),
     (".git/HEAD", "Contrôle de version Git exposé"),
-    ("robots.txt", "Fichier de règles d'exploration"),
-    ("sitemap.xml", "Plan du site public"),
     ("admin", "Interface d'administration potentielle"),
     ("api", "Racine des points de terminaison d'API"),
     ("swagger.json", "Documentation OpenAPI/Swagger"),

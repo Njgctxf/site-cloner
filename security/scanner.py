@@ -142,7 +142,7 @@ from .cve_feed import detect_server_and_cms_cves
 def check_target_authorization(url):
     """
     Validates that:
-    1. The domain has been verified as owned by the user (or is an authorized educational lab host)
+    1. The domain has been verified as owned by the user (or is authorized in Guardian universal scope / local lab)
     2. The destination passes strict Anti-SSRF checks (public routable IP, no cloud metadata, no private RFC1918)
     """
     parsed = urllib.parse.urlparse(url)
@@ -150,10 +150,18 @@ def check_target_authorization(url):
     if not hostname:
         return False, "Nom d'hôte invalide ou absent."
 
-    if not is_domain_authorized(hostname):
+    authorized = is_domain_authorized(hostname)
+    allow_internal = True
+    if not authorized:
+        from .sentinel.asset_registry import is_target_in_universal_scope
+        in_scope, _msg, ctx = is_target_in_universal_scope(url)
+        authorized = bool(in_scope)
+        allow_internal = bool(ctx and ctx.get("scope") in ("local_lab", "enterprise_mandate", "enterprise_cidr"))
+
+    if not authorized:
         return False, f"Cible non autorisée ({hostname}). Pour auditer ce domaine, vous devez d'abord l'enregistrer et prouver sa propriété (DNS TXT ou fichier HTTP challenge)."
 
-    is_safe, _, _, err = validate_target_url(url, allow_local_lab=True)
+    is_safe, _, _, err = validate_target_url(url, allow_local_lab=allow_internal)
     if not is_safe:
         return False, f"Rejet de sécurité Anti-SSRF : {err}"
 

@@ -496,8 +496,39 @@ def _parse_findings(tool_id: str, report_path: str, raw_stdout: str) -> List[Dic
                     })
 
         elif tool_id == "zap":
-            # Quick-scan output is a progress report, not structured JSON; surface raw output as a single entry.
-            if raw_stdout:
+            if os.path.isfile(report_path) and os.path.getsize(report_path) > 0:
+                import re
+                with open(report_path, "r", encoding="utf-8", errors="ignore") as f:
+                    raw_report = f.read().strip()
+                if raw_report.startswith("{"):
+                    data = json.loads(raw_report)
+                    risk_map = {"3": "HIGH", "2": "MEDIUM", "1": "LOW", "0": "INFO"}
+                    sites = data.get("site") or []
+                    if isinstance(sites, dict):
+                        sites = [sites]
+                    for site in sites:
+                        site_name = site.get("@name", "")
+                        alerts = site.get("alerts") or []
+                        if isinstance(alerts, dict):
+                            alerts = [alerts]
+                        for a in alerts:
+                            rc = str(a.get("riskcode", "")).strip()
+                            sev = risk_map.get(rc) or (a.get("riskdesc", "INFO").split()[0].upper())
+                            if sev == "INFORMATIONAL":
+                                sev = "INFO"
+                            desc = re.sub(r"<[^>]+>", " ", a.get("desc") or "")
+                            desc = re.sub(r"\s+", " ", desc).strip()
+                            insts = a.get("instances") or []
+                            first_uri = insts[0].get("uri") if (isinstance(insts, list) and insts and isinstance(insts[0], dict)) else site_name
+                            findings.append({
+                                "id": f"zap-{a.get('pluginid') or a.get('alertRef') or 'alert'}",
+                                "severity": sev,
+                                "title": a.get("name") or a.get("alert") or "Alerte OWASP ZAP",
+                                "url": first_uri or site_name,
+                                "count": int(a.get("count") or len(insts) or 1),
+                                "description": desc[:300],
+                            })
+            if not findings and raw_stdout:
                 findings.append({"id": "zap_quickscan", "severity": "INFO", "title": "Résultat brut ZAP quick-scan", "raw": raw_stdout[:2000]})
 
     except Exception as e:
