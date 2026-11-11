@@ -80,7 +80,7 @@
     <a href="/__sc/studio/{{ site_id }}">← Studio</a>
     <select id="page"></select>
     <div class="seg hide-s" id="device">
-      <button data-w="100%" class="on" title="Ordinateur">🖥</button><button data-w="820px" title="Tablette">▭</button><button data-w="390px" title="Mobile">📱</button>
+      <button data-w="100%" class="on" title="Ordinateur">Bureau</button><button data-w="820px" title="Tablette">Tablette</button><button data-w="390px" title="Mobile">Mobile</button>
     </div>
     <div class="seg" id="mode">
       <button data-m="select" class="on" title="Cliquer dans la page sélectionne l'élément">Sélection</button><button data-m="nav" title="Utiliser la page normalement">Navigation</button>
@@ -108,7 +108,7 @@ const $ = id => document.getElementById(id);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const norm = p => (p || '/').replace(/\/index\.html?$/i, '/').replace(/(.)\/+$/, '$1') || '/';
 let base = '', tree = null, byId = {}, ops = [], savedOps = '[]', undoStack = [], selected = null, frameReady = false;
-const ICON = {heading:'H', text:'¶', image:'🖼', video:'▶', '3d':'3D', embed:'⧉', link:'🔗', button:'▣', form:'▤'};
+const ICON = {heading:'H', text:'T', image:'IMG', video:'VID', '3d':'3D', embed:'EMB', link:'LNK', button:'BTN', form:'FRM'};
 const TYPE = {heading:'Titre', text:'Texte', image:'Image', video:'Vidéo', '3d':'Élément 3D', embed:'Intégration', link:'Lien', button:'Bouton', form:'Formulaire'};
 
 function toast(m) { const t = $('toast'); t.textContent = m; t.classList.add('on'); clearTimeout(t._h); t._h = setTimeout(() => t.classList.remove('on'), 2600); }
@@ -263,8 +263,8 @@ function renderProps() {
   }
   const hidden = !!opFor(it.sel, 'hide'), dup = !!opFor(it.sel, 'dup');
   h += `<div class="acts" style="margin-top:16px;border-top:1px solid var(--border);padding-top:12px">
-    <button class="btn" id="fHide">${hidden ? '👁 Réafficher' : '🚫 Masquer'}</button>
-    ${['block', 'image', 'button', 'link', 'heading', 'text'].includes(it.type) ? `<button class="btn" id="fDup">${dup ? 'Retirer le doublon' : '⧉ Dupliquer'}</button>` : ''}
+    <button class="btn" id="fHide">${hidden ? 'Réafficher' : 'Masquer'}</button>
+    ${['block', 'image', 'button', 'link', 'heading', 'text'].includes(it.type) ? `<button class="btn" id="fDup">${dup ? 'Retirer le doublon' : 'Dupliquer'}</button>` : ''}
     ${editedSel(it.sel) ? '<button class="btn danger" id="fReset">Tout annuler sur cet élément</button>' : ''}</div>`;
   P.innerHTML = h;
 

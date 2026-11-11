@@ -10,23 +10,25 @@
   <link rel="stylesheet" href="/__sc/static/ui.css">
   <style>
     .m-card { overflow: hidden; display: flex; flex-direction: column; text-decoration: none; cursor: pointer; }
-    .m-media { position: relative; aspect-ratio: 16/10; overflow: hidden; background: linear-gradient(135deg, #191d33, #2a1b3f); }
+    .m-media { position: relative; aspect-ratio: 16/10; overflow: hidden; background: linear-gradient(135deg, #0b1433, #17123a); }
     .m-media img, .m-media video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; transition: transform 1s var(--ease), opacity .4s; }
     .m-media video { opacity: 0; }
     .m-card:hover .m-media img { transform: scale(1.06); }
     .m-card:hover .m-media video.ready { opacity: 1; }
-    .m-media .ph { position: absolute; inset: 0; display: grid; place-items: center; font-size: 2.6rem; opacity: .8; }
-    .m-media::after { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, transparent 55%, rgba(7, 8, 13, .75)); pointer-events: none; }
+    .m-media .ph { position: absolute; inset: 0; display: grid; place-items: center; color: var(--accent); opacity: .65; }
+    .m-media::after { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, transparent 55%, rgba(3, 7, 24, .82)); pointer-events: none; }
     .m-top { position: absolute; left: 12px; top: 12px; right: 12px; display: flex; gap: 6px; z-index: 2; align-items: flex-start; }
-    .m-top .ui-badge { backdrop-filter: blur(8px); background: rgba(7, 8, 13, .6); color: #e3e6f3; }
+    .m-top .ui-badge { backdrop-filter: blur(8px); background: rgba(3, 7, 24, .65); color: #e2e8f0; }
     .m-fav {
-      margin-left: auto; width: 36px; height: 36px; border-radius: 50%; border: 1px solid rgba(255, 255, 255, .15); background: rgba(7, 8, 13, .55);
-      backdrop-filter: blur(8px); display: grid; place-items: center; cursor: pointer; color: #fff; font-size: 1rem; transition: transform .3s var(--ease), background .2s;
+      margin-left: auto; width: 36px; height: 36px; border-radius: 50%; border: 1px solid rgba(255, 255, 255, .16); background: rgba(3, 7, 24, .62);
+      backdrop-filter: blur(8px); display: grid; place-items: center; cursor: pointer; color: #cbd5e1; transition: transform .3s var(--ease), background .2s, color .2s, border-color .2s;
     }
-    .m-fav:hover { transform: scale(1.12); }
-    .m-fav.on { background: rgba(255, 92, 157, .25); border-color: rgba(255, 92, 157, .6); }
+    .m-fav svg { width: 16px; height: 16px; }
+    .m-fav:hover { transform: scale(1.1); color: #fff; }
+    .m-fav.on { background: rgba(96, 165, 250, .24); border-color: var(--accent); color: var(--accent); }
+    body.theme-violet .m-fav.on { background: rgba(138, 114, 255, .28); }
     .m-fav.pop { animation: m-pop .45s var(--ease); }
-    @keyframes m-pop { 40% { transform: scale(1.35); } }
+    @keyframes m-pop { 40% { transform: scale(1.32); } }
     .m-quick {
       position: absolute; left: 50%; bottom: 14px; z-index: 2; transform: translate(-50%, 12px); opacity: 0; transition: all .35s var(--ease);
     }
@@ -37,7 +39,8 @@
     .m-foot { margin-top: auto; display: flex; align-items: center; justify-content: space-between; padding-top: 6px; }
     .m-price { font-weight: 800; font-size: 1.05rem; }
     .m-price.free { background: linear-gradient(90deg, var(--ok), var(--cyan)); -webkit-background-clip: text; background-clip: text; color: transparent; }
-    .m-meta { display: flex; gap: 10px; color: var(--dim); font-size: .78rem; }
+    .m-meta { display: inline-flex; gap: 10px; color: var(--dim); font-size: .78rem; align-items: center; font-family: var(--mono); }
+    .m-meta span { display: inline-flex; align-items: center; gap: 4px; }
     .m-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 20px; }
     .m-tag { font-size: .75rem; color: var(--muted); padding: 3px 9px; border-radius: 999px; border: 1px solid var(--line); }
   </style>
@@ -45,19 +48,21 @@
 </head>
 <body class="ui">
   <nav class="ui-nav">
-    <a class="ui-brand" href="/shop/"><span class="ui-logo">⚡</span> SiteCloner <span class="ui-badge accent">Market</span></a>
+    <a class="ui-brand" href="/__sc/home"><img class="rx-orb" src="/__sc/static/reflex/img/brand-orbit.svg" alt=""><span>SiteCloner</span> <span class="ui-badge accent">Market</span></a>
     <div class="ui-links">
+      <a href="/__sc/home">Accueil</a>
       <a href="/__sc/">Cloneur</a>
       <a href="/shop/" class="{% block nav_market %}on{% endblock %}">Marketplace</a>
-      <a href="/__sc/security/">Sécurité</a>
-      <a href="/shop/#favoris" data-favlink>♥ Favoris <span data-favcount></span></a>
+      <a href="/__sc/security/">Sécurité IA</a>
+      <a href="/shop/#favoris" data-favlink>Favoris <span data-favcount></span></a>
       <a href="/admin">Admin</a>
     </div>
   </nav>
   {% block content %}{% endblock %}
   <script src="/__sc/static/ui.js"></script>
   <script>
-    // Favorites live in the visitor's browser (no account needed)
+    const HEART_ON = `<svg viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="1.8"><path d="M12 21s-7-4.35-9.5-8.4C.6 9.3 2.5 5 6.8 5c2.2 0 3.9 1.1 5.2 2.7C13.3 6.1 15 5 17.2 5c4.3 0 6.2 4.3 4.3 7.6C19 16.65 12 21 12 21z"/></svg>`;
+    const HEART_OFF = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7-4.35-9.5-8.4C.6 9.3 2.5 5 6.8 5c2.2 0 3.9 1.1 5.2 2.7C13.3 6.1 15 5 17.2 5c4.3 0 6.2 4.3 4.3 7.6C19 16.65 12 21 12 21z"/></svg>`;
     window.Favs = {
       key: "sc_market_favs",
       all() { try { return JSON.parse(localStorage.getItem(this.key) || "[]"); } catch (e) { return []; } },
@@ -69,6 +74,7 @@
         this.badge(); document.dispatchEvent(new CustomEvent("favs")); return on;
       },
       badge() { const n = this.all().length; document.querySelectorAll("[data-favcount]").forEach(e => e.textContent = n ? `(${n})` : ""); },
+      heartSvg(on) { return on ? HEART_ON : HEART_OFF; }
     };
     Favs.badge();
     document.addEventListener("click", e => {
@@ -76,10 +82,10 @@
       if (!b) return;
       e.preventDefault(); e.stopPropagation();
       const id = +b.dataset.fav, on = Favs.toggle(id);
-      document.querySelectorAll(`[data-fav="${id}"]`).forEach(x => { x.classList.toggle("on", on); x.textContent = on ? "♥" : "♡"; x.classList.remove("pop"); void x.offsetWidth; x.classList.add("pop"); });
+      document.querySelectorAll(`[data-fav="${id}"]`).forEach(x => { x.classList.toggle("on", on); x.innerHTML = Favs.heartSvg(on); x.classList.remove("pop"); void x.offsetWidth; x.classList.add("pop"); });
       UI.toast(on ? "Ajouté aux favoris" : "Retiré des favoris", on ? "ok" : "");
     });
-    document.querySelectorAll("[data-fav]").forEach(x => { const on = Favs.has(+x.dataset.fav); x.classList.toggle("on", on); x.textContent = on ? "♥" : "♡"; });
+    document.querySelectorAll("[data-fav]").forEach(x => { const on = Favs.has(+x.dataset.fav); x.classList.toggle("on", on); x.innerHTML = Favs.heartSvg(on); });
     // Hover videos on cards
     document.addEventListener("pointerover", e => {
       const c = e.target.closest(".m-card"); if (!c) return;

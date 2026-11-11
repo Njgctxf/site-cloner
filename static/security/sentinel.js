@@ -224,7 +224,7 @@ async function sendMessage() {
         if (loader) loader.remove();
 
         if (data.error) {
-            appendMessageToUI("assistant", `⚠️ Erreur : ${data.error}`);
+            appendMessageToUI("assistant", `Erreur : ${data.error}`);
         } else {
             if (data.conversation_id && !currentConversationId) {
                 currentConversationId = data.conversation_id;
@@ -236,7 +236,7 @@ async function sendMessage() {
     } catch (e) {
         const loader = document.getElementById(loaderId);
         if (loader) loader.remove();
-        appendMessageToUI("assistant", `⚠️ Erreur réseau : Impossible de contacter Ulton AI (${e.message})`);
+        appendMessageToUI("assistant", `Erreur réseau : Impossible de contacter Ulton AI (${e.message})`);
         scrollChatToBottom();
     }
 }

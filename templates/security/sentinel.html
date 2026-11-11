@@ -4,15 +4,17 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ULTON AI — Agent Intelligent de Cybersécurité</title>
+    <link rel="stylesheet" href="/__sc/static/ui.css">
     <link rel="stylesheet" href="/__sc/static/tool.css">
     <link rel="stylesheet" href="/__sc/static/security/cyberlab.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="/__sc/static/ui.js"></script>
     <style>
         :root {
-            --sentinel-bg: #090d16;
-            --sentinel-card: #0f172a;
-            --sentinel-card-border: #1e293b;
-            --sentinel-accent: #38bdf8;
+            --sentinel-bg: var(--bg);
+            --sentinel-card: var(--surface);
+            --sentinel-card-border: var(--line);
+            --sentinel-accent: var(--accent);
             --sentinel-accent-glow: rgba(56, 189, 248, 0.15);
             --sentinel-red: #ef4444;
             --sentinel-green: #10b981;
@@ -20,9 +22,9 @@
         }
 
         body {
-            background-color: var(--sentinel-bg);
-            color: #f1f5f9;
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            font-family: var(--font);
             margin: 0;
             display: flex;
             height: 100vh;
@@ -37,53 +39,56 @@
 
         /* Sidebar */
         .sentinel-sidebar {
-            width: 320px;
-            background: #0a0f1d;
-            border-right: 1px solid var(--sentinel-card-border);
+            width: 300px;
+            background: rgba(6, 10, 28, 0.72);
+            backdrop-filter: blur(18px);
+            border-right: 1px solid var(--line);
             display: flex;
             flex-direction: column;
             flex-shrink: 0;
         }
+        body.theme-violet .sentinel-sidebar { background: rgba(10, 7, 28, 0.76); }
 
         .sidebar-header {
-            padding: 1.2rem;
-            border-bottom: 1px solid var(--sentinel-card-border);
+            padding: 1.15rem 1.2rem;
+            border-bottom: 1px solid var(--line);
             display: flex;
             align-items: center;
             justify-content: space-between;
         }
 
         .brand-title {
-            font-size: 1.15rem;
-            font-weight: 800;
-            letter-spacing: 0.5px;
+            font-size: 1.08rem;
+            font-weight: 700;
+            letter-spacing: -0.02em;
             display: flex;
             align-items: center;
             gap: 10px;
-            color: #fff;
+            color: var(--text);
         }
 
         .brand-badge {
-            background: linear-gradient(135deg, #0284c7, #38bdf8);
-            color: #fff;
-            font-size: 0.65rem;
-            padding: 2px 7px;
-            border-radius: 4px;
-            font-weight: 700;
+            background: var(--grad-soft);
+            border: 1px solid var(--line-strong);
+            color: var(--accent);
+            font-size: 0.66rem;
+            padding: 2px 8px;
+            border-radius: 999px;
+            font-weight: 600;
             text-transform: uppercase;
         }
 
         .provider-selector-box {
-            padding: 1rem;
-            background: rgba(15, 23, 42, 0.6);
-            border-bottom: 1px solid var(--sentinel-card-border);
+            padding: 0.95rem 1rem;
+            background: rgba(255, 255, 255, 0.02);
+            border-bottom: 1px solid var(--line);
         }
 
         .selector-label {
             font-size: 0.72rem;
             text-transform: uppercase;
-            color: #94a3b8;
-            letter-spacing: 0.5px;
+            color: var(--dim);
+            letter-spacing: 0.05em;
             margin-bottom: 6px;
             display: flex;
             justify-content: space-between;
@@ -92,10 +97,10 @@
         .styled-select {
             width: 100%;
             padding: 8px 12px;
-            background: #0f172a;
-            border: 1px solid #334155;
-            color: #f8fafc;
-            border-radius: 6px;
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid var(--line);
+            color: var(--text);
+            border-radius: 10px;
             font-size: 0.85rem;
             outline: none;
             cursor: pointer;
@@ -238,9 +243,9 @@
         }
 
         .msg-user .msg-content {
-            background: #0284c7;
+            background: var(--grad);
             color: #fff;
-            border-radius: 12px 12px 2px 12px;
+            border-radius: 16px 16px 4px 16px;
             padding: 10px 16px;
         }
 
@@ -249,12 +254,13 @@
         }
 
         .msg-assistant .msg-content {
-            background: #0f172a;
-            border: 1px solid #1e293b;
-            color: #e2e8f0;
-            border-radius: 12px 12px 12px 2px;
+            background: var(--surface);
+            border: 1px solid var(--line);
+            color: var(--text);
+            border-radius: 16px 16px 16px 4px;
             padding: 14px 18px;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+            backdrop-filter: blur(14px);
+            box-shadow: var(--shadow);
         }
 
         .avatar {
@@ -269,24 +275,24 @@
         }
 
         .avatar-user {
-            background: #334155;
-            color: #cbd5e1;
+            background: rgba(255, 255, 255, 0.08);
+            color: var(--text);
         }
 
         .avatar-sentinel {
-            background: linear-gradient(135deg, #0284c7, #a855f7);
+            background: var(--grad);
             color: #fff;
-            box-shadow: 0 0 10px rgba(56, 189, 248, 0.3);
+            box-shadow: 0 0 14px -2px var(--glow-a);
         }
 
         /* Tool Execution Card */
         .tool-card {
             margin: 10px 0;
             padding: 12px;
-            background: #070b14;
-            border: 1px solid #1e293b;
-            border-left: 3px solid var(--sentinel-accent);
-            border-radius: 6px;
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid var(--line);
+            border-left: 3px solid var(--accent);
+            border-radius: 12px;
             font-size: 0.8rem;
         }
 
@@ -295,17 +301,17 @@
             align-items: center;
             justify-content: space-between;
             font-weight: 700;
-            color: var(--sentinel-accent);
+            color: var(--accent);
             margin-bottom: 6px;
         }
 
         .tool-details {
-            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-            background: #020617;
+            font-family: var(--mono);
+            background: rgba(2, 6, 23, 0.65);
             padding: 8px;
-            border-radius: 4px;
+            border-radius: 8px;
             overflow-x: auto;
-            color: #94a3b8;
+            color: var(--muted);
             font-size: 0.75rem;
         }
 
@@ -535,28 +541,28 @@
         <div class="chat-input-area">
             <div class="quick-prompts">
                 <div class="prompt-pill" onclick="sendQuickPrompt('Exécute un diagnostic complet de sécurité sur https://innotech-lab.local')">
-                    🔍 Diagnostic Global Lab
+                    <i class="fa-solid fa-magnifying-glass"></i> Diagnostic Global Lab
                 </div>
                 <div class="prompt-pill" onclick="sendQuickPrompt('Vérifie si mon jeton JWT présente des failles (alg none ou clé faible)')">
-                    🔑 Audit Sécurité JWT
+                    <i class="fa-solid fa-key"></i> Audit Sécurité JWT
                 </div>
                 <div class="prompt-pill" onclick="sendQuickPrompt('Vérifie la robustesse de l\'endpoint d\'upload sur https://innotech-lab.local/upload')">
-                    📁 Test Upload Fichiers
+                    <i class="fa-solid fa-folder-open"></i> Test Upload Fichiers
                 </div>
                 <div class="prompt-pill" onclick="sendQuickPrompt('Teste les vulnérabilités de Race Condition sur l\'application d\'un coupon')">
-                    ⚡ Concurrence & Race Condition
+                    <i class="fa-solid fa-bolt"></i> Concurrence &amp; Race Condition
                 </div>
                 <div class="prompt-pill" onclick="sendQuickPrompt('Vérifie si le panier autorise la manipulation de prix négatifs ou nuls')">
-                    🛒 Logique Métier & Prix
+                    <i class="fa-solid fa-cart-shopping"></i> Logique Métier &amp; Prix
                 </div>
                 <div class="prompt-pill" onclick="sendQuickPrompt('Vérifie le statut du serveur Kali Linux MCP et liste les outils de sécurité disponibles')" style="border-color: rgba(56, 189, 248, 0.4); color: #38bdf8;">
-                    🐧 Kali Linux MCP
+                    <i class="fa-brands fa-linux"></i> Kali Linux MCP
                 </div>
                 <div class="prompt-pill" onclick="openPentagiModal()" style="border-color: rgba(16, 185, 129, 0.4); color: #10b981;">
-                    🛡️ PentAGI Intelligence
+                    <i class="fa-solid fa-shield-halved"></i> PentAGI Intelligence
                 </div>
                 <div class="prompt-pill" onclick="openSkillsLib()" style="border-color: rgba(167, 139, 250, 0.4); color: #a78bfa;">
-                    📚 1774 Skills MITRE/OWASP/CWE
+                    <i class="fa-solid fa-book-open"></i> 1774 Skills MITRE/OWASP/CWE
                 </div>
             </div>
 

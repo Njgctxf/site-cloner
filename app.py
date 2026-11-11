@@ -34,6 +34,7 @@ from studio import init_studio
 from security import init_security, self_protect_check
 
 app = Flask(__name__, template_folder="templates", static_folder="static", static_url_path="/__sc/static")
+app.config["TEMPLATES_AUTO_RELOAD"] = True
 
 @app.before_request
 def ultron_self_shield():
@@ -163,7 +164,7 @@ def serve_active_clone():
         return None
     sid = request.cookies.get(SITE_COOKIE)
     if not sid or not (CLONED_DIR / sid).is_dir():
-        return redirect("/__sc/") if request.path == "/" else None
+        return Response(render_template("home.html"), mimetype="text/html") if request.path == "/" else None
     if request.method not in ("GET", "HEAD"):
         res = resolve_post(CLONED_DIR / sid, request.full_path.rstrip("?"), request.get_data())
         if res:  # recorded data request (GraphQL, JSON API)
@@ -171,6 +172,13 @@ def serve_active_clone():
         return Response(status=204)  # analytics beacons, forms: no backend offline
     out = _send_resolved(CLONED_DIR / sid, request.full_path.rstrip("?"))
     return out if out is not None else (jsonify({"error": "Not found"}), 404)
+
+
+@app.route("/__sc/home")
+def home_page():
+    resp = Response(render_template("home.html"), mimetype="text/html")
+    resp.delete_cookie(SITE_COOKIE, path="/")
+    return resp
 
 
 @app.route("/__sc/")
@@ -231,6 +239,11 @@ def start_clone():
                     "folder": str(dest_dir)
                 }
                 save_manifest(manifest)
+                try:
+                    from shop import sync_cloned_sites
+                    sync_cloned_sites()
+                except Exception:
+                    pass
                 jobs[job_id]["status"] = "completed"
                 jobs[job_id]["result"] = res
             else:
@@ -262,6 +275,8 @@ def list_sites():
         sid = s.get("id")
         # the cloner writes _map.json last: a clone without it was interrupted (server stopped, crash...)
         s["incomplete"] = sid not in running and not (CLONED_DIR / sid / "_map.json").exists()
+        thumbs_dir = CLONED_DIR / sid / "_studio" / "thumbs"
+        s["has_cover"] = thumbs_dir.is_dir() and any(thumbs_dir.glob("*.jpg"))
         if sid in active_servers:
             s["active_port"] = active_servers[sid]["port"]
         else:

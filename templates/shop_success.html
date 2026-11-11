@@ -5,14 +5,14 @@
 <main class="ui-wrap" style="max-width:640px;text-align:center">
   <div class="ui-card ui-border-glow" style="padding:clamp(28px,5vw,48px)" data-reveal="zoom">
   {% if expired %}
-    <div style="font-size:3rem" class="ui-float">⌛</div>
+    <div style="margin-bottom:14px;color:var(--warn)" class="ui-float"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></div>
     <h1 class="ui-title" style="font-size:2rem">Lien expiré</h1>
     <p class="ui-lead" style="margin:0 auto">Ce lien a expiré ou a atteint sa limite de téléchargements. Contacte le vendeur en indiquant ton e-mail ({{ order.email }}).</p>
   {% elif link %}
-    <div style="font-size:3rem" class="ui-float">🎉</div>
+    <div style="margin-bottom:14px;color:var(--ok)" class="ui-float"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M8.5 12.5l2.5 2.5 5-5"/></svg></div>
     <h1 class="ui-title" style="font-size:2rem"><span class="ui-grad-text">Merci pour ton achat</span></h1>
     <p class="ui-lead" style="margin:0 auto 24px">Ton lien de téléchargement est prêt (valable 7 jours, 5 téléchargements).</p>
-    <a class="ui-btn primary" href="{{ link }}">⬇ Télécharger mon projet</a>
+    <a class="ui-btn primary" href="{{ link }}">Télécharger mon projet</a>
     <p class="ui-muted" style="margin-top:18px;font-size:.88rem">Garde cette page ou ce lien : il est personnel.</p>
   {% else %}
     <meta http-equiv="refresh" content="4">

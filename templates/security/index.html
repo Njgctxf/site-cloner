@@ -5,1257 +5,946 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ULTON AI — Audit & Sécurité Web pour Entreprises</title>
     
-    <!-- Fonts -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Fonts & Shared Reflex Cosmic System -->
+    <link rel="icon" type="image/svg+xml" href="/__sc/static/reflex/img/brand-orbit.svg">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="/__sc/static/ui.css">
+    <script src="/__sc/static/ui.js"></script>
 
     <style>
         :root {
-            --bg-body: #07090e;
-            --bg-surface: #0e121b;
-            --bg-card: #131926;
-            --bg-card-hover: #192234;
-            --border: #1e283d;
-            --border-highlight: #38bdf8;
-            
-            --cyan: #38bdf8;
-            --cyan-glow: rgba(56, 189, 248, 0.25);
-            --purple: #a855f7;
-            --green: #10b981;
-            --green-glow: rgba(16, 185, 129, 0.2);
-            --red: #ef4444;
-            --red-glow: rgba(239, 68, 68, 0.2);
-            --orange: #f59e0b;
-            --gold: #fbbf24;
-            
-            --text-primary: #f8fafc;
-            --text-secondary: #94a3b8;
-            --text-muted: #64748b;
-            
-            --font-main: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
-            --font-mono: 'JetBrains Mono', monospace;
+            --bg-body: var(--bg);
+            --bg-surface: var(--surface);
+            --bg-card: rgba(9, 14, 36, 0.76);
+            --bg-card-hover: rgba(15, 24, 58, 0.86);
+            --border: var(--line);
+            --border-highlight: var(--accent);
+
+            --cyan: var(--accent);
+            --cyan-glow: rgba(96, 165, 250, 0.32);
+            --purple: var(--accent-2);
+            --green: var(--ok);
+            --green-glow: rgba(52, 211, 153, 0.22);
+            --red: var(--danger);
+            --red-glow: rgba(251, 113, 133, 0.24);
+            --orange: var(--warn);
+            --gold: #c2b2ff;
+
+            --text-primary: var(--text);
+            --text-secondary: var(--muted);
+            --text-muted: var(--dim);
+
+            --font-main: var(--font);
+            --font-mono: var(--mono);
         }
 
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-        }
-
-        body {
-            background-color: var(--bg-body);
-            color: var(--text-primary);
-            font-family: var(--font-main);
-            min-height: 100vh;
-            overflow-x: hidden;
-            background-image: 
-                radial-gradient(circle at 50% 0%, rgba(56, 189, 248, 0.08) 0%, transparent 60%),
-                radial-gradient(circle at 100% 50%, rgba(168, 85, 247, 0.05) 0%, transparent 40%);
-        }
-
-        /* --- HEADER & NAVBAR --- */
-        .navbar {
-            background: rgba(14, 18, 27, 0.85);
-            backdrop-filter: blur(12px);
-            border-bottom: 1px solid var(--border);
-            position: sticky;
-            top: 0;
-            z-index: 100;
-            padding: 0.85rem 2rem;
+        /* --- SUB-TOOLBAR (Audit / WAF / Outils SOC) --- */
+        .sec-subbar {
             display: flex;
             align-items: center;
             justify-content: space-between;
-        }
-
-        .nav-brand {
-            display: flex;
-            align-items: center;
             gap: 12px;
-            text-decoration: none;
-            color: #fff;
+            flex-wrap: wrap;
+            max-width: 980px;
+            margin: 6px auto 12px;
         }
-
-        .nav-brand-logo {
-            width: 40px;
-            height: 40px;
-            background: linear-gradient(135deg, #0284c7 0%, #38bdf8 50%, #a855f7 100%);
-            border-radius: 10px;
-            display: flex;
+        .sec-subtabs {
+            display: inline-flex;
             align-items: center;
-            justify-content: center;
-            font-size: 1.25rem;
-            box-shadow: 0 0 20px var(--cyan-glow);
-        }
-
-        .nav-brand-text h1 {
-            font-size: 1.15rem;
-            font-weight: 800;
-            letter-spacing: -0.3px;
-        }
-
-        .nav-brand-text span {
-            font-size: 0.72rem;
-            color: var(--text-muted);
-            letter-spacing: 0.5px;
-            text-transform: uppercase;
-        }
-
-        .nav-tabs {
-            display: flex;
-            gap: 6px;
-            background: #090c13;
+            gap: 4px;
             padding: 4px;
-            border-radius: 10px;
-            border: 1px solid var(--border);
+            border-radius: 999px;
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid var(--line);
+            backdrop-filter: blur(14px);
         }
-
         .nav-tab-btn {
             background: transparent;
-            border: none;
-            color: var(--text-secondary);
-            font-family: var(--font-main);
-            font-size: 0.88rem;
-            font-weight: 600;
-            padding: 8px 18px;
-            border-radius: 8px;
+            border: 1px solid transparent;
+            color: var(--muted);
+            font: 500 0.84rem var(--font);
+            padding: 7px 14px;
+            border-radius: 999px;
             cursor: pointer;
-            transition: all 0.2s ease;
-            display: flex;
+            transition: all 0.22s var(--ease);
+            display: inline-flex;
+            align-items: center;
+            gap: 7px;
+            white-space: nowrap;
+        }
+        .nav-tab-btn:hover { color: var(--text); background: rgba(255, 255, 255, 0.05); }
+        .nav-tab-btn.active {
+            color: var(--text);
+            background: var(--grad-soft);
+            border-color: var(--line-strong);
+            box-shadow: 0 2px 14px -4px rgba(0, 0, 0, 0.65);
+        }
+        .sec-plan-bar {
+            display: inline-flex;
             align-items: center;
             gap: 8px;
         }
-
-        .nav-tab-btn:hover {
-            color: #fff;
-            background: rgba(255, 255, 255, 0.04);
-        }
-
-        .nav-tab-btn.active {
-            color: #fff;
-            background: var(--bg-card);
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
-            border: 1px solid var(--border);
-        }
-
-        .nav-actions {
-            display: flex;
-            align-items: center;
-            gap: 14px;
-        }
-
         .badge-plan {
-            background: rgba(16, 185, 129, 0.12);
-            color: var(--green);
-            border: 1px solid rgba(16, 185, 129, 0.3);
-            font-size: 0.75rem;
-            font-weight: 700;
-            padding: 5px 12px;
-            border-radius: 20px;
-            display: flex;
+            display: inline-flex;
             align-items: center;
             gap: 6px;
+            font: 500 0.78rem var(--font);
+            color: var(--muted);
+            padding: 6px 12px;
+            border-radius: 999px;
+            border: 1px solid var(--line);
+            background: rgba(255, 255, 255, 0.03);
         }
-
+        .badge-plan i { color: var(--ok); font-size: 0.72rem; }
         .btn-upgrade-pro {
-            background: linear-gradient(135deg, #f59e0b 0%, #fbbf24 100%);
-            color: #1e1b4b;
-            border: none;
-            font-weight: 800;
-            font-size: 0.85rem;
-            padding: 7px 16px;
-            border-radius: 8px;
+            background: var(--grad-soft);
+            color: var(--text);
+            border: 1px solid var(--line-strong);
+            font: 600 0.82rem var(--font);
+            padding: 7px 14px;
+            border-radius: 999px;
             cursor: pointer;
-            display: flex;
+            display: inline-flex;
             align-items: center;
             gap: 6px;
-            transition: transform 0.15s ease, box-shadow 0.15s ease;
+            transition: all 0.22s var(--ease);
         }
-
         .btn-upgrade-pro:hover {
             transform: translateY(-1px);
-            box-shadow: 0 4px 15px rgba(251, 191, 36, 0.4);
+            border-color: var(--accent);
+            box-shadow: 0 6px 24px -8px var(--glow-a);
         }
+        .btn-upgrade-pro i { color: var(--accent-2); }
 
         /* --- MAIN CONTAINER --- */
         .app-container {
-            max-width: 1180px;
+            max-width: 1120px;
             margin: 0 auto;
-            padding: 2.5rem 1.5rem 6rem;
+            padding: 18px 22px 110px;
         }
-
-        .view-section {
-            display: none;
-        }
-
-        .view-section.active {
-            display: block;
-            animation: fadeIn 0.25s ease-out;
-        }
-
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(6px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
+        .view-section { display: none; }
+        .view-section.active { display: block; animation: fadeIn 0.28s var(--ease); }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
 
         /* --- HERO SCANNER SECTION --- */
         .scanner-hero {
             text-align: center;
-            max-width: 760px;
-            margin: 1rem auto 2.5rem;
+            max-width: 740px;
+            margin: clamp(18px, 4vh, 42px) auto 28px;
         }
+        .scanner-hero .ui-lead { margin: 0 auto; }
 
-        .hero-badge {
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            background: rgba(56, 189, 248, 0.1);
-            color: var(--cyan);
-            border: 1px solid rgba(56, 189, 248, 0.25);
-            font-size: 0.8rem;
-            font-weight: 700;
-            padding: 4px 14px;
-            border-radius: 20px;
-            margin-bottom: 1.25rem;
-        }
-
-        .scanner-hero h2 {
-            font-size: 2.3rem;
-            font-weight: 800;
-            line-height: 1.25;
-            letter-spacing: -0.8px;
-            margin-bottom: 0.85rem;
-            background: linear-gradient(135deg, #ffffff 40%, #94a3b8 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-        }
-
-        .scanner-hero p {
-            color: var(--text-secondary);
-            font-size: 1.05rem;
-            line-height: 1.6;
-        }
-
-        /* --- SEARCH BAR CARD --- */
-        .scan-box-card {
-            background: var(--bg-surface);
-            border: 1px solid var(--border);
-            border-radius: 18px;
-            padding: 1.75rem;
-            box-shadow: 0 12px 35px rgba(0, 0, 0, 0.35);
-            margin-bottom: 2rem;
+        /* --- FLOATING LUMINOUS URL CAPSULE --- */
+        .scan-capsule-wrap {
+            max-width: 730px;
+            margin: 0 auto;
             position: relative;
         }
-
+        .scan-capsule-wrap::before {
+            content: "";
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            width: 82%;
+            height: 180%;
+            transform: translate(-50%, -50%);
+            background: radial-gradient(ellipse at center, var(--glow-a), transparent 68%);
+            filter: blur(26px);
+            opacity: 0.65;
+            pointer-events: none;
+            z-index: 0;
+        }
         .url-input-group {
-            display: flex;
-            gap: 12px;
-            background: #090c14;
-            border: 2px solid var(--border);
-            border-radius: 12px;
-            padding: 6px;
-            transition: border-color 0.2s ease, box-shadow 0.2s ease;
-        }
-
-        .url-input-group:focus-within {
-            border-color: var(--cyan);
-            box-shadow: 0 0 20px var(--cyan-glow);
-        }
-
-        .url-input-icon {
-            display: flex;
-            align-items: center;
-            padding-left: 14px;
-            color: var(--text-muted);
-            font-size: 1.1rem;
-        }
-
-        .url-input-field {
-            flex: 1;
-            background: transparent;
-            border: none;
-            color: #fff;
-            font-family: var(--font-main);
-            font-size: 1.05rem;
-            font-weight: 600;
-            padding: 10px 8px;
-            outline: none;
-        }
-
-        .url-input-field::placeholder {
-            color: #475569;
-            font-weight: 400;
-        }
-
-        .btn-launch-scan {
-            background: linear-gradient(135deg, #0284c7 0%, #38bdf8 100%);
-            color: #0b1120;
-            border: none;
-            font-family: var(--font-main);
-            font-weight: 800;
-            font-size: 1rem;
-            padding: 12px 28px;
-            border-radius: 9px;
-            cursor: pointer;
+            position: relative;
+            z-index: 1;
             display: flex;
             align-items: center;
             gap: 10px;
-            transition: all 0.2s ease;
+            background: linear-gradient(180deg, rgba(10, 16, 44, 0.92) 0%, rgba(5, 8, 24, 0.96) 100%);
+            border: 1.5px solid var(--line-strong);
+            border-radius: 999px;
+            padding: 7px 7px 7px 16px;
+            backdrop-filter: blur(22px);
+            box-shadow:
+                0 28px 70px -12px rgba(0, 0, 0, 0.95),
+                0 0 42px -10px var(--glow-a),
+                0 0 80px -16px var(--glow-b);
+            transition: border-color 0.25s ease, box-shadow 0.25s ease, transform 0.25s ease;
+        }
+        body.theme-violet .url-input-group {
+            background: linear-gradient(180deg, rgba(19, 13, 46, 0.92) 0%, rgba(8, 4, 24, 0.96) 100%);
+        }
+        .url-input-group:focus-within {
+            transform: translateY(-1px);
+            border-color: var(--accent);
+            box-shadow:
+                0 0 0 4px rgba(96, 165, 250, 0.14),
+                0 32px 80px -10px rgba(0, 0, 0, 0.98),
+                0 0 56px -6px var(--glow-a);
+        }
+        body.theme-violet .url-input-group:focus-within {
+            box-shadow:
+                0 0 0 4px rgba(138, 114, 255, 0.18),
+                0 32px 80px -10px rgba(0, 0, 0, 0.98),
+                0 0 56px -6px var(--glow-a);
+        }
+        .url-input-icon {
+            display: flex;
+            align-items: center;
+            color: var(--accent);
+            font-size: 1rem;
+            padding-left: 6px;
+        }
+        .url-input-field {
+            flex: 1;
+            min-width: 0;
+            background: transparent;
+            border: none;
+            color: var(--text);
+            font: 500 1rem var(--font);
+            padding: 10px 8px;
+            outline: none;
+        }
+        .url-input-field::placeholder { color: rgba(226, 232, 240, 0.45); font-weight: 400; }
+        .btn-launch-scan {
+            background: var(--grad);
+            color: #fff;
+            border: none;
+            font: 600 0.92rem var(--font);
+            padding: 12px 24px;
+            border-radius: 999px;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.28), 0 10px 28px -8px rgba(59, 130, 246, 0.72);
+            transition: transform 0.22s var(--ease), filter 0.22s ease;
             white-space: nowrap;
         }
-
-        .btn-launch-scan:hover {
-            transform: translateY(-1px);
-            box-shadow: 0 6px 20px rgba(56, 189, 248, 0.4);
+        body.theme-violet .btn-launch-scan {
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.28), 0 10px 28px -8px rgba(138, 114, 255, 0.72);
         }
+        .btn-launch-scan:hover { transform: translateY(-1px); filter: brightness(1.08); }
 
         .quick-samples {
             display: flex;
             align-items: center;
-            gap: 10px;
-            margin-top: 1rem;
-            font-size: 0.85rem;
-            color: var(--text-muted);
+            justify-content: center;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 16px;
+            font-size: 0.82rem;
+            color: var(--dim);
         }
-
         .sample-pill {
-            background: rgba(255, 255, 255, 0.04);
-            border: 1px solid var(--border);
-            color: var(--cyan);
-            padding: 3px 10px;
-            border-radius: 6px;
-            font-family: var(--font-mono);
-            font-size: 0.78rem;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 5px 12px;
+            border-radius: 999px;
+            background: rgba(255, 255, 255, 0.035);
+            border: 1px solid var(--line);
+            color: var(--muted);
+            font: 500 0.78rem var(--mono);
             cursor: pointer;
-            transition: all 0.15s ease;
+            transition: all 0.2s var(--ease);
         }
-
         .sample-pill:hover {
-            background: rgba(56, 189, 248, 0.15);
-            border-color: var(--cyan);
+            background: var(--grad-soft);
+            border-color: var(--line-strong);
+            color: var(--text);
         }
 
-        /* --- MODULE CHECKBOXES (FREEMIUM) --- */
+        /* --- SLEEK FROSTED MODULES GRID --- */
         .modules-section {
-            margin-top: 1.5rem;
-            border-top: 1px solid var(--border);
-            padding-top: 1.25rem;
+            max-width: 980px;
+            margin: 42px auto 0;
         }
-
         .modules-section-title {
-            font-size: 0.85rem;
+            font-size: 0.78rem;
             text-transform: uppercase;
-            letter-spacing: 0.5px;
-            color: var(--text-muted);
-            margin-bottom: 0.85rem;
+            letter-spacing: 0.08em;
+            color: var(--dim);
+            margin-bottom: 14px;
             display: flex;
             justify-content: space-between;
             align-items: center;
-        }
-
-        .modules-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
             gap: 10px;
         }
-
+        .modules-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(228px, 1fr));
+            gap: 12px;
+        }
         .module-checkbox-card {
-            background: #090c14;
-            border: 1px solid var(--border);
-            border-radius: 10px;
-            padding: 12px 14px;
+            background: var(--surface);
+            border: 1px solid var(--line);
+            border-radius: 16px;
+            padding: 15px 16px;
             display: flex;
             align-items: flex-start;
             gap: 12px;
             cursor: pointer;
-            transition: all 0.15s ease;
+            backdrop-filter: blur(14px);
+            transition: transform 0.22s var(--ease), border-color 0.22s ease, background 0.22s ease, box-shadow 0.22s ease;
             user-select: none;
         }
-
         .module-checkbox-card:hover {
-            border-color: #334155;
-            background: #0d121e;
+            transform: translateY(-2px);
+            border-color: var(--line-strong);
+            background: var(--surface-2);
         }
-
         .module-checkbox-card.checked {
-            border-color: rgba(56, 189, 248, 0.4);
-            background: rgba(56, 189, 248, 0.04);
+            border-color: rgba(96, 165, 250, 0.42);
+            background: linear-gradient(180deg, rgba(59, 130, 246, 0.09) 0%, rgba(8, 13, 36, 0.72) 100%);
+            box-shadow: 0 12px 32px -18px var(--glow-a);
         }
-
-        .module-checkbox-card.pro-locked {
-            opacity: 0.75;
-            border-style: dashed;
-            cursor: pointer;
-            position: relative;
+        body.theme-violet .module-checkbox-card.checked {
+            border-color: rgba(194, 178, 255, 0.42);
+            background: linear-gradient(180deg, rgba(138, 114, 255, 0.11) 0%, rgba(13, 10, 31, 0.74) 100%);
         }
-
+        .module-checkbox-card.pro-locked { opacity: 0.84; }
         .module-checkbox-card.pro-locked:hover {
-            border-color: var(--gold);
             opacity: 1;
-            background: rgba(251, 191, 36, 0.04);
+            border-color: rgba(194, 178, 255, 0.36);
         }
-
         .checkbox-custom {
-            width: 18px;
-            height: 18px;
-            border-radius: 4px;
-            border: 2px solid #475569;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            margin-top: 2px;
+            width: 20px;
+            height: 20px;
+            border-radius: 7px;
+            border: 1.5px solid var(--line-strong);
+            background: rgba(255, 255, 255, 0.03);
+            display: grid;
+            place-items: center;
+            margin-top: 1px;
             font-size: 0.65rem;
-            color: #0b1120;
-            transition: all 0.15s ease;
+            color: #fff;
+            transition: all 0.2s ease;
             flex-shrink: 0;
         }
-
         .module-checkbox-card.checked .checkbox-custom {
-            background: var(--cyan);
-            border-color: var(--cyan);
+            background: var(--grad);
+            border-color: transparent;
+            box-shadow: 0 0 14px -2px var(--glow-a);
         }
-
         .module-checkbox-card.pro-locked .checkbox-custom {
-            border-color: var(--gold);
-            color: var(--gold);
+            border-color: rgba(194, 178, 255, 0.32);
+            color: var(--accent-2);
         }
-
-        .module-info {
-            flex: 1;
-        }
-
+        .module-info { flex: 1; min-width: 0; }
         .module-title {
-            font-size: 0.88rem;
-            font-weight: 700;
-            color: var(--text-primary);
+            font-size: 0.87rem;
+            font-weight: 600;
+            color: var(--text);
             display: flex;
             align-items: center;
-            gap: 8px;
-            margin-bottom: 2px;
+            justify-content: space-between;
+            gap: 6px;
+            margin-bottom: 4px;
         }
-
         .module-badge-free {
-            background: rgba(16, 185, 129, 0.15);
-            color: var(--green);
-            font-size: 0.65rem;
-            font-weight: 700;
-            padding: 1px 6px;
-            border-radius: 4px;
+            background: rgba(52, 211, 153, 0.12);
+            color: var(--ok);
+            border: 1px solid rgba(52, 211, 153, 0.24);
+            font-size: 0.66rem;
+            font-weight: 600;
+            padding: 2px 7px;
+            border-radius: 999px;
+            flex-shrink: 0;
         }
-
         .module-badge-pro {
-            background: rgba(251, 191, 36, 0.15);
-            color: var(--gold);
-            font-size: 0.65rem;
-            font-weight: 800;
-            padding: 1px 6px;
-            border-radius: 4px;
-            border: 1px solid rgba(251, 191, 36, 0.3);
+            background: rgba(124, 92, 255, 0.14);
+            color: var(--accent-2);
+            border: 1px solid rgba(194, 178, 255, 0.26);
+            font-size: 0.66rem;
+            font-weight: 600;
+            padding: 2px 7px;
+            border-radius: 999px;
+            flex-shrink: 0;
         }
-
         .module-desc {
-            font-size: 0.76rem;
-            color: var(--text-muted);
-            line-height: 1.35;
+            font-size: 0.77rem;
+            color: var(--muted);
+            line-height: 1.42;
         }
 
         /* --- SCAN PROGRESS ANIMATION --- */
         .scan-progress-card {
             display: none;
-            background: var(--bg-surface);
-            border: 1px solid var(--border);
-            border-radius: 16px;
+            max-width: 980px;
+            margin: 26px auto;
+            background: var(--surface);
+            border: 1px solid var(--line);
+            border-radius: 20px;
             padding: 2rem;
             text-align: center;
-            margin-bottom: 2rem;
+            backdrop-filter: blur(18px);
+            box-shadow: var(--shadow);
         }
-
         .progress-spinner {
-            font-size: 2.5rem;
-            color: var(--cyan);
+            font-size: 2.3rem;
+            color: var(--accent);
             margin-bottom: 1rem;
             animation: spin 1.2s linear infinite;
         }
-
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-
-        .progress-title {
-            font-size: 1.25rem;
-            font-weight: 700;
-            margin-bottom: 0.5rem;
-        }
-
-        .progress-subtitle {
-            font-size: 0.9rem;
-            color: var(--text-secondary);
-            margin-bottom: 1.5rem;
-        }
-
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .progress-title { font-size: 1.2rem; font-weight: 700; margin-bottom: 0.45rem; }
+        .progress-subtitle { font-size: 0.9rem; color: var(--muted); margin-bottom: 1.4rem; }
         .progress-bar-container {
             width: 100%;
-            height: 8px;
-            background: #090c14;
-            border-radius: 4px;
+            height: 7px;
+            background: rgba(255, 255, 255, 0.06);
+            border-radius: 999px;
             overflow: hidden;
-            margin-bottom: 1.5rem;
+            margin-bottom: 1.4rem;
         }
-
         .progress-bar-fill {
             height: 100%;
             width: 0%;
-            background: linear-gradient(90deg, var(--cyan) 0%, var(--purple) 100%);
-            border-radius: 4px;
+            background: var(--grad);
+            border-radius: 999px;
             transition: width 0.4s ease;
         }
-
-        .stepper-steps {
-            display: flex;
-            justify-content: space-around;
-            gap: 10px;
-        }
-
-        .step-item {
-            font-size: 0.8rem;
-            color: var(--text-muted);
-            display: flex;
-            align-items: center;
-            gap: 6px;
-        }
-
-        .step-item.active {
-            color: var(--cyan);
-            font-weight: 700;
-        }
-
-        .step-item.done {
-            color: var(--green);
-        }
+        .stepper-steps { display: flex; justify-content: space-around; gap: 10px; flex-wrap: wrap; }
+        .step-item { font-size: 0.8rem; color: var(--dim); display: flex; align-items: center; gap: 6px; }
+        .step-item.active { color: var(--accent); font-weight: 600; }
+        .step-item.done { color: var(--ok); }
 
         /* --- AUDIT RESULTS DASHBOARD --- */
-        .results-container {
-            display: none;
-        }
-
+        .results-container { display: none; max-width: 980px; margin: 28px auto 0; }
         .score-hero-card {
-            background: linear-gradient(135deg, rgba(14, 18, 27, 0.9) 0%, rgba(19, 25, 38, 0.95) 100%);
-            border: 1px solid var(--border);
-            border-radius: 18px;
-            padding: 2rem;
+            background: var(--surface);
+            border: 1px solid var(--line);
+            border-radius: 22px;
+            padding: 1.85rem;
             display: grid;
-            grid-template-columns: 240px 1fr;
-            gap: 2rem;
+            grid-template-columns: 220px 1fr;
+            gap: 1.75rem;
             align-items: center;
-            margin-bottom: 2rem;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+            margin-bottom: 1.8rem;
+            backdrop-filter: blur(18px);
+            box-shadow: var(--shadow);
         }
-
         .score-circle-box {
             text-align: center;
             padding: 1.25rem;
-            background: #090c14;
-            border-radius: 16px;
-            border: 1px solid var(--border);
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 18px;
+            border: 1px solid var(--line);
         }
-
-        .grade-badge-huge {
-            font-size: 3.8rem;
-            font-weight: 800;
-            line-height: 1;
-            margin-bottom: 4px;
-            font-family: var(--font-mono);
-        }
-
-        .grade-a { color: var(--green); }
-        .grade-b { color: var(--cyan); }
-        .grade-c { color: var(--orange); }
-        .grade-d, .grade-f { color: var(--red); }
-
-        .score-num-label {
-            font-size: 0.85rem;
-            color: var(--text-muted);
-            font-weight: 600;
-        }
-
-        .score-details-box h3 {
-            font-size: 1.4rem;
-            font-weight: 800;
-            margin-bottom: 0.5rem;
-        }
-
+        .grade-badge-huge { font: 800 3.6rem/1 var(--mono); margin-bottom: 6px; }
+        .grade-a { color: var(--ok); }
+        .grade-b { color: var(--accent); }
+        .grade-c { color: var(--warn); }
+        .grade-d, .grade-f { color: var(--danger); }
+        .score-num-label { font-size: 0.84rem; color: var(--muted); font-weight: 600; }
+        .score-details-box h3 { font-size: 1.35rem; font-weight: 700; margin-bottom: 0.5rem; letter-spacing: -0.02em; }
         .risk-pill {
             display: inline-block;
-            padding: 3px 10px;
-            border-radius: 6px;
-            font-size: 0.75rem;
-            font-weight: 800;
+            padding: 4px 11px;
+            border-radius: 999px;
+            font-size: 0.72rem;
+            font-weight: 700;
             text-transform: uppercase;
-            letter-spacing: 0.5px;
+            letter-spacing: 0.06em;
             margin-bottom: 1rem;
         }
-
-        .risk-faible { background: rgba(16, 185, 129, 0.15); color: var(--green); }
-        .risk-modere { background: rgba(245, 158, 11, 0.15); color: var(--orange); }
-        .risk-eleve, .risk-critique { background: rgba(239, 68, 68, 0.15); color: var(--red); }
-
-        .score-stats-grid {
-            display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: 12px;
-            margin-top: 1rem;
-        }
-
+        .risk-faible { background: rgba(52, 211, 153, 0.14); color: var(--ok); border: 1px solid rgba(52, 211, 153, 0.28); }
+        .risk-modere { background: rgba(251, 191, 36, 0.14); color: var(--warn); border: 1px solid rgba(251, 191, 36, 0.28); }
+        .risk-eleve, .risk-critique { background: rgba(251, 113, 133, 0.14); color: var(--danger); border: 1px solid rgba(251, 113, 133, 0.28); }
+        .score-stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-top: 0.85rem; }
         .stat-mini-card {
-            background: rgba(255, 255, 255, 0.02);
-            border: 1px solid var(--border);
-            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid var(--line);
+            border-radius: 12px;
             padding: 10px 12px;
         }
+        .stat-mini-card .val { font: 800 1.2rem var(--mono); }
+        .stat-mini-card .lbl { font-size: 0.7rem; color: var(--dim); text-transform: uppercase; letter-spacing: 0.05em; }
 
-        .stat-mini-card .val {
-            font-size: 1.25rem;
-            font-weight: 800;
-            font-family: var(--font-mono);
-        }
-
-        .stat-mini-card .lbl {
-            font-size: 0.72rem;
-            color: var(--text-muted);
-            text-transform: uppercase;
-        }
-
-        /* --- FINDING CARDS (ACCESSIBLE TO ALL) --- */
         .section-header-title {
-            font-size: 1.25rem;
-            font-weight: 800;
-            margin: 2rem 0 1rem;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-        }
-
-        .findings-list {
-            display: flex;
-            flex-direction: column;
-            gap: 14px;
-        }
-
-        .finding-card {
-            background: var(--bg-surface);
-            border: 1px solid var(--border);
-            border-left: 4px solid var(--cyan);
-            border-radius: 12px;
-            padding: 1.4rem;
-            transition: all 0.2s ease;
-        }
-
-        .finding-card.severity-CRITICAL, .finding-card.severity-HIGH {
-            border-left-color: var(--red);
-            background: linear-gradient(90deg, rgba(239, 68, 68, 0.04) 0%, var(--bg-surface) 100%);
-        }
-
-        .finding-card.severity-MEDIUM {
-            border-left-color: var(--orange);
-            background: linear-gradient(90deg, rgba(245, 158, 11, 0.04) 0%, var(--bg-surface) 100%);
-        }
-
-        .finding-card.severity-LOW, .finding-card.severity-INFO {
-            border-left-color: var(--cyan);
-        }
-
-        .finding-card.passed {
-            border-left-color: var(--green);
-            background: linear-gradient(90deg, rgba(16, 185, 129, 0.04) 0%, var(--bg-surface) 100%);
-        }
-
-        .finding-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 0.85rem;
-        }
-
-        .finding-title-box {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-
-        .finding-title {
-            font-size: 1.05rem;
+            font-size: 1.18rem;
             font-weight: 700;
+            margin: 1.8rem 0 1rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
         }
-
-        .badge-severity {
-            font-size: 0.7rem;
-            font-weight: 800;
-            padding: 3px 8px;
-            border-radius: 4px;
-            text-transform: uppercase;
+        .findings-list { display: flex; flex-direction: column; gap: 12px; }
+        .finding-card {
+            background: var(--surface);
+            border: 1px solid var(--line);
+            border-left: 3px solid var(--accent);
+            border-radius: 16px;
+            padding: 1.3rem 1.45rem;
+            backdrop-filter: blur(14px);
+            transition: transform 0.2s var(--ease), border-color 0.2s ease;
         }
-
-        .badge-sev-critical { background: var(--red); color: #fff; }
-        .badge-sev-high { background: rgba(239, 68, 68, 0.2); color: var(--red); border: 1px solid var(--red); }
-        .badge-sev-medium { background: rgba(245, 158, 11, 0.2); color: var(--orange); border: 1px solid var(--orange); }
-        .badge-sev-low { background: rgba(56, 189, 248, 0.2); color: var(--cyan); border: 1px solid var(--cyan); }
-        .badge-sev-ok { background: rgba(16, 185, 129, 0.2); color: var(--green); border: 1px solid var(--green); }
-
-        .finding-breakdown {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 14px;
-            margin: 0.85rem 0 1.15rem;
-            font-size: 0.88rem;
-        }
-
+        .finding-card:hover { transform: translateY(-1px); border-color: var(--line-strong); }
+        .finding-card.severity-CRITICAL, .finding-card.severity-HIGH { border-left-color: var(--danger); }
+        .finding-card.severity-MEDIUM { border-left-color: var(--warn); }
+        .finding-card.severity-LOW, .finding-card.severity-INFO { border-left-color: var(--accent); }
+        .finding-card.passed { border-left-color: var(--ok); }
+        .finding-header { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: 0.8rem; }
+        .finding-title-box { display: flex; align-items: center; gap: 10px; }
+        .finding-title { font-size: 1rem; font-weight: 600; }
+        .badge-severity { font-size: 0.68rem; font-weight: 700; padding: 3px 9px; border-radius: 999px; text-transform: uppercase; letter-spacing: 0.04em; }
+        .badge-sev-critical { background: var(--danger); color: #fff; }
+        .badge-sev-high { background: rgba(251, 113, 133, 0.16); color: var(--danger); border: 1px solid rgba(251, 113, 133, 0.32); }
+        .badge-sev-medium { background: rgba(251, 191, 36, 0.16); color: var(--warn); border: 1px solid rgba(251, 191, 36, 0.32); }
+        .badge-sev-low { background: rgba(96, 165, 250, 0.16); color: var(--accent); border: 1px solid rgba(96, 165, 250, 0.32); }
+        .badge-sev-ok { background: rgba(52, 211, 153, 0.16); color: var(--ok); border: 1px solid rgba(52, 211, 153, 0.32); }
+        .finding-breakdown { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 0.8rem 0 1rem; font-size: 0.87rem; }
         .breakdown-box {
-            background: #090c14;
-            padding: 10px 14px;
-            border-radius: 8px;
-            border: 1px solid var(--border);
+            background: rgba(255, 255, 255, 0.025);
+            padding: 11px 14px;
+            border-radius: 12px;
+            border: 1px solid var(--line);
         }
-
         .breakdown-box strong {
             display: block;
-            font-size: 0.75rem;
+            font-size: 0.72rem;
             text-transform: uppercase;
-            letter-spacing: 0.5px;
-            color: var(--text-muted);
+            letter-spacing: 0.06em;
+            color: var(--dim);
             margin-bottom: 4px;
         }
-
-        .breakdown-box.risk strong {
-            color: #fca5a5;
-        }
-
-        .breakdown-box.solution strong {
-            color: #86efac;
-        }
-
+        .breakdown-box.risk strong { color: #fda4af; }
+        .breakdown-box.solution strong { color: #6ee7b7; }
         .finding-actions {
             display: flex;
             gap: 10px;
             align-items: center;
             justify-content: flex-end;
-            border-top: 1px solid var(--border);
-            padding-top: 0.85rem;
+            border-top: 1px solid var(--line);
+            padding-top: 0.8rem;
         }
-
         .btn-ask-ai {
-            background: rgba(56, 189, 248, 0.12);
-            color: var(--cyan);
-            border: 1px solid rgba(56, 189, 248, 0.35);
-            font-family: var(--font-main);
-            font-size: 0.82rem;
-            font-weight: 700;
+            background: var(--grad-soft);
+            color: var(--text);
+            border: 1px solid var(--line-strong);
+            font: 600 0.82rem var(--font);
             padding: 7px 14px;
-            border-radius: 6px;
+            border-radius: 999px;
             cursor: pointer;
-            display: flex;
+            display: inline-flex;
             align-items: center;
-            gap: 8px;
-            transition: all 0.15s ease;
+            gap: 7px;
+            transition: all 0.2s var(--ease);
         }
-
         .btn-ask-ai:hover {
-            background: var(--cyan);
-            color: #090c14;
-            box-shadow: 0 0 15px var(--cyan-glow);
+            border-color: var(--accent);
+            box-shadow: 0 6px 20px -6px var(--glow-a);
+            transform: translateY(-1px);
         }
 
         /* --- PRO UPSELL BANNER --- */
         .pro-upsell-card {
-            background: linear-gradient(135deg, rgba(251, 191, 36, 0.08) 0%, rgba(168, 85, 247, 0.08) 100%);
-            border: 1px solid rgba(251, 191, 36, 0.35);
-            border-radius: 16px;
-            padding: 2.2rem;
-            margin-top: 2.5rem;
+            background: var(--surface);
+            border: 1px solid var(--line-strong);
+            border-radius: 20px;
+            padding: 1.85rem;
+            margin-top: 2rem;
             display: flex;
             align-items: center;
             justify-content: space-between;
-            gap: 2rem;
+            gap: 1.5rem;
+            backdrop-filter: blur(18px);
         }
-
-        .pro-upsell-content h4 {
-            font-size: 1.35rem;
-            font-weight: 800;
-            color: #fff;
-            margin-bottom: 0.5rem;
-        }
-
-        .pro-upsell-content p {
-            color: var(--text-secondary);
-            font-size: 0.95rem;
-            line-height: 1.5;
-            margin-bottom: 1rem;
-        }
-
-        .pro-features-pills {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 8px;
-        }
-
+        .pro-upsell-content h4 { font-size: 1.25rem; font-weight: 700; color: var(--text); margin-bottom: 0.45rem; }
+        .pro-upsell-content p { color: var(--muted); font-size: 0.92rem; line-height: 1.5; margin-bottom: 0.9rem; }
+        .pro-features-pills { display: flex; flex-wrap: wrap; gap: 7px; }
         .pro-feature-tag {
-            background: rgba(251, 191, 36, 0.12);
-            color: var(--gold);
-            border: 1px solid rgba(251, 191, 36, 0.25);
-            font-size: 0.78rem;
-            font-weight: 700;
+            background: rgba(124, 92, 255, 0.12);
+            color: var(--accent-2);
+            border: 1px solid rgba(194, 178, 255, 0.24);
+            font-size: 0.76rem;
+            font-weight: 600;
             padding: 4px 10px;
-            border-radius: 6px;
+            border-radius: 999px;
         }
 
-        /* --- TAB 2: BOUCLIER WAF --- */
+        /* --- TAB 2 & 3 CARDS --- */
         .shield-view-card {
-            background: var(--bg-surface);
-            border: 1px solid var(--border);
-            border-radius: 16px;
-            padding: 2rem;
-            margin-bottom: 2rem;
+            max-width: 980px;
+            margin: 0 auto 1.6rem;
+            background: var(--surface);
+            border: 1px solid var(--line);
+            border-radius: 20px;
+            padding: 1.75rem;
+            backdrop-filter: blur(16px);
         }
-
         .shield-status-bar {
             display: flex;
             align-items: center;
             justify-content: space-between;
-            padding: 1.25rem;
-            background: #090c14;
-            border-radius: 12px;
-            border: 1px solid var(--border);
-            margin-bottom: 1.5rem;
+            padding: 1.15rem 1.25rem;
+            background: rgba(255, 255, 255, 0.025);
+            border-radius: 14px;
+            border: 1px solid var(--line);
+            margin-bottom: 1.3rem;
         }
-
         .code-snippet-box {
-            background: #06080d;
-            border: 1px solid var(--border);
-            border-radius: 8px;
-            padding: 1rem;
-            font-family: var(--font-mono);
-            font-size: 0.85rem;
-            color: #38bdf8;
+            background: rgba(3, 6, 18, 0.85);
+            border: 1px solid var(--line);
+            border-radius: 12px;
+            padding: 1rem 1.15rem;
+            font: 0.83rem/1.55 var(--mono);
+            color: var(--accent);
             overflow-x: auto;
-            position: relative;
-            margin: 1rem 0;
+            margin: 0.9rem 0;
         }
 
-        /* --- COPILOT FLOATING BUTTON & DRAWER --- */
+        /* --- COPILOT FLOATING PILL & DRAWER --- */
         .copilot-fab {
             position: fixed;
-            bottom: 24px;
-            right: 24px;
-            background: linear-gradient(135deg, #0284c7 0%, #38bdf8 100%);
-            color: #090c14;
-            font-family: var(--font-main);
-            font-weight: 800;
-            font-size: 0.92rem;
-            padding: 12px 20px;
-            border-radius: 30px;
-            border: none;
+            bottom: 22px;
+            right: 22px;
+            background: rgba(8, 13, 36, 0.86);
+            color: var(--text);
+            border: 1px solid var(--line-strong);
+            font: 600 0.86rem var(--font);
+            padding: 10px 18px;
+            border-radius: 999px;
             cursor: pointer;
-            display: flex;
+            display: inline-flex;
             align-items: center;
-            gap: 10px;
-            box-shadow: 0 8px 30px rgba(56, 189, 248, 0.45);
+            gap: 9px;
+            backdrop-filter: blur(18px) saturate(1.4);
+            box-shadow: 0 18px 40px -12px rgba(0, 0, 0, 0.85), 0 0 28px -8px var(--glow-a);
             z-index: 999;
-            transition: all 0.2s ease;
+            transition: transform 0.22s var(--ease), border-color 0.22s ease, box-shadow 0.22s ease;
         }
-
+        body.theme-violet .copilot-fab { background: rgba(13, 10, 34, 0.88); }
         .copilot-fab:hover {
-            transform: translateY(-2px) scale(1.03);
-            box-shadow: 0 12px 35px rgba(56, 189, 248, 0.6);
+            transform: translateY(-2px);
+            border-color: var(--accent);
+            box-shadow: 0 22px 48px -10px rgba(0, 0, 0, 0.92), 0 0 36px -4px var(--glow-a);
         }
-
         .fab-dot {
-            width: 9px;
-            height: 9px;
-            background: #10b981;
+            width: 8px;
+            height: 8px;
+            background: var(--ok);
             border-radius: 50%;
-            box-shadow: 0 0 10px #10b981;
+            box-shadow: 0 0 10px var(--ok);
             animation: pulseDot 2s infinite;
         }
+        @keyframes pulseDot { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.45; transform: scale(0.8); } }
 
-        @keyframes pulseDot {
-            0%, 100% { opacity: 1; transform: scale(1); }
-            50% { opacity: 0.5; transform: scale(0.85); }
-        }
-
-        /* DRAWER CHAT PANEL */
         .copilot-drawer {
             position: fixed;
             top: 0;
             right: -480px;
-            width: 460px;
+            width: min(460px, 100vw);
             height: 100vh;
-            background: #090c14;
-            border-left: 1px solid var(--border);
-            box-shadow: -15px 0 45px rgba(0, 0, 0, 0.6);
+            background: rgba(6, 10, 28, 0.92);
+            backdrop-filter: blur(22px) saturate(1.4);
+            border-left: 1px solid var(--line);
+            box-shadow: -18px 0 55px rgba(0, 0, 0, 0.72);
             z-index: 1000;
             display: flex;
             flex-direction: column;
-            transition: right 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+            transition: right 0.32s var(--ease);
         }
-
-        .copilot-drawer.open {
-            right: 0;
-        }
-
+        body.theme-violet .copilot-drawer { background: rgba(10, 7, 28, 0.94); }
+        .copilot-drawer.open { right: 0; }
         .drawer-header {
-            padding: 1.25rem;
-            border-bottom: 1px solid var(--border);
+            padding: 1.15rem 1.25rem;
+            border-bottom: 1px solid var(--line);
             display: flex;
             align-items: center;
             justify-content: space-between;
-            background: #0d121c;
+            background: rgba(255, 255, 255, 0.02);
         }
-
-        .drawer-title-box {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-
+        .drawer-title-box { display: flex; align-items: center; gap: 10px; }
         .drawer-close-btn {
             background: transparent;
             border: none;
-            color: var(--text-muted);
-            font-size: 1.2rem;
+            color: var(--dim);
+            font-size: 1.15rem;
             cursor: pointer;
-            padding: 6px;
-            border-radius: 6px;
+            padding: 6px 8px;
+            border-radius: 999px;
         }
-
-        .drawer-close-btn:hover {
-            color: #fff;
-            background: rgba(255, 255, 255, 0.05);
-        }
-
+        .drawer-close-btn:hover { color: var(--text); background: rgba(255, 255, 255, 0.06); }
         .drawer-messages {
             flex: 1;
-            padding: 1.25rem;
+            padding: 1.15rem;
             overflow-y: auto;
             display: flex;
             flex-direction: column;
-            gap: 14px;
+            gap: 12px;
         }
-
-        .chat-bubble {
-            padding: 12px 16px;
-            border-radius: 12px;
-            font-size: 0.9rem;
-            line-height: 1.5;
-            max-width: 88%;
-        }
-
-        .chat-bubble.user {
-            align-self: flex-end;
-            background: linear-gradient(135deg, #0284c7, #0369a1);
-            color: #fff;
-            border-bottom-right-radius: 2px;
-        }
-
+        .chat-bubble { padding: 11px 15px; border-radius: 14px; font-size: 0.89rem; line-height: 1.5; max-width: 88%; }
+        .chat-bubble.user { align-self: flex-end; background: var(--grad); color: #fff; border-bottom-right-radius: 4px; }
         .chat-bubble.assistant {
             align-self: flex-start;
-            background: var(--bg-surface);
-            border: 1px solid var(--border);
-            color: var(--text-primary);
-            border-bottom-left-radius: 2px;
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid var(--line);
+            color: var(--text);
+            border-bottom-left-radius: 4px;
         }
-
         .chat-quick-pills {
-            padding: 0.5rem 1.25rem;
+            padding: 0.55rem 1.15rem;
             display: flex;
-            gap: 8px;
+            gap: 7px;
             overflow-x: auto;
-            border-top: 1px solid var(--border);
-            background: #07090f;
+            border-top: 1px solid var(--line);
+            background: rgba(255, 255, 255, 0.015);
         }
-
         .quick-pill-btn {
             background: rgba(255, 255, 255, 0.04);
-            border: 1px solid var(--border);
-            color: var(--text-secondary);
+            border: 1px solid var(--line);
+            color: var(--muted);
             font-size: 0.75rem;
-            padding: 5px 10px;
-            border-radius: 14px;
+            padding: 5px 11px;
+            border-radius: 999px;
             white-space: nowrap;
             cursor: pointer;
-            transition: all 0.15s ease;
+            transition: all 0.18s ease;
         }
-
-        .quick-pill-btn:hover {
-            color: var(--cyan);
-            border-color: var(--cyan);
-        }
-
+        .quick-pill-btn:hover { color: var(--text); border-color: var(--accent); }
         .drawer-input-box {
-            padding: 1rem 1.25rem;
-            border-top: 1px solid var(--border);
-            background: #0d121c;
+            padding: 0.95rem 1.15rem;
+            border-top: 1px solid var(--line);
+            background: rgba(255, 255, 255, 0.02);
             display: flex;
-            gap: 10px;
+            gap: 8px;
         }
-
         .chat-input-text {
             flex: 1;
-            background: #07090e;
-            border: 1px solid var(--border);
-            border-radius: 8px;
-            padding: 10px 14px;
-            color: #fff;
-            font-family: var(--font-main);
-            font-size: 0.9rem;
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid var(--line);
+            border-radius: 999px;
+            padding: 10px 15px;
+            color: var(--text);
+            font: 0.88rem var(--font);
             outline: none;
         }
-
-        .chat-input-text:focus {
-            border-color: var(--cyan);
-        }
-
+        .chat-input-text:focus { border-color: var(--accent); }
         .btn-send-chat {
-            background: var(--cyan);
-            color: #0b1120;
+            background: var(--grad);
+            color: #fff;
             border: none;
-            border-radius: 8px;
-            padding: 0 16px;
-            font-weight: 700;
+            border-radius: 999px;
+            padding: 0 18px;
+            font-weight: 600;
             cursor: pointer;
-            transition: background 0.15s ease;
+            transition: filter 0.18s ease;
         }
-
-        .btn-send-chat:hover {
-            background: #7dd3fc;
-        }
+        .btn-send-chat:hover { filter: brightness(1.08); }
 
         /* --- MODAL PRO POPUP --- */
         .modal-overlay {
             display: none;
             position: fixed;
-            top: 0;
-            left: 0;
-            width: 100vw;
-            height: 100vh;
-            background: rgba(0, 0, 0, 0.75);
-            backdrop-filter: blur(8px);
+            inset: 0;
+            background: rgba(2, 4, 14, 0.78);
+            backdrop-filter: blur(12px);
             z-index: 2000;
             align-items: center;
             justify-content: center;
+            padding: 16px;
         }
-
-        .modal-overlay.open {
-            display: flex;
-        }
-
+        .modal-overlay.open { display: flex; }
         .modal-card {
-            background: #0d121c;
-            border: 1px solid var(--gold);
-            border-radius: 18px;
-            max-width: 580px;
-            width: 90%;
-            padding: 2.2rem;
-            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.8), 0 0 30px rgba(251, 191, 36, 0.15);
+            background: var(--surface-2);
+            border: 1px solid var(--line-strong);
+            border-radius: 22px;
+            max-width: 560px;
+            width: 100%;
+            padding: 2rem;
+            box-shadow: 0 28px 75px rgba(0, 0, 0, 0.88), 0 0 42px -12px var(--glow-a);
             position: relative;
         }
-
         .modal-close-btn {
             position: absolute;
             top: 16px;
             right: 18px;
             background: transparent;
             border: none;
-            color: var(--text-muted);
-            font-size: 1.25rem;
+            color: var(--dim);
+            font-size: 1.2rem;
             cursor: pointer;
         }
-
-        .modal-close-btn:hover {
-            color: #fff;
-        }
+        .modal-close-btn:hover { color: var(--text); }
 
         @media (max-width: 768px) {
-            .navbar { padding: 0.75rem 1rem; flex-wrap: wrap; gap: 10px; }
-            .nav-tabs { order: 3; width: 100%; justify-content: center; }
+            .sec-subbar { justify-content: center; }
             .score-hero-card { grid-template-columns: 1fr; }
-            .copilot-drawer { width: 100%; right: -100%; }
             .finding-breakdown { grid-template-columns: 1fr; }
             .score-stats-grid { grid-template-columns: repeat(2, 1fr); }
+            .pro-upsell-card { flex-direction: column; align-items: stretch; }
         }
     </style>
 </head>
-<body>
+<body class="ui">
 
-    <!-- NAVBAR -->
-    <header class="navbar">
-        <a href="/__sc/security/" class="nav-brand">
-            <div class="nav-brand-logo">
-                <i class="fa-solid fa-shield-halved"></i>
-            </div>
-            <div class="nav-brand-text">
-                <h1>ULTON AI</h1>
-                <span>Plateforme de Cybersécurité</span>
-            </div>
-        </a>
-
-        <nav class="nav-tabs">
-            <button class="nav-tab-btn active" onclick="switchMainTab('scanner')">
-                <i class="fa-solid fa-magnifying-glass"></i> Audit & Scanner
-            </button>
-            <button class="nav-tab-btn" onclick="switchMainTab('shield')">
-                <i class="fa-solid fa-shield-virus"></i> Bouclier Actif (WAF)
-            </button>
-            <button class="nav-tab-btn" onclick="switchMainTab('settings')">
-                <i class="fa-solid fa-sliders"></i> Outils Experts & SOC
-            </button>
-        </nav>
-
-        <div class="nav-actions">
-            <div class="badge-plan">
-                <i class="fa-solid fa-circle-check"></i> Mode Découverte (0€)
-            </div>
-            <button class="btn-upgrade-pro" onclick="openProModal()">
-                <i class="fa-solid fa-crown"></i> Passer à PRO
-            </button>
+    <!-- SHARED SITECLONER TOP NAV -->
+    <nav class="ui-nav">
+        <a class="ui-brand" href="/__sc/home"><img class="rx-orb" src="/__sc/static/reflex/img/brand-orbit.svg" alt=""><span>SiteCloner</span> <span class="ui-badge accent">Ulton IA</span></a>
+        <div class="ui-links">
+            <a href="/__sc/home">Accueil</a>
+            <a href="/__sc/">Cloneur</a>
+            <a href="/shop/">Marketplace</a>
+            <a class="on" href="/__sc/security/">Sécurité IA</a>
+            <a href="/admin">Admin</a>
         </div>
-    </header>
+    </nav>
 
     <div class="app-container">
+
+        <!-- SUB-TOOLBAR -->
+        <div class="sec-subbar">
+            <div class="sec-subtabs" role="tablist">
+                <button class="nav-tab-btn active" onclick="switchMainTab('scanner')">
+                    <i class="fa-solid fa-magnifying-glass"></i> Audit &amp; Scanner
+                </button>
+                <button class="nav-tab-btn" onclick="switchMainTab('shield')">
+                    <i class="fa-solid fa-shield-halved"></i> Bouclier (WAF)
+                </button>
+                <button class="nav-tab-btn" onclick="switchMainTab('settings')">
+                    <i class="fa-solid fa-sliders"></i> Outils SOC
+                </button>
+            </div>
+            <div class="sec-plan-bar">
+                <span class="badge-plan"><i class="fa-solid fa-circle-check"></i> Découverte</span>
+                <button type="button" class="btn-upgrade-pro" onclick="openProModal()">Passer Pro</button>
+                <a class="ui-btn sm ghost" href="/__sc/security/sentinel" style="border-radius:999px">Console Sentinel</a>
+            </div>
+        </div>
 
         <!-- ============================================================== -->
         <!-- TAB 1: AUDIT & SCANNER VIEW -->
         <!-- ============================================================== -->
         <section id="view-scanner" class="view-section active">
-            
+
             <div class="scanner-hero">
-                <div class="hero-badge">
-                    <i class="fa-solid fa-bolt"></i> Audit de Sécurité Automatisé en 1 Clic
-                </div>
-                <h2>Protégez votre site web contre les cyberattaques</h2>
-                <p>Détectez immédiatement les failles critiques, vérifiez vos en-têtes et fichiers sensibles, et obtenez l'assistance pas-à-pas de l'IA Ulton.</p>
+                <span class="ui-eyebrow"><span class="dot"></span> Ulton IA &bull; Audit Web Zero-Trust</span>
+                <h1 class="ui-title">Sécurisez votre site <span class="ui-grad-text">en un clic</span></h1>
+                <p class="ui-lead">Détectez immédiatement les failles critiques, en-têtes manquants et fuites de clés, puis corrigez pas-à-pas avec le copilote Ulton.</p>
             </div>
 
-            <!-- SCAN INPUT CARD -->
-            <div class="scan-box-card">
+            <!-- FLOATING LUMINOUS URL CAPSULE -->
+            <div class="scan-capsule-wrap">
                 <div class="url-input-group">
                     <div class="url-input-icon">
                         <i class="fa-solid fa-globe"></i>
                     </div>
-                    <input type="url" id="targetUrlInput" class="url-input-field" placeholder="Entrez l'URL de votre site (ex: https://mon-entreprise.com)" value="{{ target or 'https://innotech-lab.local' }}">
+                    <input type="url" id="targetUrlInput" class="url-input-field" placeholder="https://votre-site.com" value="{{ target or 'https://innotech-lab.local' }}">
                     <button class="btn-launch-scan" id="launchAuditBtn" onclick="startFreemiumAudit()">
-                        <i class="fa-solid fa-play"></i> Lancer l'Audit Gratuit
+                        <i class="fa-solid fa-play"></i> Lancer l'Audit
                     </button>
                 </div>
 
                 <div class="quick-samples">
-                    <span>Cibles d'essai rapide :</span>
-                    <span class="sample-pill" onclick="setTarget('https://innotech-lab.local')">🧪 Laboratoire Sandbox InnoTech (Sécurisé)</span>
-                    <span class="sample-pill" onclick="setTarget('https://instrumentdechrist.org')">🌐 instrumentdechrist.org</span>
+                    <span>Cibles d'essai :</span>
+                    <button type="button" class="sample-pill" onclick="setTarget('https://innotech-lab.local')">InnoTech Sandbox</button>
+                    <button type="button" class="sample-pill" onclick="setTarget('https://instrumentdechrist.org')">instrumentdechrist.org</button>
+                </div>
+            </div>
+
+            <!-- MODULES D'ANALYSE -->
+            <div class="modules-section">
+                <div class="modules-section-title">
+                    <span>Modules d'analyse</span>
+                    <span class="ui-badge">3 inclus &bull; 5 Pro</span>
                 </div>
 
-                <!-- CHECKBOXES DE SÉLECTION FREEMIUM -->
-                <div class="modules-section">
-                    <div class="modules-section-title">
-                        <span>Sélectionnez les vérifications à inclure dans l'audit :</span>
-                        <span style="font-size: 0.75rem; color: var(--cyan);"><i class="fa-solid fa-circle-info"></i> 3 modules inclus en gratuit</span>
+                <div class="modules-grid">
+                    <!-- Module Gratuit 1 -->
+                    <div class="module-checkbox-card checked" onclick="toggleModuleCheck(this, 'headers')">
+                        <div class="checkbox-custom"><i class="fa-solid fa-check"></i></div>
+                        <div class="module-info">
+                            <div class="module-title">
+                                <span>En-têtes HTTP &amp; SSL</span>
+                                <span class="module-badge-free">Inclus</span>
+                            </div>
+                            <div class="module-desc">HSTS, CSP et X-Frame-Options contre le vol de session.</div>
+                        </div>
                     </div>
 
-                    <div class="modules-grid">
-                        <!-- Module Gratuit 1 -->
-                        <div class="module-checkbox-card checked" onclick="toggleModuleCheck(this, 'headers')">
-                            <div class="checkbox-custom"><i class="fa-solid fa-check"></i></div>
-                            <div class="module-info">
-                                <div class="module-title">
-                                    <span>En-têtes HTTP & SSL</span>
-                                    <span class="module-badge-free">Inclus</span>
-                                </div>
-                                <div class="module-desc">Vérifie HSTS, CSP, X-Frame-Options contre le vol de session.</div>
+                    <!-- Module Gratuit 2 -->
+                    <div class="module-checkbox-card checked" onclick="toggleModuleCheck(this, 'files')">
+                        <div class="checkbox-custom"><i class="fa-solid fa-check"></i></div>
+                        <div class="module-info">
+                            <div class="module-title">
+                                <span>Fichiers Sensibles</span>
+                                <span class="module-badge-free">Inclus</span>
                             </div>
+                            <div class="module-desc">Fuites de .env, .git/config, backup.sql et dumps exposés.</div>
                         </div>
+                    </div>
 
-                        <!-- Module Gratuit 2 -->
-                        <div class="module-checkbox-card checked" onclick="toggleModuleCheck(this, 'files')">
-                            <div class="checkbox-custom"><i class="fa-solid fa-check"></i></div>
-                            <div class="module-info">
-                                <div class="module-title">
-                                    <span>Fichiers Sensibles Exposés</span>
-                                    <span class="module-badge-free">Inclus</span>
-                                </div>
-                                <div class="module-desc">Détecte les fuites de .env, .git/config, backup.sql et dumps.</div>
+                    <!-- Module Gratuit 3 -->
+                    <div class="module-checkbox-card checked" onclick="toggleModuleCheck(this, 'secrets')">
+                        <div class="checkbox-custom"><i class="fa-solid fa-check"></i></div>
+                        <div class="module-info">
+                            <div class="module-title">
+                                <span>Clés API &amp; Secrets</span>
+                                <span class="module-badge-free">Inclus</span>
                             </div>
+                            <div class="module-desc">Détection des clés OpenAI, AWS et Stripe dans le code source.</div>
                         </div>
+                    </div>
 
-                        <!-- Module Gratuit 3 -->
-                        <div class="module-checkbox-card checked" onclick="toggleModuleCheck(this, 'secrets')">
-                            <div class="checkbox-custom"><i class="fa-solid fa-check"></i></div>
-                            <div class="module-info">
-                                <div class="module-title">
-                                    <span>Fuite de Clés d'API & Secrets</span>
-                                    <span class="module-badge-free">Inclus</span>
-                                </div>
-                                <div class="module-desc">Recherche les clés OpenAI, AWS, Stripe divulguées dans le code.</div>
+                    <!-- Module PRO 1 -->
+                    <div class="module-checkbox-card pro-locked" onclick="openProModal('Injections SQL Actives')">
+                        <div class="checkbox-custom"><i class="fa-solid fa-lock"></i></div>
+                        <div class="module-info">
+                            <div class="module-title">
+                                <span>Injections SQL</span>
+                                <span class="module-badge-pro">Pro</span>
                             </div>
+                            <div class="module-desc">Extraction de données et injection SQL différentielle.</div>
                         </div>
+                    </div>
 
-                        <!-- Module PRO 1 -->
-                        <div class="module-checkbox-card pro-locked" onclick="openProModal('Injections SQL Actives')">
-                            <div class="checkbox-custom"><i class="fa-solid fa-lock"></i></div>
-                            <div class="module-info">
-                                <div class="module-title">
-                                    <span>Injections SQL & Base de Données</span>
-                                    <span class="module-badge-pro"><i class="fa-solid fa-crown"></i> PRO</span>
-                                </div>
-                                <div class="module-desc">Test d'extraction de données et d'injection SQL différentielle.</div>
+                    <!-- Module PRO 2 -->
+                    <div class="module-checkbox-card pro-locked" onclick="openProModal('Audit XSS & Formulaires')">
+                        <div class="checkbox-custom"><i class="fa-solid fa-lock"></i></div>
+                        <div class="module-info">
+                            <div class="module-title">
+                                <span>Failles XSS</span>
+                                <span class="module-badge-pro">Pro</span>
                             </div>
+                            <div class="module-desc">Sondes canaris sur les formulaires contre l'injection de scripts.</div>
                         </div>
+                    </div>
 
-                        <!-- Module PRO 2 -->
-                        <div class="module-checkbox-card pro-locked" onclick="openProModal('Audit XSS & Formulairs')">
-                            <div class="checkbox-custom"><i class="fa-solid fa-lock"></i></div>
-                            <div class="module-info">
-                                <div class="module-title">
-                                    <span>Failles XSS & Détournement</span>
-                                    <span class="module-badge-pro"><i class="fa-solid fa-crown"></i> PRO</span>
-                                </div>
-                                <div class="module-desc">Sondes canaris sur les formulaires pour détecter l'injection de scripts.</div>
+                    <!-- Module PRO 3 -->
+                    <div class="module-checkbox-card pro-locked" onclick="openProModal('Audit IDOR & Contrôle d\'accès')">
+                        <div class="checkbox-custom"><i class="fa-solid fa-lock"></i></div>
+                        <div class="module-info">
+                            <div class="module-title">
+                                <span>Contrôle IDOR/BOLA</span>
+                                <span class="module-badge-pro">Pro</span>
                             </div>
+                            <div class="module-desc">Vérification d'isolation entre comptes et ressources privées.</div>
                         </div>
+                    </div>
 
-                        <!-- Module PRO 3 -->
-                        <div class="module-checkbox-card pro-locked" onclick="openProModal('Audit IDOR & Contrôle d\'accès')">
-                            <div class="checkbox-custom"><i class="fa-solid fa-lock"></i></div>
-                            <div class="module-info">
-                                <div class="module-title">
-                                    <span>Élévation de Rôle & IDOR/BOLA</span>
-                                    <span class="module-badge-pro"><i class="fa-solid fa-crown"></i> PRO</span>
-                                </div>
-                                <div class="module-desc">Vérifie si un utilisateur peut accéder aux factures d'un autre client.</div>
+                    <!-- Module PRO 4 -->
+                    <div class="module-checkbox-card pro-locked" onclick="openProModal('Scan Infrastructure Nmap')">
+                        <div class="checkbox-custom"><i class="fa-solid fa-lock"></i></div>
+                        <div class="module-info">
+                            <div class="module-title">
+                                <span>Ports Serveur (Nmap)</span>
+                                <span class="module-badge-pro">Pro</span>
                             </div>
+                            <div class="module-desc">Audit TCP des 17 ports critiques et bannières réseau.</div>
                         </div>
+                    </div>
 
-                        <!-- Module PRO 4 -->
-                        <div class="module-checkbox-card pro-locked" onclick="openProModal('Scan Infrastructure Nmap')">
-                            <div class="checkbox-custom"><i class="fa-solid fa-lock"></i></div>
-                            <div class="module-info">
-                                <div class="module-title">
-                                    <span>Scan de Ports Serveur (Nmap)</span>
-                                    <span class="module-badge-pro"><i class="fa-solid fa-crown"></i> PRO</span>
-                                </div>
-                                <div class="module-desc">Audit TCP des 17 ports critiques et bannières de services.</div>
+                    <!-- Module PRO 5 -->
+                    <div class="module-checkbox-card pro-locked" onclick="openProModal('Pentest Multi-Agents PentAGI')">
+                        <div class="checkbox-custom"><i class="fa-solid fa-lock"></i></div>
+                        <div class="module-info">
+                            <div class="module-title">
+                                <span>Agents PentAGI</span>
+                                <span class="module-badge-pro">Pro</span>
                             </div>
-                        </div>
-
-                        <!-- Module PRO 5 -->
-                        <div class="module-checkbox-card pro-locked" onclick="openProModal('Pentest Multi-Agents PentAGI')">
-                            <div class="checkbox-custom"><i class="fa-solid fa-lock"></i></div>
-                            <div class="module-info">
-                                <div class="module-title">
-                                    <span>Campagne Pentest PentAGI</span>
-                                    <span class="module-badge-pro"><i class="fa-solid fa-crown"></i> PRO</span>
-                                </div>
-                                <div class="module-desc">Multi-agents autonomes en conteneurs Docker éphémères.</div>
-                            </div>
+                            <div class="module-desc">Multi-agents autonomes en conteneurs Docker éphémères.</div>
                         </div>
                     </div>
                 </div>
@@ -1293,7 +982,7 @@
 
                     <div class="score-details-box">
                         <h3 id="resTargetHeader">Résultats de l'Audit : https://votre-site.com</h3>
-                        <div id="resRiskPill" class="risk-pill risk-modere">Risque Modéré ⚠️</div>
+                        <div id="resRiskPill" class="risk-pill risk-modere">Risque Modéré</div>
                         <p style="color: var(--text-secondary); font-size: 0.95rem; line-height: 1.5;">
                             L'audit a identifié des vulnérabilités nécessitant une attention immédiate pour éviter le vol de session et les fuites d'informations.
                         </p>
@@ -1342,7 +1031,7 @@
                 <!-- PRO UPSELL BANNER -->
                 <div class="pro-upsell-card">
                     <div class="pro-upsell-content">
-                        <h4>🔒 Passez à la Vitesse Supérieure avec Ulton PRO</h4>
+                        <h4><i class="fa-solid fa-lock"></i> Passez à la Vitesse Supérieure avec Ulton PRO</h4>
                         <p>Les cybercriminels ne s'arrêtent pas aux en-têtes. Débloquez l'audit approfondi et la protection active 24h/24 pour votre entreprise.</p>
                         <div class="pro-features-pills">
                             <span class="pro-feature-tag">✓ Injections SQL & Extraction BDD</span>
@@ -1369,11 +1058,9 @@
         <!-- ============================================================== -->
         <section id="view-shield" class="view-section">
             <div class="scanner-hero" style="margin-bottom: 1.5rem;">
-                <div class="hero-badge" style="background: rgba(16, 185, 129, 0.1); color: var(--green); border-color: rgba(16, 185, 129, 0.3);">
-                    <i class="fa-solid fa-shield-virus"></i> Protection Temps Réel & Auto-Apprentissage
-                </div>
-                <h2>Bouclier Applicatif Ulton Sentinel (WAF)</h2>
-                <p>Protégez vos applications contre les injections SQL, failles XSS, et attaques Zero-Day avec un filtre intelligent capable d'apprendre des nouvelles menaces.</p>
+                <span class="ui-eyebrow"><span class="dot"></span> Protection Temps Réel &amp; Auto-Apprentissage</span>
+                <h2 class="ui-title">Bouclier Applicatif <span class="ui-grad-text">Ulton Sentinel</span></h2>
+                <p class="ui-lead">Protégez vos applications contre les injections SQL, failles XSS et attaques Zero-Day avec un filtre intelligent.</p>
             </div>
 
             <div class="shield-view-card">
@@ -1418,11 +1105,9 @@ def ulton_waf_shield():
         <!-- ============================================================== -->
         <section id="view-settings" class="view-section">
             <div class="scanner-hero" style="margin-bottom: 1.5rem;">
-                <div class="hero-badge">
-                    <i class="fa-solid fa-sliders"></i> Console pour Développeurs & Analystes SOC
-                </div>
-                <h2>Outils Avancés & Configuration des Scanners</h2>
-                <p>Configurez vos clés d'API LLM (OpenAI, Anthropic, Gemini, Ollama), activez Kali Linux MCP et gérez vos mandats d'autorisation formels.</p>
+                <span class="ui-eyebrow"><span class="dot"></span> Console Développeurs &amp; Analystes SOC</span>
+                <h2 class="ui-title">Outils Avancés &amp; <span class="ui-grad-text">Scanners SOC</span></h2>
+                <p class="ui-lead">Configurez vos clés LLM (OpenAI, Anthropic, Gemini, Ollama), activez Kali Linux MCP et gérez vos autorisations.</p>
             </div>
 
             <div class="modules-grid" style="margin-bottom: 2rem;">
@@ -1492,13 +1177,13 @@ def ulton_waf_shield():
     <!-- ============================================================== -->
     <button class="copilot-fab" id="openCopilotBtn" onclick="toggleCopilotDrawer()">
         <span class="fab-dot"></span>
-        <i class="fa-solid fa-robot"></i> Copilote Cyber Ulton AI
+        <span>Ulton IA</span>
     </button>
 
     <div class="copilot-drawer" id="copilotDrawer">
         <div class="drawer-header">
             <div class="drawer-title-box">
-                <div style="width: 32px; height: 32px; background: linear-gradient(135deg, #0284c7, #38bdf8); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 0.95rem; color: #fff;">
+                <div style="width: 32px; height: 32px; background: var(--grad); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 0.9rem; color: #fff;">
                     <i class="fa-solid fa-shield-halved"></i>
                 </div>
                 <div>
@@ -1513,15 +1198,15 @@ def ulton_waf_shield():
 
         <div class="drawer-messages" id="drawerChatMessages">
             <div class="chat-bubble assistant">
-                👋 Bonjour ! Je suis <strong>Ulton AI</strong>, votre copilote de cybersécurité.<br><br>
+                Bonjour ! Je suis <strong>Ulton AI</strong>, votre copilote de cybersécurité.<br><br>
                 Lancez un audit sur votre site ci-contre, ou posez-moi n'importe quelle question sur vos failles, vos serveurs ou la protection de vos données !
             </div>
         </div>
 
         <div class="chat-quick-pills">
-            <button class="quick-pill-btn" onclick="openCopilotWithPrompt('Comment sécuriser les en-têtes HTTP manquants sur mon serveur ?')">🛡️ En-têtes manquants</button>
-            <button class="quick-pill-btn" onclick="openCopilotWithPrompt('Pourquoi le fichier .env est-il dangereux s\'il est accessible ?')">📁 Danger fichier .env</button>
-            <button class="quick-pill-btn" onclick="openCopilotWithPrompt('Mon site risque-t-il une cyberattaque aujourd\'hui ?')">⚠️ Risque d'attaque</button>
+            <button class="quick-pill-btn" onclick="openCopilotWithPrompt('Comment sécuriser les en-têtes HTTP manquants sur mon serveur ?')"><i class="fa-solid fa-shield-halved"></i> En-têtes manquants</button>
+            <button class="quick-pill-btn" onclick="openCopilotWithPrompt('Pourquoi le fichier .env est-il dangereux s\'il est accessible ?')"><i class="fa-solid fa-folder-open"></i> Danger fichier .env</button>
+            <button class="quick-pill-btn" onclick="openCopilotWithPrompt('Mon site risque-t-il une cyberattaque aujourd\'hui ?')"><i class="fa-solid fa-triangle-exclamation"></i> Risque d'attaque</button>
         </div>
 
         <div class="drawer-input-box">
@@ -1541,42 +1226,42 @@ def ulton_waf_shield():
             <button class="modal-close-btn" onclick="closeProModal()"><i class="fa-solid fa-xmark"></i></button>
 
             <div style="text-align: center; margin-bottom: 1.5rem;">
-                <div style="display:inline-flex; width: 50px; height: 50px; background: rgba(251, 191, 36, 0.15); border: 1px solid var(--gold); border-radius: 12px; align-items:center; justify-content:center; color: var(--gold); font-size: 1.5rem; margin-bottom: 0.75rem;">
-                    <i class="fa-solid fa-crown"></i>
+                <div style="display:inline-flex; width: 48px; height: 48px; background: var(--grad-soft); border: 1px solid var(--line-strong); border-radius: 14px; align-items:center; justify-content:center; color: var(--accent-2); font-size: 1.35rem; margin-bottom: 0.75rem;">
+                    <i class="fa-solid fa-shield-halved"></i>
                 </div>
-                <h3 style="font-size: 1.4rem; font-weight: 800; margin-bottom: 4px;">Passez à l'Armement Ulton PRO</h3>
+                <h3 style="font-size: 1.35rem; font-weight: 700; margin-bottom: 4px;">Passer à Ulton PRO</h3>
                 <p style="color: var(--text-secondary); font-size: 0.9rem;" id="proModalFeatureContext">
                     Cette fonctionnalité avancée fait partie de l'arsenal complet Ulton PRO.
                 </p>
             </div>
 
-            <div style="background: #090c14; border: 1px solid var(--border); border-radius: 12px; padding: 1.25rem; margin-bottom: 1.5rem;">
+            <div style="background: rgba(255, 255, 255, 0.03); border: 1px solid var(--border); border-radius: 14px; padding: 1.25rem; margin-bottom: 1.5rem;">
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px; font-size: 0.85rem;">
                     <div>
                         <strong style="color: var(--text-muted); display:block; margin-bottom: 6px;">MODE DÉCOUVERTE (0€)</strong>
                         <ul style="list-style:none; line-height: 1.8; color: var(--text-secondary);">
-                            <li>✓ En-têtes HTTP & SSL</li>
+                            <li>✓ En-têtes HTTP &amp; SSL</li>
                             <li>✓ Fichiers sensibles publics</li>
                             <li>✓ Fuites de clés d'API simples</li>
                             <li>✓ Explications textuelles IA</li>
                         </ul>
                     </div>
                     <div>
-                        <strong style="color: var(--gold); display:block; margin-bottom: 6px;"><i class="fa-solid fa-crown"></i> ULTON PRO</strong>
+                        <strong style="color: var(--accent-2); display:block; margin-bottom: 6px;">ULTON PRO</strong>
                         <ul style="list-style:none; line-height: 1.8; color: #fff;">
-                            <li><strong style="color: var(--green);">✓ Injections SQL & Extraction BDD</strong></li>
-                            <li><strong style="color: var(--green);">✓ Failles XSS & IDOR/BOLA</strong></li>
-                            <li><strong style="color: var(--green);">✓ Génération de patchs unifiés (diff)</strong></li>
+                            <li><strong style="color: var(--green);">✓ Injections SQL &amp; Extraction BDD</strong></li>
+                            <li><strong style="color: var(--green);">✓ Failles XSS &amp; IDOR/BOLA</strong></li>
+                            <li><strong style="color: var(--green);">✓ Génération de patchs (diff)</strong></li>
                             <li><strong style="color: var(--green);">✓ Bouclier WAF actif 24h/24</strong></li>
-                            <li><strong style="color: var(--green);">✓ Scanners Kali & PentAGI</strong></li>
+                            <li><strong style="color: var(--green);">✓ Scanners Kali &amp; PentAGI</strong></li>
                         </ul>
                     </div>
                 </div>
             </div>
 
             <div style="text-align: center;">
-                <button class="btn-upgrade-pro" style="width: 100%; justify-content: center; padding: 12px; font-size: 1rem;" onclick="alert('Demande d\'accès PRO enregistrée ! Vous serez notifié dès l\'activation.'); closeProModal();">
-                    <i class="fa-solid fa-sparkles"></i> Activer Ulton PRO (Essai 14 jours)
+                <button class="ui-btn primary wide" style="padding: 12px; font-size: 0.95rem;" onclick="alert('Demande d\'accès PRO enregistrée ! Vous serez notifié dès l\'activation.'); closeProModal();">
+                    Activer Ulton PRO (Essai 14 jours)
                 </button>
                 <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 8px;">
                     Sans engagement • Prêt pour les entreprises et développeurs
@@ -1704,16 +1389,16 @@ def ulton_waf_shield():
             // Risk Pill
             const pill = document.getElementById('resRiskPill');
             if (counts.critical > 0) {
-                pill.textContent = 'Danger Critique 🔴';
+                pill.textContent = 'Danger Critique';
                 pill.className = 'risk-pill risk-critique';
             } else if (counts.high > 0) {
-                pill.textContent = 'Risque Élevé ⚠️';
+                pill.textContent = 'Risque Élevé';
                 pill.className = 'risk-pill risk-eleve';
             } else if (counts.medium > 0) {
-                pill.textContent = 'Vigilance Requise 🟡';
+                pill.textContent = 'Vigilance Requise';
                 pill.className = 'risk-pill risk-modere';
             } else {
-                pill.textContent = 'Posture Robuste 🟢';
+                pill.textContent = 'Posture Robuste';
                 pill.className = 'risk-pill risk-faible';
             }
 
@@ -1769,18 +1454,18 @@ def ulton_waf_shield():
 
                         <div class="finding-breakdown">
                             <div class="breakdown-box">
-                                <strong>❓ Ce qui ne va pas :</strong>
+                                <strong><i class="fa-solid fa-circle-question"></i> Ce qui ne va pas :</strong>
                                 <span>${problem}</span>
                             </div>
                             <div class="breakdown-box risk">
-                                <strong>⚠️ Quel est le risque :</strong>
+                                <strong><i class="fa-solid fa-triangle-exclamation"></i> Quel est le risque :</strong>
                                 <span>${risk}</span>
                             </div>
                         </div>
 
                         <div class="finding-actions">
                             <span style="font-size: 0.8rem; color: var(--text-muted); margin-right: auto;">
-                                💡 Solution : ${solution.substring(0, 70)}...
+                                <i class="fa-solid fa-wrench"></i> Solution : ${solution.substring(0, 70)}...
                             </span>
                             <button class="btn-ask-ai" onclick="askAiAboutFinding('${encodeURIComponent(f.title)}', '${encodeURIComponent(problem)}')">
                                 <i class="fa-solid fa-comment-dots"></i> Demander à Ulton comment réparer

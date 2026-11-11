@@ -1,0 +1,694 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SiteCloner &bull; Accueil</title>
+  <link rel="icon" type="image/svg+xml" href="/__sc/static/reflex/img/brand-orbit.svg">
+  <link rel="stylesheet" href="/__sc/static/reflex/reflex.css">
+  <style>
+    :root {
+      --bg-deep: #030718;
+      --glow-a: rgba(56, 189, 248, 0.20);
+      --glow-b: rgba(124, 92, 255, 0.24);
+      --accent-main: #60a5fa;
+      --accent-sec: #8a72ff;
+      --btn-grad: linear-gradient(135deg, #3b82f6 0%, #6366f1 55%, #7c5cff 100%);
+      --btn-glow: 0 10px 30px -8px rgba(59, 130, 246, 0.72);
+      --ring-focus: rgba(96, 165, 250, 0.65);
+      --url-glow-a: rgba(56, 189, 248, 0.52);
+      --url-glow-b: rgba(124, 92, 255, 0.42);
+    }
+    body.theme-violet {
+      --bg-deep: #040014;
+      --glow-a: rgba(138, 114, 255, 0.28);
+      --glow-b: rgba(224, 140, 255, 0.18);
+      --accent-main: #c2b2ff;
+      --accent-sec: #8a72ff;
+      --btn-grad: linear-gradient(135deg, #8a72ff 0%, #5b3df5 100%);
+      --btn-glow: 0 10px 30px -8px rgba(124, 92, 255, 0.78);
+      --ring-focus: rgba(138, 114, 255, 0.7);
+      --url-glow-a: rgba(167, 139, 250, 0.56);
+      --url-glow-b: rgba(232, 121, 249, 0.36);
+    }
+
+    html, body.rx-home {
+      height: 100%;
+      margin: 0;
+      background: var(--bg-deep);
+      color: var(--rx-text);
+      font-family: var(--rx-font);
+      overflow: hidden;
+      transition: background 0.6s var(--rx-ease);
+    }
+
+    /* Fullscreen Cosmic Black Hole Stage */
+    .bh-stage {
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+      pointer-events: none;
+      overflow: hidden;
+      background:
+        radial-gradient(62% 52% at 50% 34%, var(--glow-a) 0%, transparent 68%),
+        radial-gradient(75% 65% at 50% 66%, var(--glow-b) 0%, transparent 74%),
+        var(--bg-deep);
+      transition: background 0.6s var(--rx-ease);
+    }
+    .bh-stars-wrap {
+      position: absolute;
+      inset: 0;
+      opacity: 0.9;
+      -webkit-mask-image: linear-gradient(to bottom, transparent 0%, rgba(0, 0, 0, 0.55) 22%, #000 62%);
+      mask-image: linear-gradient(to bottom, transparent 0%, rgba(0, 0, 0, 0.55) 22%, #000 62%);
+    }
+    .bh-canvas-wrap {
+      position: absolute;
+      inset: 0;
+    }
+    .bh-canvas-wrap canvas,
+    .bh-stars-wrap canvas {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+    .bh-vignette {
+      position: absolute;
+      inset: 0;
+      background:
+        radial-gradient(circle at 50% 54%, transparent 28%, rgba(3, 7, 24, 0.42) 82%, rgba(3, 7, 24, 0.85) 100%);
+      pointer-events: none;
+    }
+
+    .bh-fallback {
+      position: absolute;
+      left: 50%;
+      top: 56%;
+      width: min(680px, 90vw);
+      height: min(680px, 90vw);
+      transform: translate(-50%, -50%);
+      border-radius: 50%;
+      background:
+        radial-gradient(circle at 50% 50%, #030718 28%, rgba(37, 99, 235, 0.72) 38%, rgba(124, 92, 255, 0.68) 44%, transparent 68%);
+      filter: blur(8px);
+      opacity: 0;
+      transition: opacity 0.6s ease;
+    }
+    .bh-fallback.on { opacity: 1; }
+
+    /* Minimal Top Navigation */
+    .home-nav {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 20;
+      background: rgba(3, 7, 24, 0.34);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    .home-nav .rx-btn.primary {
+      background: var(--btn-grad);
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.28), var(--btn-glow);
+      border-color: transparent;
+    }
+
+    /* Centered foreground */
+    .home-center {
+      position: relative;
+      z-index: 10;
+      height: 100vh;
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 64px clamp(16px, 4vw, 32px) 48px;
+      pointer-events: none;
+    }
+    .type-line, .url-shell { pointer-events: auto; }
+
+    /* Vortex layer of cloned site captures being pulled into the black hole */
+    .vortex-layer {
+      position: fixed;
+      inset: 0;
+      z-index: 4;
+      overflow: hidden;
+      pointer-events: none;
+      perspective: 1100px;
+    }
+    .vortex-card {
+      position: fixed;
+      left: 0;
+      top: 0;
+      width: 224px;
+      height: 138px;
+      margin: -69px 0 0 -112px;
+      border-radius: 12px;
+      overflow: hidden;
+      pointer-events: auto;
+      cursor: pointer;
+      text-decoration: none;
+      background: rgba(8, 12, 32, 0.9);
+      border: 1px solid rgba(147, 197, 253, 0.36);
+      box-shadow: 0 18px 46px -14px rgba(0, 0, 0, 0.88), 0 0 28px -6px rgba(96, 165, 250, 0.38);
+      will-change: transform, opacity, filter;
+      transform-origin: center center;
+    }
+    .vortex-card:hover {
+      border-color: rgba(196, 178, 255, 0.78);
+      box-shadow: 0 20px 52px -12px rgba(0, 0, 0, 0.92), 0 0 36px -4px rgba(96, 165, 250, 0.65);
+      z-index: 2;
+    }
+    .vortex-card img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      object-position: top center;
+      display: block;
+    }
+    .vortex-card::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(180deg, rgba(255, 255, 255, 0.08) 0%, transparent 35%, rgba(3, 7, 24, 0.78) 100%);
+      pointer-events: none;
+    }
+    .vortex-meta {
+      position: absolute;
+      left: 10px;
+      right: 10px;
+      bottom: 8px;
+      z-index: 2;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 6px;
+      font-family: var(--rx-mono);
+      font-size: 0.68rem;
+      letter-spacing: 0.01em;
+      color: rgba(241, 245, 249, 0.92);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .vortex-meta span.domain {
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    /* Animated typing / erasing text above URL bar */
+    .type-line {
+      min-height: 2.7em;
+      max-width: 780px;
+      margin: 0 0 24px;
+      padding: 10px 26px;
+      border-radius: 999px;
+      background: radial-gradient(closest-side, rgba(2, 6, 23, 0.62) 0%, rgba(2, 6, 23, 0.24) 68%, transparent 100%);
+      text-align: center;
+      font-size: clamp(1.45rem, 3.2vw, 2.4rem);
+      font-weight: 700;
+      letter-spacing: -0.03em;
+      line-height: 1.22;
+      color: #ffffff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .type-text {
+      color: #ffffff;
+      text-shadow:
+        0 2px 6px rgba(2, 6, 23, 0.98),
+        0 4px 20px rgba(2, 6, 23, 0.95),
+        0 0 28px var(--ring-focus);
+    }
+    .type-caret {
+      display: inline-block;
+      width: 3px;
+      height: 1.06em;
+      margin-left: 6px;
+      border-radius: 2px;
+      background: #ffffff;
+      box-shadow: 0 0 12px var(--accent-main), 0 0 24px var(--ring-focus);
+      animation: rxac-blink 0.95s infinite;
+      flex-shrink: 0;
+    }
+
+    /* Redesigned Sleek Pill URL Command Bar */
+    .url-shell {
+      position: relative;
+      width: min(670px, 100%);
+      padding: 1.5px;
+      border-radius: 999px;
+      background: linear-gradient(125deg, rgba(255, 255, 255, 0.42) 0%, var(--url-glow-a) 36%, rgba(255, 255, 255, 0.22) 64%, var(--url-glow-b) 100%);
+      box-shadow:
+        0 30px 75px -6px rgba(0, 0, 0, 0.96),
+        0 14px 32px -4px rgba(2, 6, 23, 0.95),
+        0 0 38px -4px var(--url-glow-a),
+        0 0 85px -10px var(--url-glow-b);
+      transition: transform 0.28s var(--rx-ease), box-shadow 0.28s var(--rx-ease), background 0.28s var(--rx-ease);
+    }
+    .url-shell::before {
+      content: "";
+      position: absolute;
+      inset: -14px -18px;
+      z-index: -1;
+      border-radius: 999px;
+      background: radial-gradient(60% 75% at 50% 50%, var(--url-glow-a) 0%, var(--url-glow-b) 48%, transparent 78%);
+      filter: blur(22px);
+      opacity: 0.72;
+      pointer-events: none;
+      transition: opacity 0.28s var(--rx-ease), transform 0.28s var(--rx-ease);
+    }
+    .url-shell:hover {
+      transform: translateY(-1px);
+      box-shadow:
+        0 34px 85px -6px rgba(0, 0, 0, 0.98),
+        0 16px 36px -4px rgba(2, 6, 23, 0.95),
+        0 0 46px -2px var(--url-glow-a),
+        0 0 100px -8px var(--url-glow-b);
+    }
+    .url-shell:focus-within {
+      transform: translateY(-2px);
+      background: linear-gradient(125deg, rgba(255, 255, 255, 0.65) 0%, var(--accent-main) 42%, var(--accent-sec) 100%);
+      box-shadow:
+        0 0 0 4px rgba(96, 165, 250, 0.16),
+        0 36px 90px -6px rgba(0, 0, 0, 0.98),
+        0 0 56px 0 var(--url-glow-a),
+        0 0 115px -6px var(--url-glow-b);
+    }
+    .url-shell:focus-within::before {
+      opacity: 0.96;
+      transform: scale(1.02);
+    }
+    .url-bar {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 8px 8px 22px;
+      border-radius: 999px;
+      background: linear-gradient(180deg, rgba(10, 16, 42, 0.92) 0%, rgba(4, 7, 22, 0.95) 100%);
+      box-shadow:
+        inset 0 1px 1px rgba(255, 255, 255, 0.22),
+        inset 0 -1px 1px rgba(96, 165, 250, 0.18);
+      backdrop-filter: blur(26px) saturate(1.5);
+      -webkit-backdrop-filter: blur(26px) saturate(1.5);
+    }
+    .url-icon {
+      flex: 0 0 auto;
+      width: 19px;
+      height: 19px;
+      color: var(--accent-main);
+      filter: drop-shadow(0 0 8px var(--url-glow-a));
+    }
+    .url-bar input {
+      flex: 1;
+      min-width: 0;
+      border: 0;
+      outline: none;
+      background: transparent;
+      color: #f8fafc;
+      font-family: var(--rx-font);
+      font-size: 0.98rem;
+      font-weight: 500;
+      letter-spacing: -0.01em;
+      padding: 12px 4px;
+    }
+    .url-bar input::placeholder {
+      color: rgba(226, 232, 240, 0.62);
+    }
+    .url-actions {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-shrink: 0;
+    }
+    .u-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 7px;
+      height: 42px;
+      padding: 0 18px;
+      border-radius: 999px;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      background: rgba(255, 255, 255, 0.05);
+      color: #e2e8f0;
+      font-family: var(--rx-font);
+      font-size: 0.875rem;
+      font-weight: 600;
+      letter-spacing: -0.01em;
+      cursor: pointer;
+      transition: all 0.22s var(--rx-ease);
+    }
+    .u-btn:hover {
+      background: rgba(255, 255, 255, 0.11);
+      color: #fff;
+      border-color: rgba(255, 255, 255, 0.24);
+    }
+    .u-btn.go {
+      border: 0;
+      color: #fff;
+      padding: 0 22px;
+      background: var(--btn-grad);
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.28), var(--btn-glow);
+    }
+    .u-btn.go:hover {
+      transform: translateY(-1px);
+      filter: brightness(1.08);
+    }
+    .u-btn svg { width: 15px; height: 15px; flex-shrink: 0; }
+
+    /* Discrete bottom background color switcher (Blue / Violet) */
+    .bg-switcher {
+      position: fixed;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 15;
+      display: inline-flex;
+      gap: 4px;
+      padding: 4px;
+      border-radius: 999px;
+      background: rgba(6, 10, 28, 0.55);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      backdrop-filter: blur(12px);
+    }
+    .bg-pill {
+      border: 0;
+      background: transparent;
+      color: rgba(226, 232, 240, 0.62);
+      font-family: var(--rx-font);
+      font-size: 0.74rem;
+      font-weight: 500;
+      padding: 5px 12px;
+      border-radius: 999px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.2s var(--rx-ease);
+    }
+    .bg-pill .sw-dot { width: 7px; height: 7px; border-radius: 50%; }
+    .bg-pill.on {
+      background: rgba(255, 255, 255, 0.11);
+      color: #fff;
+    }
+
+    @media (max-width: 640px) {
+      .url-shell, .url-bar { border-radius: 20px; }
+      .url-bar { flex-direction: column; align-items: stretch; padding: 12px; }
+      .url-icon { display: none; }
+      .url-actions { display: grid; grid-template-columns: 1fr 1fr; }
+    }
+  </style>
+</head>
+<body class="rx rx-home">
+  <!-- Cosmic Animated WebGL Black Hole Background -->
+  <div class="bh-stage" aria-hidden="true">
+    <div class="bh-stars-wrap"><canvas id="starCanvas"></canvas></div>
+    <div class="bh-canvas-wrap">
+      <div class="bh-fallback" id="bhFallback"></div>
+      <canvas id="bhCanvas"></canvas>
+    </div>
+    <div class="bh-vignette"></div>
+  </div>
+
+  <!-- Cloned site captures spiraling into the black hole -->
+  <div class="vortex-layer" id="vortexLayer"></div>
+
+  <!-- Clean Minimal Navigation (No Emojis) -->
+  <header class="home-nav">
+    <nav class="rx-nav">
+      <a class="rx-brand" href="/__sc/home">
+        <img src="/__sc/static/reflex/img/brand-orbit.svg" alt="">
+        <span>SiteCloner</span>
+      </a>
+      <div class="rx-links">
+        <a href="/__sc/home" class="on">Accueil</a>
+        <a href="/__sc/">Cloneur</a>
+        <a href="/shop/">Marketplace</a>
+        <a href="/__sc/security/">Sécurité IA</a>
+        <a href="/admin">Admin</a>
+      </div>
+      <div class="rx-nav-actions">
+        <a class="rx-btn sm primary" href="/__sc/">Ouvrir le Cloneur</a>
+      </div>
+    </nav>
+  </header>
+
+  <!-- Only Animated Typewriter Headline + Redesigned URL Bar -->
+  <main class="home-center">
+    <div class="type-line" aria-live="polite">
+      <span class="type-text" id="typeTarget"></span><span class="type-caret" aria-hidden="true"></span>
+    </div>
+
+    <form class="url-shell" id="urlForm" autocomplete="off">
+      <div class="url-bar">
+        <svg class="url-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <circle cx="12" cy="12" r="9.5"/>
+          <path d="M2.8 12h18.4M12 2.5c2.6 2.6 4 5.9 4 9.5s-1.4 6.9-4 9.5c-2.6-2.6-4-5.9-4-9.5s1.4-6.9 4-9.5z"/>
+        </svg>
+        <input id="homeUrlInput" type="text" placeholder="https://exemple.com — collez l'adresse du site" autofocus>
+        <div class="url-actions">
+          <button type="button" id="auditBtn" class="u-btn" title="Auditer la sécurité du site">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7 3v5.5c0 4.5-3 8.2-7 9.5-4-1.3-7-5-7-9.5V6l7-3z"/></svg>
+            <span>Auditer</span>
+          </button>
+          <button type="submit" class="u-btn go" title="Cloner le site">
+            <span>Cloner</span>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+          </button>
+        </div>
+      </div>
+    </form>
+  </main>
+
+  <!-- Discrete Background Color Toggle: Blue / Violet -->
+  <div class="bg-switcher" role="group" aria-label="Couleur de fond">
+    <button type="button" class="bg-pill on" data-theme="blue"><span class="sw-dot" style="background:#60a5fa"></span>Bleu Cosmique</button>
+    <button type="button" class="bg-pill" data-theme="violet"><span class="sw-dot" style="background:#a88bff"></span>Violet Sidéral</button>
+  </div>
+
+  <script src="/__sc/static/reflex/blackhole.js"></script>
+  <script>
+    const THEMES = {
+      blue: {
+        hotColor: "#eef6ff",
+        midColor: "#4f7cff",
+        coolColor: "#141e5a",
+        blueshift: "#60a5fa",
+        redshift: "#a78bfa",
+        shadowColor: "#030718"
+      },
+      violet: {
+        hotColor: "#f4f0ff",
+        midColor: "#8a72ff",
+        coolColor: "#2a1470",
+        blueshift: "#8fc2ff",
+        redshift: "#e08cff",
+        shadowColor: "#040014"
+      }
+    };
+
+    // 1. Start StarField + WebGL Black Hole
+    window.initReflexStars(document.getElementById('starCanvas'));
+    const bh = window.initReflexBlackHole(document.getElementById('bhCanvas'), {
+      ...THEMES.blue,
+      distance: window.innerWidth < 810 ? 44 : 33,
+      fieldOfView: window.innerWidth < 810 ? 30 : 36,
+      focusX: 0.5,
+      focusY: window.innerWidth < 810 ? 0.54 : 0.52,
+      brightness: 1.02,
+      glow: 1.15,
+      exposure: 1.24,
+      spinSpeed: 0.055
+    });
+    if (!bh || !bh.ok) document.getElementById('bhFallback').classList.add('on');
+
+    // Theme switcher
+    document.querySelectorAll('.bg-pill').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const t = btn.dataset.theme;
+        document.querySelectorAll('.bg-pill').forEach(b => b.classList.toggle('on', b === btn));
+        document.body.classList.toggle('theme-violet', t === 'violet');
+        if (bh && bh.setColors) bh.setColors(THEMES[t]);
+      });
+    });
+
+    // 2. Animated typewriter (write & erase) above URL field
+    (() => {
+      const phrases = [
+        "Clonez n'importe quel site web au pixel près.",
+        "Auditez la sécurité d'un site en un instant.",
+        "Modifiez chaque section dans le Studio visuel.",
+        "Exportez en ZIP ou publiez sur GitHub."
+      ];
+      const el = document.getElementById('typeTarget');
+      let pIdx = 0, cIdx = 0, erasing = false;
+
+      function tick() {
+        const text = phrases[pIdx];
+        if (!erasing) {
+          cIdx++;
+          el.textContent = text.slice(0, cIdx);
+          if (cIdx === text.length) {
+            erasing = true;
+            setTimeout(tick, 1800);
+            return;
+          }
+          setTimeout(tick, 38 + Math.random() * 20);
+        } else {
+          cIdx--;
+          el.textContent = text.slice(0, cIdx);
+          if (cIdx === 0) {
+            erasing = false;
+            pIdx = (pIdx + 1) % phrases.length;
+            setTimeout(tick, 340);
+            return;
+          }
+          setTimeout(tick, 22);
+        }
+      }
+      tick();
+    })();
+
+    // 3. URL actions
+    const input = document.getElementById('homeUrlInput');
+    const normalizeUrl = v => {
+      const s = (v || '').trim();
+      if (!s) return '';
+      return /^https?:\/\//i.test(s) ? s : 'https://' + s;
+    };
+    document.getElementById('urlForm').addEventListener('submit', e => {
+      e.preventDefault();
+      const u = normalizeUrl(input.value);
+      location.href = u ? `/__sc/?clone=${encodeURIComponent(u)}` : '/__sc/';
+    });
+    document.getElementById('auditBtn').addEventListener('click', () => {
+      const u = normalizeUrl(input.value);
+      location.href = u ? `/__sc/security/?target=${encodeURIComponent(u)}` : '/__sc/security/';
+    });
+
+    // 4. Cloned site screenshots orbiting & being pulled into the Black Hole
+    (async () => {
+      const layer = document.getElementById('vortexLayer');
+      if (!layer) return;
+      let sites = [];
+      try {
+        const res = await fetch('/__sc/api/sites');
+        const data = await res.json();
+        sites = (data.sites || []).filter(s => !s.incomplete && s.has_cover);
+      } catch {
+        return;
+      }
+      if (!sites.length) return;
+
+      const SLOTS = Math.min(22, Math.max(16, sites.length));
+      let cursor = 0;
+      const nextSite = () => {
+        const s = sites[cursor % sites.length];
+        cursor++;
+        return s;
+      };
+      const cleanLabel = s => {
+        try {
+          if (s.url) return new URL(s.url).hostname.replace(/^www\./, '');
+        } catch {}
+        return s.title || s.id;
+      };
+
+      const cards = [];
+      const assignCard = (slot, s) => {
+        slot.site = s;
+        slot.el.href = `/__sc/studio/${encodeURIComponent(s.id)}`;
+        slot.el.title = cleanLabel(s);
+        slot.img.src = `/__sc/studio/${encodeURIComponent(s.id)}/cover.jpg`;
+        slot.lbl.textContent = cleanLabel(s);
+      };
+
+      for (let i = 0; i < SLOTS; i++) {
+        const el = document.createElement('a');
+        el.className = 'vortex-card';
+        el.innerHTML = `<img alt="" loading="eager"><div class="vortex-meta"><span class="domain"></span><span>Voir</span></div>`;
+        const img = el.querySelector('img');
+        const lbl = el.querySelector('.domain');
+        const lane = i % 3;
+        const slot = {
+          el, img, lbl,
+          p: (i / SLOTS + lane * 0.04) % 1,
+          speed: 0.036 + lane * 0.006,
+          laneScale: 0.88 + lane * 0.16,
+          sizeBoost: 0.88 + ((i + 1) % 3) * 0.08,
+          baseAngle: (i / SLOTS) * Math.PI * 2 + lane * 0.45,
+          spinSign: 1,
+          paused: false,
+        };
+        el.addEventListener('pointerenter', () => { slot.paused = true; });
+        el.addEventListener('pointerleave', () => { slot.paused = false; });
+        assignCard(slot, nextSite());
+        layer.appendChild(el);
+        cards.push(slot);
+      }
+
+      let last = 0;
+      function animate(now) {
+        const dt = last ? Math.min(0.05, (now - last) / 1000) : 0.016;
+        last = now;
+        const vw = window.innerWidth;
+        const vh = window.innerHeight;
+        const cx = vw * 0.5;
+        const cy = vh * 0.52; // Matches blackhole focusY
+        const baseRadius = Math.max(300, Math.hypot(vw * 0.42, vh * 0.40));
+        const rEnd = 10;
+
+        for (let i = 0; i < cards.length; i++) {
+          const c = cards[i];
+          if (!c.paused && !document.hidden) {
+            // Pull speed accelerates subtly near the event horizon
+            const pullBoost = 0.72 + 1.38 * Math.pow(c.p, 1.4);
+            c.p += c.speed * pullBoost * dt;
+            if (c.p >= 1) {
+              c.p -= 1;
+              c.baseAngle = (c.baseAngle + 2.39996) % (Math.PI * 2); // golden angle spread
+              assignCard(c, nextSite());
+            }
+          }
+
+          const p = c.p;
+          const rStart = baseRadius * c.laneScale;
+          // Radial inward trajectory across outer & mid orbits
+          const rCurve = 1 - Math.pow(p, 1.24);
+          const r = rEnd + (rStart - rEnd) * rCurve;
+          // Swirling orbital angle accelerating toward center
+          const theta = c.baseAngle + c.spinSign * (3.1 * Math.pow(p, 1.32));
+          const x = cx + Math.cos(theta) * r * (vw > vh ? 1.12 : 0.92);
+          const y = cy + Math.sin(theta) * r * 0.80;
+
+          // Shrink + radial spaghettification toward singularity
+          const dx = cx - x, dy = cy - y;
+          const pullDeg = Math.atan2(dy, dx) * (180 / Math.PI);
+          const scaleBase = Math.max(0.04, (1 - Math.pow(p, 1.55)) * c.sizeBoost);
+          const stretchX = scaleBase * (1 + 0.68 * Math.pow(p, 1.9));
+          const stretchY = scaleBase * (1 - 0.38 * Math.pow(p, 1.9));
+
+          let alpha = 0.86;
+          if (p < 0.06) alpha = (p / 0.06) * 0.86;
+          else if (p > 0.76) alpha = Math.max(0, (1 - p) / 0.24) * 0.86;
+
+          const blurPx = p > 0.72 ? ((p - 0.72) / 0.28) * 5 : 0;
+          c.el.style.opacity = alpha.toFixed(3);
+          c.el.style.filter = blurPx > 0.2 ? `blur(${blurPx.toFixed(1)}px) brightness(${(1 + p * 0.25).toFixed(2)})` : 'none';
+          c.el.style.transform = `translate3d(${x.toFixed(1)}px, ${y.toFixed(1)}px, 0) rotate(${(pullDeg * 0.32 + p * 28).toFixed(1)}deg) scale(${stretchX.toFixed(3)}, ${stretchY.toFixed(3)})`;
+        }
+        requestAnimationFrame(animate);
+      }
+      requestAnimationFrame(animate);
+    })();
+  </script>
+</body>
+</html>

@@ -10,16 +10,18 @@
   <style>
     [hidden] { display: none !important; }
     .shell { display: grid; grid-template-columns: 250px minmax(0, 1fr); min-height: 100vh; }
-    .side { position: sticky; top: 0; height: 100vh; padding: 20px 14px; border-right: 1px solid var(--line); background: rgba(7, 8, 13, .55); backdrop-filter: blur(16px); display: flex; flex-direction: column; gap: 4px; }
+    .side { position: sticky; top: 0; height: 100vh; padding: 20px 14px; border-right: 1px solid var(--line); background: rgba(3, 7, 24, .66); backdrop-filter: blur(18px); display: flex; flex-direction: column; gap: 4px; }
+    body.theme-violet .side { background: rgba(4, 0, 20, .7); }
     .side .ui-brand { padding: 4px 10px 20px; }
     .side button, .side a.link {
       display: flex; align-items: center; gap: 12px; width: 100%; padding: 11px 12px; border: 0; border-radius: 12px; background: transparent; color: var(--muted);
       font: 500 .92rem var(--font); cursor: pointer; text-align: left; text-decoration: none; position: relative; transition: color .2s, background .2s;
     }
-    .side button:hover, .side a.link:hover { color: var(--text); background: rgba(255, 255, 255, .04); }
+    .side button:hover, .side a.link:hover { color: var(--text); background: rgba(255, 255, 255, .05); }
     .side button.on { color: var(--text); background: var(--grad-soft); box-shadow: inset 0 0 0 1px var(--line-strong); }
     .side button.on::before { content: ""; position: absolute; left: -14px; top: 10px; bottom: 10px; width: 3px; border-radius: 3px; background: var(--grad); }
-    .side .ic { width: 22px; text-align: center; }
+    .side .ic { width: 18px; height: 18px; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .side .ic svg { width: 16px; height: 16px; }
     .side .n:empty { display: none; }
     .side .n { margin-left: auto; font-size: .72rem; padding: 2px 7px; border-radius: 999px; background: rgba(255, 255, 255, .06); }
     .side .bottom { margin-top: auto; padding-top: 14px; border-top: 1px solid var(--line); display: flex; flex-direction: column; gap: 4px; }
@@ -104,20 +106,21 @@
 <body class="ui">
 <div class="shell">
   <aside class="side" id="tabs">
-    <a class="ui-brand" href="/admin"><span class="ui-logo">⚡</span> SiteCloner</a>
-    <button data-tab="overview" class="on"><span class="ic">📊</span> Vue d'ensemble</button>
-    <button data-tab="sites"><span class="ic">🌐</span> Sites clonés <span class="n" id="n-sites"></span></button>
-    <button data-tab="jobs"><span class="ic">⚙️</span> Jobs <span class="n" id="n-jobs"></span></button>
-    <button data-tab="products"><span class="ic">🛍️</span> Marketplace <span class="n" id="n-products"></span></button>
-    <button data-tab="orders"><span class="ic">💳</span> Commandes</button>
-    <button data-tab="settings"><span class="ic">🔐</span> Compte</button>
+    <a class="ui-brand" href="/__sc/home"><img class="rx-orb" src="/__sc/static/reflex/img/brand-orbit.svg" alt=""><span>SiteCloner</span></a>
+    <button data-tab="overview" class="on"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg></span> Vue d'ensemble</button>
+    <button data-tab="sites"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 2.6 4 5.8 4 9s-1.5 6.4-4 9c-2.5-2.6-4-5.8-4-9s1.5-6.4 4-9z"/></svg></span> Sites clonés <span class="n" id="n-sites"></span></button>
+    <button data-tab="jobs"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="3"/><path d="M12 2v3m0 14v3M4.9 4.9l2.1 2.1m9.9 9.9 2.1 2.1M2 12h3m14 0h3M4.9 19.1l2.1-2.1m9.9-9.9 2.1-2.1"/></svg></span> Jobs <span class="n" id="n-jobs"></span></button>
+    <button data-tab="products"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M6 7h12l1 13H5L6 7z"/><path d="M9 7V5a3 3 0 0 1 6 0v2"/></svg></span> Marketplace <span class="n" id="n-products"></span></button>
+    <button data-tab="orders"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/></svg></span> Commandes</button>
+    <button data-tab="settings"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg></span> Compte</button>
     <div class="bottom">
-      <a class="link" href="/__sc/" target="_blank" rel="noopener"><span class="ic">🧬</span> Ouvrir le cloneur ↗</a>
-      <a class="link" href="/shop/" target="_blank" rel="noopener"><span class="ic">🏪</span> Voir la marketplace ↗</a>
-      <a class="link" href="/__sc/security/" target="_blank" rel="noopener"><span class="ic">🛡️</span> Module sécurité ↗</a>
+      <a class="link" href="/__sc/home"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6h-6v6H4a1 1 0 0 1-1-1z"/></svg></span> Accueil</a>
+      <a class="link" href="/__sc/" target="_blank" rel="noopener"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.7 1.7"/><path d="M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7l1.7-1.7"/></svg></span> Cloneur</a>
+      <a class="link" href="/shop/" target="_blank" rel="noopener"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 9l2-5h14l2 5"/><path d="M4 9v10a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1V9"/></svg></span> Marketplace</a>
+      <a class="link" href="/__sc/security/" target="_blank" rel="noopener"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 3l8 3.5v5.5c0 4.5-3.4 8.5-8 9.5-4.6-1-8-5-8-9.5V6.5L12 3z"/></svg></span> Sécurité IA</a>
       <form method="post" action="/admin/logout" style="margin:0">
         <input type="hidden" name="csrf" value="{{ csrf }}">
-        <button type="submit"><span class="ic">↩</span> Déconnexion <span class="n">{{ username }}</span></button>
+        <button type="submit"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5M21 12H9"/></svg></span> Déconnexion <span class="n">{{ username }}</span></button>
       </form>
     </div>
   </aside>
@@ -125,7 +128,7 @@
   <div class="main">
     <!-- ===== overview ===== -->
     <section class="tab on" id="tab-overview">
-      <div class="top"><div><h1>Bonjour {{ username }} 👋</h1><div class="sub">Tout ce qui se passe sur la plateforme, en un coup d'œil.</div></div>
+      <div class="top"><div><h1>Bonjour {{ username }}</h1><div class="sub">Tout ce qui se passe sur la plateforme, en un coup d'œil.</div></div>
         <div class="actions"><button class="ui-btn primary" data-goto="products" data-new>+ Nouveau produit</button></div></div>
       <div class="ui-stats" id="stats" data-stagger></div>
       <div class="cols">
@@ -141,7 +144,7 @@
     <!-- ===== sites ===== -->
     <section class="tab" id="tab-sites">
       <div class="top"><div><h1>Sites clonés</h1><div class="sub">Ouvre, modifie dans le Studio, exporte ou supprime tes clones.</div></div>
-        <div class="actions"><a class="ui-btn primary" href="/__sc/" target="_blank" rel="noopener">🧬 Cloner un site</a></div></div>
+        <div class="actions"><a class="ui-btn primary" href="/__sc/" target="_blank" rel="noopener">Cloner un site</a></div></div>
       <div class="filters"><input class="ui-input" id="site-q" placeholder="Filtrer par nom ou URL…"></div>
       <div class="site-grid" id="sites-grid"></div>
     </section>
@@ -158,7 +161,7 @@
     <!-- ===== marketplace ===== -->
     <section class="tab" id="tab-products">
       <div class="top"><div><h1>Marketplace</h1><div class="sub">Designs, prompts, skills, logiciels… Gratuits ou payants.</div></div>
-        <div class="actions"><a class="ui-btn" href="/shop/" target="_blank" rel="noopener">👁 Voir</a><button class="ui-btn primary" id="new-product">+ Nouveau produit</button></div></div>
+        <div class="actions"><a class="ui-btn" href="/shop/" target="_blank" rel="noopener">Voir</a><button class="ui-btn primary" id="new-product">+ Nouveau produit</button></div></div>
       <div id="stripe-warn" class="warn-box" hidden></div>
       <div class="filters">
         <input class="ui-input" id="prod-q" placeholder="Rechercher un produit…">
@@ -195,7 +198,7 @@
 <div class="drawer" id="drawer">
   <div class="bg" data-dclose></div>
   <form class="panel-d" id="product-form" enctype="multipart/form-data">
-    <div class="d-head"><h2 id="pf-title">Nouveau produit</h2><span style="flex:1"></span><a class="ui-btn sm ghost" id="pf-view" target="_blank" rel="noopener" hidden>👁 Voir la page</a><button type="button" class="ui-btn icon ghost" data-dclose>✕</button></div>
+    <div class="d-head"><h2 id="pf-title">Nouveau produit</h2><span style="flex:1"></span><a class="ui-btn sm ghost" id="pf-view" target="_blank" rel="noopener" hidden>Voir la page</a><button type="button" class="ui-btn icon ghost" data-dclose aria-label="Fermer">&times;</button></div>
     <div class="d-body">
       <div class="ui-field"><label class="ui-label">Nom du produit *</label><input class="ui-input" name="title" required maxlength="200" placeholder="Ex. Template SaaS « Nova »"></div>
       <div class="ui-field"><label class="ui-label">Accroche (une phrase)</label><input class="ui-input" name="tagline" maxlength="160" placeholder="Ce que ça apporte, en quelques mots"></div>
@@ -207,23 +210,23 @@
       <div class="ui-field"><label class="ui-label">Aperçu texte (prompt, extrait de code, README…) — affiché avec un bouton Copier</label><textarea class="ui-textarea" name="preview_text" rows="4" maxlength="6000" style="font-family:var(--mono);font-size:.85rem"></textarea></div>
 
       <hr class="ui-sep">
-      <h3 class="ui-h2" style="font-size:1rem">💶 Prix</h3>
+      <h3 class="ui-h2" style="font-size:1rem">Prix</h3>
       <div class="price-row">
         <label class="switch"><input type="checkbox" name="free" value="1" id="pf-free"><span class="s"></span> Gratuit</label>
         <div style="flex:1" id="pf-price-wrap"><label class="ui-label">Prix (€)</label><input class="ui-input" name="price" type="number" step="0.01" min="0.5" placeholder="19,00"></div>
       </div>
 
       <hr class="ui-sep">
-      <h3 class="ui-h2" style="font-size:1rem">🖼️ Images & vidéos</h3>
+      <h3 class="ui-h2" style="font-size:1rem">Images &amp; vidéos</h3>
       <p class="ui-muted" style="font-size:.85rem;margin:-6px 0 12px">La première image sert de couverture. Survole un média pour le déplacer ou le supprimer.</p>
-      <label class="drop" id="media-drop"><span class="big">⬆</span>Glisse tes images / vidéos ici ou clique pour choisir<br><small>png, jpg, webp, gif, avif · mp4, webm, mov — plusieurs fichiers possibles</small>
+      <label class="drop" id="media-drop"><span class="big">+</span>Glisse tes images / vidéos ici ou clique pour choisir<br><small>png, jpg, webp, gif, avif &bull; mp4, webm, mov — plusieurs fichiers possibles</small>
         <input type="file" id="media-input" multiple accept=".png,.jpg,.jpeg,.webp,.gif,.avif,.mp4,.webm,.mov" hidden></label>
       <div class="media-list" id="media-list"></div>
 
       <hr class="ui-sep">
-      <h3 class="ui-h2" style="font-size:1rem">📦 Fichier du produit</h3>
+      <h3 class="ui-h2" style="font-size:1rem">Fichier du produit</h3>
       <div id="pf-file"></div>
-      <label class="drop" id="file-drop"><span class="big">📁</span><span id="file-label">Choisir le fichier à livrer (zip, pdf, exe, fig, glb, md…)</span>
+      <label class="drop" id="file-drop"><span class="big">+</span><span id="file-label">Choisir le fichier à livrer (zip, pdf, exe, fig, glb, md…)</span>
         <input type="file" name="file" id="file-input" hidden></label>
       <div class="ui-field" style="margin-top:14px"><label class="ui-label">URL de démo / prévisualisation (optionnel)</label><input class="ui-input" name="demo_url" placeholder="https://… ou /preview/mon-site/"></div>
 
@@ -246,7 +249,17 @@
 <script>
 const CSRF = {{ csrf|tojson }};
 const $ = s => document.querySelector(s), esc = UI.esc, toast = (m, k) => UI.toast(m, k);
-const ICONS = {design: "🎨", template: "🧩", prompt: "💬", skill: "🤖", software: "💻", asset: "🧊", other: "📦"};
+const ADMIN_IC = {
+  globe: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 2.6 4 5.8 4 9s-1.5 6.4-4 9c-2.5-2.6-4-5.8-4-9s1.5-6.4 4-9z"/></svg>`,
+  pages: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="6" y="4" width="12" height="16" rx="2"/><path d="M9 9h6M9 13h6"/></svg>`,
+  bag: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M6 7h12l1 13H5L6 7z"/><path d="M9 7V5a3 3 0 0 1 6 0v2"/></svg>`,
+  rev: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M14.5 9a3 3 0 0 0-5 2.5v1A3 3 0 0 0 14.5 15M8 11h4M8 13h4"/></svg>`,
+  eye: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6-10-6-10-6z"/><circle cx="12" cy="12" r="2.5"/></svg>`,
+  dl: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4m4-5 5 5 5-5m-5 5V3"/></svg>`,
+  job: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="3"/><path d="M12 2v3m0 14v3M4.9 4.9l2.1 2.1m9.9 9.9 2.1 2.1M2 12h3m14 0h3"/></svg>`,
+  card: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/></svg>`,
+  ok: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6 9 17l-5-5"/></svg>`
+};
 function fmtSize(b) {
   if (!b) return '0 o';
   const u = ['o', 'Ko', 'Mo', 'Go', 'To']; let i = 0;
@@ -275,27 +288,27 @@ async function loadOverview() {
   $('#n-products').textContent = m.products || '';
   $('#n-jobs').textContent = o.jobs_running || '';
   $('#stats').innerHTML = [
-    stat('🌐', o.sites, 'Sites clonés', o.sites), stat('📄', o.total_pages, 'Pages clonées', o.total_pages),
-    stat('🛍️', `${m.published}/${m.products}`, 'Produits publiés'), stat('💶', m.revenue, "Chiffre d'affaires"),
-    stat('👁', m.views, 'Vues produits', m.views), stat('⬇', m.free_downloads, 'Téléch. gratuits', m.free_downloads),
-    stat('⚙️', o.jobs_running, 'Jobs en cours', o.jobs_running), stat('💳', m.sales, 'Ventes', m.sales),
+    stat(ADMIN_IC.globe, o.sites, 'Sites clonés', o.sites), stat(ADMIN_IC.pages, o.total_pages, 'Pages clonées', o.total_pages),
+    stat(ADMIN_IC.bag, `${m.published}/${m.products}`, 'Produits publiés'), stat(ADMIN_IC.rev, m.revenue, "Chiffre d'affaires"),
+    stat(ADMIN_IC.eye, m.views, 'Vues produits', m.views), stat(ADMIN_IC.dl, m.free_downloads, 'Téléch. gratuits', m.free_downloads),
+    stat(ADMIN_IC.job, o.jobs_running, 'Jobs en cours', o.jobs_running), stat(ADMIN_IC.card, m.sales, 'Ventes', m.sales),
   ].join('');
   UI.reveal($('#stats').parentNode); UI.count($('#stats'));
   $('#top-products').innerHTML = m.top.length ? m.top.map((p, i) => `<div class="list-row"><span class="ui-badge ${i ? '' : 'grad'}">#${i + 1}</span>
     <a href="/shop/p/${esc(p.slug)}" target="_blank" rel="noopener" style="text-decoration:none;flex:1" class="trunc">${esc(p.title)}</a>
-    <span class="ui-muted">👁 ${p.views}</span><span class="ui-muted">⬇ ${p.free_downloads}</span></div>`).join('') : empty('🛍️', 'Aucun produit pour le moment.');
+    <span class="ui-muted">${p.views} vues</span><span class="ui-muted">${p.free_downloads} dl</span></div>`).join('') : empty(ADMIN_IC.bag, 'Aucun produit pour le moment.');
   const cats = Object.entries(m.by_category), max = Math.max(1, ...cats.map(c => c[1]));
-  $('#cat-bars').innerHTML = cats.length ? cats.map(([k, v]) => `<div class="bar"><div class="l"><span>${esc(k)}</span><b>${v}</b></div><div class="t"><i data-w="${v / max * 100}"></i></div></div>`).join('') : empty('📊', 'Les catégories apparaîtront ici.');
+  $('#cat-bars').innerHTML = cats.length ? cats.map(([k, v]) => `<div class="bar"><div class="l"><span>${esc(k)}</span><b>${v}</b></div><div class="t"><i data-w="${v / max * 100}"></i></div></div>`).join('') : empty(ADMIN_IC.pages, 'Les catégories apparaîtront ici.');
   requestAnimationFrame(() => document.querySelectorAll('#cat-bars i').forEach(i => i.style.width = i.dataset.w + '%'));
-  $('#recent-sites').innerHTML = s.sites.length ? s.sites.slice(0, 5).map(x => `<div class="list-row"><span>🌐</span>
+  $('#recent-sites').innerHTML = s.sites.length ? s.sites.slice(0, 5).map(x => `<div class="list-row"><span style="width:16px;color:var(--accent)">${ADMIN_IC.globe}</span>
     <div style="flex:1;min-width:0"><div class="trunc"><b>${esc(x.title || x.id)}</b></div><div class="mono ui-muted trunc">${esc(x.url)}</div></div>
-    <a class="ui-btn sm" href="/__sc/studio/${encodeURIComponent(x.id)}" target="_blank" rel="noopener">Studio</a></div>`).join('') : empty('🧬', 'Aucun site cloné.');
+    <a class="ui-btn sm" href="/__sc/studio/${encodeURIComponent(x.id)}" target="_blank" rel="noopener">Studio</a></div>`).join('') : empty(ADMIN_IC.globe, 'Aucun site cloné.');
   const used = o.disk_total ? (1 - o.disk_free / o.disk_total) * 100 : 0;
   $('#system').innerHTML = `<div class="bars">
     <div class="bar"><div class="l"><span>Disque utilisé</span><b>${fmtSize(o.disk_total - o.disk_free)} / ${fmtSize(o.disk_total)}</b></div><div class="t"><i data-w="${used}"></i></div></div></div>
-    <div class="list-row" style="margin-top:10px"><span>💾</span><span style="flex:1">Taille des clones</span><b>${fmtSize(o.total_size)}</b></div>
-    <div class="list-row"><span>🖥</span><span style="flex:1">Aperçus actifs</span><b>${o.active_previews}</b></div>
-    <div class="list-row"><span>✅</span><span style="flex:1">Jobs réussis / échoués</span><b>${o.jobs_completed} / ${o.jobs_failed}</b></div>`;
+    <div class="list-row" style="margin-top:10px"><span style="flex:1">Taille des clones</span><b>${fmtSize(o.total_size)}</b></div>
+    <div class="list-row"><span style="flex:1">Aperçus actifs</span><b>${o.active_previews}</b></div>
+    <div class="list-row"><span style="flex:1">Jobs réussis / échoués</span><b>${o.jobs_completed} / ${o.jobs_failed}</b></div>`;
   requestAnimationFrame(() => document.querySelectorAll('#system i').forEach(i => i.style.width = i.dataset.w + '%'));
 }
 
@@ -307,22 +320,22 @@ function renderSites() {
   const list = sites.filter(s => !q || (s.title + ' ' + s.url + ' ' + s.id).toLowerCase().includes(q));
   $('#sites-grid').innerHTML = list.length ? list.map((s, i) => `
     <div class="ui-card hover ui-spot site-card" data-reveal style="--d:${Math.min(i, 8) * .04}s">
-      <div class="thumb">🌐<img src="/__sc/studio/${encodeURIComponent(s.id)}/cover.jpg" alt="" loading="lazy" onerror="this.remove()">
-        <div class="badges">${s.active_port ? `<span class="ui-badge ok">● port ${esc(s.active_port)}</span>` : ''}</div></div>
+      <div class="thumb"><span style="width:36px;color:var(--accent);opacity:.45">${ADMIN_IC.globe}</span>${s.has_cover ? `<img src="/__sc/studio/${encodeURIComponent(s.id)}/cover.jpg" alt="" loading="lazy" onerror="this.remove()">` : ''}
+        <div class="badges">${s.active_port ? `<span class="ui-badge ok">port ${esc(s.active_port)}</span>` : ''}</div></div>
       <div class="card-body">
         <h3 title="${esc(s.title)}">${esc(s.title || s.id)}</h3>
         <div class="mono ui-muted trunc">${esc(s.url)}</div>
-        <div class="meta"><span>📄 ${esc(s.total_pages)} pages</span><span>💾 ${esc(fmtSize(s.total_size))}</span><span>📅 ${esc(s.date)}</span></div>
+        <div class="meta"><span>${esc(s.total_pages)} pages</span><span>${esc(fmtSize(s.total_size))}</span><span>${esc(s.date)}</span></div>
         <div class="acts">
-          <a class="ui-btn sm primary" href="/__sc/studio/${encodeURIComponent(s.id)}" target="_blank" rel="noopener">🎨 Studio</a>
-          <a class="ui-btn sm" href="/__sc/studio/${encodeURIComponent(s.id)}/inspect" target="_blank" rel="noopener">✏️ Modifier</a>
-          <a class="ui-btn sm" href="/preview/${encodeURIComponent(s.id)}/" target="_blank" rel="noopener">↗</a>
-          <a class="ui-btn sm" href="/__sc/api/sites/${encodeURIComponent(s.id)}/download" title="Télécharger le ZIP">⬇</a>
-          ${s.active_port ? `<button class="ui-btn sm" data-stop="${esc(s.id)}">■</button>` : ''}
-          <button class="ui-btn sm danger" data-del="${esc(s.id)}" title="Supprimer">🗑</button>
+          <a class="ui-btn sm primary" href="/__sc/studio/${encodeURIComponent(s.id)}" target="_blank" rel="noopener">Studio</a>
+          <a class="ui-btn sm" href="/__sc/studio/${encodeURIComponent(s.id)}/inspect" target="_blank" rel="noopener">Modifier</a>
+          <a class="ui-btn sm" href="/preview/${encodeURIComponent(s.id)}/" target="_blank" rel="noopener">Aperçu</a>
+          <a class="ui-btn sm" href="/__sc/api/sites/${encodeURIComponent(s.id)}/download" title="Télécharger le ZIP">ZIP</a>
+          ${s.active_port ? `<button class="ui-btn sm" data-stop="${esc(s.id)}">Stop</button>` : ''}
+          <button class="ui-btn sm danger" data-del="${esc(s.id)}" title="Supprimer">Suppr.</button>
         </div>
       </div>
-    </div>`).join('') : empty('🧬', sites.length ? 'Aucun site ne correspond.' : 'Aucun site cloné pour le moment.');
+    </div>`).join('') : empty(ADMIN_IC.globe, sites.length ? 'Aucun site ne correspond.' : 'Aucun site cloné pour le moment.');
   UI.reveal($('#sites-grid'));
 }
 $('#site-q').oninput = renderSites;
@@ -338,7 +351,7 @@ async function loadJobs() {
       <td><span class="ui-badge ${cls[j.status] || ''}">${j.status === 'running' ? '<span class="ui-spinner" style="width:10px;height:10px;border-width:2px"></span>' : ''} ${esc(lbl[j.status] || j.status)}</span></td>
       <td class="trunc">${esc(j.error || j.message)}</td>
       <td>${j.status !== 'running' ? `<button class="ui-btn sm ghost" data-clear="${esc(j.job_id)}">Effacer</button>` : ''}</td></tr>`).join('')
-    : `<tr><td colspan="5">${empty('⚙️', 'Aucun job depuis le démarrage du serveur.')}</td></tr>`;
+    : `<tr><td colspan="5">${empty(ADMIN_IC.job, 'Aucun job depuis le démarrage du serveur.')}</td></tr>`;
 }
 
 // ---------- marketplace ----------
@@ -348,14 +361,14 @@ async function loadProducts() {
   products = r.products; categories = r.categories;
   $('#n-products').textContent = products.length || '';
   if ($('#prod-cat').options.length === 1) {
-    $('#prod-cat').insertAdjacentHTML('beforeend', Object.entries(categories).map(([k, v]) => `<option value="${k}">${ICONS[k]} ${esc(v)}</option>`).join(''));
-    $('#pf-cat').innerHTML = Object.entries(categories).map(([k, v]) => `<option value="${k}">${ICONS[k]} ${esc(v)}</option>`).join('');
+    $('#prod-cat').insertAdjacentHTML('beforeend', Object.entries(categories).map(([k, v]) => `<option value="${k}">${esc(v)}</option>`).join(''));
+    $('#pf-cat').innerHTML = Object.entries(categories).map(([k, v]) => `<option value="${k}">${esc(v)}</option>`).join('');
   }
   const missing = [];
   if (!r.stripe_ready) missing.push('STRIPE_SECRET_KEY');
   if (!r.webhook_ready) missing.push('STRIPE_WEBHOOK_SECRET');
   $('#stripe-warn').hidden = !missing.length;
-  $('#stripe-warn').textContent = missing.length ? `⚠️ Paiement non configuré (${missing.join(', ')}). Les produits gratuits fonctionnent ; les achats payants sont désactivés tant que STRIPE_SECRET_KEY est absente.` : '';
+  $('#stripe-warn').textContent = missing.length ? `Paiement non configuré (${missing.join(', ')}). Les produits gratuits fonctionnent ; les achats payants sont désactivés tant que STRIPE_SECRET_KEY est absente.` : '';
   renderProducts();
 }
 function renderProducts() {
@@ -366,20 +379,20 @@ function renderProducts() {
     const img = p.media.find(m => m.kind === 'image');
     const cover = img ? img.url : (p.cover ? `/shop/cover/${p.id}` : '');
     return `<div class="ui-card hover ui-spot prod-card" data-reveal style="--d:${Math.min(i, 8) * .04}s">
-      <div class="thumb">${ICONS[p.category] || '📦'}${cover ? `<img src="${cover}" alt="" loading="lazy">` : ''}
-        <div class="badges"><span class="ui-badge ${p.published ? 'ok' : 'warn'}">${p.published ? '● publié' : '○ brouillon'}</span>${p.featured ? '<span class="ui-badge grad">★</span>' : ''}${p.media.some(m => m.kind === 'video') ? '<span class="ui-badge">▶</span>' : ''}</div></div>
+      <div class="thumb"><span style="width:36px;color:var(--accent);opacity:.45">${ADMIN_IC.bag}</span>${cover ? `<img src="${cover}" alt="" loading="lazy">` : ''}
+        <div class="badges"><span class="ui-badge ${p.published ? 'ok' : 'warn'}">${p.published ? 'publié' : 'brouillon'}</span>${p.featured ? '<span class="ui-badge grad">À la une</span>' : ''}${p.media.some(m => m.kind === 'video') ? '<span class="ui-badge">Vidéo</span>' : ''}</div></div>
       <div class="card-body">
-        <div style="display:flex;justify-content:space-between;gap:8px;align-items:center"><span class="ui-badge accent">${ICONS[p.category] || ''} ${esc(p.category_label)}</span><b>${esc(p.price)}</b></div>
+        <div style="display:flex;justify-content:space-between;gap:8px;align-items:center"><span class="ui-badge accent">${esc(p.category_label)}</span><b>${esc(p.price)}</b></div>
         <h3>${esc(p.title)}</h3>
-        <div class="meta"><span>👁 ${p.views}</span><span>⬇ ${p.free_downloads}</span><span>💳 ${p.sales} · ${esc(p.revenue)}</span><span>🖼 ${p.media.length}</span><span style="color:${p.has_file ? 'var(--ok)' : 'var(--warn)'}">${p.has_file ? '📦 fichier' : '⚠ pas de fichier'}</span></div>
+        <div class="meta"><span>${p.views} vues</span><span>${p.free_downloads} dl</span><span>${p.sales} ventes &bull; ${esc(p.revenue)}</span><span>${p.media.length} médias</span><span style="color:${p.has_file ? 'var(--ok)' : 'var(--warn)'}">${p.has_file ? 'Fichier prêt' : 'Sans fichier'}</span></div>
         <div class="acts">
-          <button class="ui-btn sm primary" data-edit="${p.id}">✏️ Modifier</button>
+          <button class="ui-btn sm primary" data-edit="${p.id}">Modifier</button>
           <button class="ui-btn sm" data-toggle="${p.id}" data-field="published">${p.published ? 'Dépublier' : 'Publier'}</button>
-          <button class="ui-btn sm" data-toggle="${p.id}" data-field="featured" title="À la une">${p.featured ? '★' : '☆'}</button>
-          <a class="ui-btn sm" href="/shop/p/${esc(p.slug)}" target="_blank" rel="noopener" title="Voir">↗</a>
+          <button class="ui-btn sm" data-toggle="${p.id}" data-field="featured" title="À la une">${p.featured ? 'En une' : 'Mettre en une'}</button>
+          <a class="ui-btn sm" href="/shop/p/${esc(p.slug)}" target="_blank" rel="noopener" title="Voir">Voir</a>
         </div>
       </div></div>`;
-  }).join('') : empty('🛍️', products.length ? 'Aucun produit ne correspond.' : 'Aucun produit. Clique sur « Nouveau produit » pour commencer.');
+  }).join('') : empty(ADMIN_IC.bag, products.length ? 'Aucun produit ne correspond.' : 'Aucun produit. Clique sur « Nouveau produit » pour commencer.');
   UI.reveal($('#products-grid'));
 }
 ['#prod-q', '#prod-cat', '#prod-status'].forEach(s => $(s).addEventListener('input', renderProducts));
@@ -394,7 +407,7 @@ function openEditor(p) {
   $('#pf-delete').hidden = !p;
   $('#pf-view').hidden = !p; if (p) $('#pf-view').href = '/shop/p/' + p.slug;
   $('#file-label').textContent = 'Choisir le fichier à livrer (zip, pdf, exe, fig, glb, md…)';
-  $('#pf-file').innerHTML = p && p.has_file ? `<div class="file-pill">📦 <b>${esc(p.file)}</b><span class="ui-muted" style="margin-left:auto">actuel — choisis-en un autre pour le remplacer</span></div>` : '';
+  $('#pf-file').innerHTML = p && p.has_file ? `<div class="file-pill"><b>${esc(p.file)}</b><span class="ui-muted" style="margin-left:auto">actuel — choisis-en un autre pour le remplacer</span></div>` : '';
   if (p) {
     for (const k of ['title', 'tagline', 'description', 'preview_text', 'demo_url', 'tags']) pf[k].value = p[k] || '';
     pf.category.value = p.category;
@@ -416,9 +429,9 @@ function renderMedia() {
   const saved = editing ? editing.media : [];
   const item = (m, i, pending) => `<div class="media-item ${pending ? 'pending' : ''}">
     ${m.kind === 'video' ? `<video src="${m.url}" muted loop playsinline onmouseenter="this.play()" onmouseleave="this.pause()"></video>` : `<img src="${m.url}" alt="">`}
-    <span class="tag ui-badge ${i === 0 && m.kind === 'image' ? 'grad' : ''}">${pending ? 'à envoyer' : (i === 0 && m.kind === 'image' ? 'couverture' : m.kind === 'video' ? '▶ vidéo' : 'image')}</span>
-    <div class="ops">${pending ? `<button type="button" class="del" data-unpend="${i}">✕</button>` :
-      `<button type="button" data-mmove="${m.id}" data-dir="up">←</button><button type="button" data-mmove="${m.id}" data-dir="down">→</button><button type="button" class="del" data-mdel="${m.id}">🗑</button>`}</div></div>`;
+    <span class="tag ui-badge ${i === 0 && m.kind === 'image' ? 'grad' : ''}">${pending ? 'à envoyer' : (i === 0 && m.kind === 'image' ? 'couverture' : m.kind === 'video' ? 'vidéo' : 'image')}</span>
+    <div class="ops">${pending ? `<button type="button" class="del" data-unpend="${i}">&times;</button>` :
+      `<button type="button" data-mmove="${m.id}" data-dir="up">&larr;</button><button type="button" data-mmove="${m.id}" data-dir="down">&rarr;</button><button type="button" class="del" data-mdel="${m.id}">Suppr</button>`}</div></div>`;
   $('#media-list').innerHTML = saved.map((m, i) => item(m, i, false)).join('') + pendingMedia.map((m, i) => item(m, saved.length + i, true)).join('');
   $('#media-list').querySelectorAll('[data-unpend]').forEach(b => b.onclick = () => {
     const i = +b.dataset.unpend - saved.length; URL.revokeObjectURL(pendingMedia[i].url); pendingMedia.splice(i, 1); renderMedia();
@@ -440,7 +453,7 @@ $('#media-input').onchange = e => { addMedia(e.target.files); e.target.value = '
 ['dragleave', 'drop'].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.remove('over'); }));
 drop.addEventListener('drop', e => addMedia(e.dataTransfer.files));
 const fdrop = $('#file-drop');
-$('#file-input').onchange = e => { const f = e.target.files[0]; $('#file-label').textContent = f ? `✅ ${f.name} (${fmtSize(f.size)})` : 'Choisir le fichier à livrer'; };
+$('#file-input').onchange = e => { const f = e.target.files[0]; $('#file-label').textContent = f ? `${f.name} (${fmtSize(f.size)})` : 'Choisir le fichier à livrer'; };
 ['dragenter', 'dragover'].forEach(ev => fdrop.addEventListener(ev, e => { e.preventDefault(); fdrop.classList.add('over'); }));
 ['dragleave', 'drop'].forEach(ev => fdrop.addEventListener(ev, e => { e.preventDefault(); fdrop.classList.remove('over'); }));
 fdrop.addEventListener('drop', e => { if (e.dataTransfer.files[0]) { $('#file-input').files = e.dataTransfer.files; $('#file-input').onchange({target: $('#file-input')}); } });
@@ -472,13 +485,13 @@ $('#new-product').onclick = () => openEditor(null);
 // ---------- orders ----------
 async function loadOrders() {
   const r = await api('/shop/orders');
-  $('#order-stats').innerHTML = [stat('💶', r.revenue, "Chiffre d'affaires"), stat('✅', r.paid_count, 'Commandes payées', r.paid_count), stat('🧾', r.orders.length, 'Commandes (total)', r.orders.length)].join('');
+  $('#order-stats').innerHTML = [stat(ADMIN_IC.rev, r.revenue, "Chiffre d'affaires"), stat(ADMIN_IC.ok, r.paid_count, 'Commandes payées', r.paid_count), stat(ADMIN_IC.card, r.orders.length, 'Commandes (total)', r.orders.length)].join('');
   UI.reveal($('#order-stats').parentNode); UI.count($('#order-stats'));
   const fmt = t => t ? new Date(t * 1000).toLocaleString('fr-FR') : '—';
   $('#orders-body').innerHTML = r.orders.length ? r.orders.map(o => `
     <tr><td>${esc(fmt(o.paid_at || o.created_at))}</td><td>${esc(o.title || '(supprimé)')}</td><td>${esc(o.email)}</td>
     <td><b>${esc(o.amount)}</b></td><td><span class="ui-badge ${o.status === 'paid' ? 'ok' : 'warn'}">${o.status === 'paid' ? 'payée' : 'en attente'}</span></td>
-    <td>${esc(o.downloads)}</td></tr>`).join('') : `<tr><td colspan="6">${empty('💳', 'Aucune commande pour le moment.')}</td></tr>`;
+    <td>${esc(o.downloads)}</td></tr>`).join('') : `<tr><td colspan="6">${empty(ADMIN_IC.card, 'Aucune commande pour le moment.')}</td></tr>`;
 }
 
 // ---------- tabs & actions ----------

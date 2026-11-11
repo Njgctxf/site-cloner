@@ -8,12 +8,16 @@ Env: STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET, PUBLIC_URL (e.g. https://mysite.c
      SHOP_CURRENCY (default eur), optional SMTP_HOST/SMTP_PORT/SMTP_USER/SMTP_PASSWORD/SMTP_FROM.
 """
 
+import json
 import os
 import re
 import secrets
+import shutil
 import smtplib
 import sqlite3
 import time
+import urllib.parse
+from datetime import datetime
 from email.message import EmailMessage
 from pathlib import Path
 
@@ -24,6 +28,7 @@ from admin import DATA_DIR, login_required
 
 DB_FILE = DATA_DIR / "shop.db"
 PRODUCTS_DIR = DATA_DIR / "products"
+CLONED_DIR = Path(__file__).resolve().parent / "cloned_sites"
 
 LINK_TTL = 7 * 24 * 3600
 MAX_DOWNLOADS = 5
@@ -99,7 +104,8 @@ def init_db():
         for name, ddl in (("category", "TEXT NOT NULL DEFAULT 'design'"), ("tagline", "TEXT NOT NULL DEFAULT ''"),
                           ("tags", "TEXT NOT NULL DEFAULT ''"), ("preview_text", "TEXT NOT NULL DEFAULT ''"),
                           ("featured", "INTEGER NOT NULL DEFAULT 0"), ("views", "INTEGER NOT NULL DEFAULT 0"),
-                          ("free_downloads", "INTEGER NOT NULL DEFAULT 0"), ("updated_at", "INTEGER NOT NULL DEFAULT 0")):
+                          ("free_downloads", "INTEGER NOT NULL DEFAULT 0"), ("updated_at", "INTEGER NOT NULL DEFAULT 0"),
+                          ("clone_id", "TEXT NOT NULL DEFAULT ''")):
             if name not in cols:
                 c.execute(f"ALTER TABLE products ADD COLUMN {name} {ddl}")
 
@@ -176,6 +182,102 @@ def price(cents):
     return format_price(cents)
 
 
+def _clone_media(clone_id):
+    """Return studio preview images for a cloned site without duplicating files."""
+    if not clone_id:
+        return []
+    tdir = CLONED_DIR / clone_id / "_studio" / "thumbs"
+    if not tdir.is_dir():
+        return []
+    thumbs = sorted(p.name for p in tdir.glob("*.jpg") if re.fullmatch(r"[0-9a-f]{12}", p.stem))
+    if not thumbs:
+        return []
+    items = [{"id": 0, "kind": "image", "url": f"/__sc/studio/{clone_id}/cover.jpg"}]
+    for fn in thumbs[:5]:
+        items.append({"id": 0, "kind": "image", "url": f"/__sc/studio/{clone_id}/thumb/{fn}"})
+    return items
+
+
+def _clean_clone_title(cid, raw_title, url):
+    host = urllib.parse.urlparse(url or "").netloc.split(":")[0].lower()
+    if host.startswith("www."):
+        host = host[4:]
+    if host and "." in host:
+        return host
+    cleaned = re.sub(r"[\s_]+[0-9a-fA-F]{6,}$", "", raw_title or cid).strip(" -_")
+    return cleaned or cid
+
+
+def sync_cloned_sites():
+    """Ensure every completed cloned site in cloned_sites/ is listed in the Marketplace catalog."""
+    manifest_file = CLONED_DIR / "manifest.json"
+    if not manifest_file.exists():
+        return 0
+    try:
+        manifest = json.loads(manifest_file.read_text(encoding="utf-8"))
+    except Exception:
+        return 0
+    if not isinstance(manifest, dict):
+        return 0
+
+    added = 0
+    now = int(time.time())
+    entries = sorted(manifest.items(), key=lambda kv: str(kv[1].get("date", "")), reverse=True)
+    with db() as c:
+        existing = {r[0] for r in c.execute("SELECT clone_id FROM products WHERE clone_id <> ''") if r[0]}
+        has_featured = bool(c.execute("SELECT 1 FROM products WHERE published=1 AND featured=1").fetchone())
+        for sid, m in entries:
+            if not sid or sid in existing:
+                continue
+            sdir = CLONED_DIR / sid
+            tdir = sdir / "_studio" / "thumbs"
+            if not sdir.is_dir() or not (sdir / "_map.json").exists():
+                continue
+            if not tdir.is_dir() or not any(tdir.glob("*.jpg")):
+                continue
+            url = (m.get("url") or "").strip()
+            title = _clean_clone_title(sid, m.get("title", ""), url)
+            pages = int(m.get("total_pages") or 1)
+            files = int(m.get("total_files") or 0)
+            size_mb = round((m.get("total_size") or 0) / (1024 * 1024), 1)
+            tagline = f"{pages} page{'s' if pages > 1 else ''} · {files} fichiers · {size_mb} Mo"
+            desc = (
+                f"Design web capturé depuis {url or title}.\n\n"
+                f"Inclut {pages} page(s) HTML complète(s) et {files} fichiers locaux "
+                f"(styles, médias, polices et scripts), prêt à être édité dans le Studio ou téléchargé en archive ZIP."
+            )
+            tags = ["site-web", "clone"]
+            if pages > 1:
+                tags.append("multi-pages")
+            if "framer" in url.lower() or "framer" in sid.lower():
+                tags.append("framer")
+            if (m.get("total_size") or 0) > 25 * 1024 * 1024:
+                tags.append("3d")
+            try:
+                created_at = int(datetime.strptime(m.get("date", ""), "%Y-%m-%d %H:%M").timestamp())
+            except Exception:
+                created_at = now
+            base_slug = slugify(title)
+            slug, n = base_slug, 1
+            while c.execute("SELECT 1 FROM products WHERE slug=?", (slug,)).fetchone():
+                n += 1
+                slug = f"{base_slug}-{n}"
+            featured = 0
+            if not has_featured and pages >= 3:
+                featured = 1
+                has_featured = True
+            c.execute(
+                """INSERT INTO products
+                   (slug, title, description, price_cents, demo_url, cover, file, published,
+                    category, tagline, tags, preview_text, featured, created_at, updated_at, clone_id)
+                   VALUES (?,?,?,0,?,'','',1,'design',?,?,?, ?,?,?,?)""",
+                (slug, title[:200], desc[:8000], f"/preview/{sid}/", tagline[:160],
+                 ",".join(tags), "", featured, created_at, now, sid),
+            )
+            added += 1
+    return added
+
+
 def _media_for(c, pids):
     out = {}
     if not pids:
@@ -188,9 +290,11 @@ def _media_for(c, pids):
 
 def _card(r, media):
     """What the catalog and the product page need about a product (also used as JSON)."""
-    items = media.get(r["id"], [])
-    cover = next((m["url"] for m in items if m["kind"] == "image"), None) or (f"/shop/cover/{r['id']}" if r["cover"] else None)
     keys = r.keys()
+    clone_id = r["clone_id"] if "clone_id" in keys else ""
+    items = media.get(r["id"], []) or (_clone_media(clone_id) if clone_id else [])
+    cover = next((m["url"] for m in items if m["kind"] == "image"), None) or (f"/shop/cover/{r['id']}" if r["cover"] else None)
+    has_file = bool(r["file"]) or bool(clone_id and (CLONED_DIR / clone_id).is_dir())
     return {
         "id": r["id"], "slug": r["slug"], "title": r["title"], "tagline": r["tagline"] if "tagline" in keys else "",
         "description": r["description"], "category": r["category"] if "category" in keys else "design",
@@ -202,12 +306,13 @@ def _card(r, media):
         "demo_url": r["demo_url"], "preview_text": r["preview_text"] if "preview_text" in keys else "",
         "featured": bool(r["featured"]) if "featured" in keys else False,
         "views": r["views"] if "views" in keys else 0, "downloads": r["free_downloads"] if "free_downloads" in keys else 0,
-        "has_file": bool(r["file"]), "created_at": r["created_at"],
+        "has_file": has_file, "clone_id": clone_id, "created_at": r["created_at"],
     }
 
 
 @shop.route("/")
 def catalog():
+    sync_cloned_sites()
     with db() as c:
         rows = c.execute("SELECT * FROM products WHERE published=1 ORDER BY featured DESC, created_at DESC").fetchall()
         media = _media_for(c, [r["id"] for r in rows])
@@ -228,7 +333,7 @@ def product(slug):
         media = _media_for(c, [p["id"]] + [r["id"] for r in related])
     item = _card(p, media)
     return render_template("market_product.html", p=item, related=[_card(r, media) for r in related],
-                           can_pay=stripe_ready() and bool(p["file"]), error=request.args.get("error"))
+                           can_pay=stripe_ready() and bool(p["file"] or p["clone_id"]), error=request.args.get("error"))
 
 
 @shop.route("/media/<int:mid>")
@@ -242,13 +347,25 @@ def media_file(mid):
 
 @shop.route("/p/<slug>/get")
 def free_download(slug):
-    """Free products: the file is downloaded directly, no checkout."""
+    """Free products: the file or cloned site archive is downloaded directly, no checkout."""
     with db() as c:
         p = c.execute("SELECT * FROM products WHERE slug=? AND published=1", (slug,)).fetchone()
-        if not p or p["price_cents"] != 0 or not p["file"]:
+        if not p or p["price_cents"] != 0:
+            abort(404)
+        cid = p["clone_id"] if "clone_id" in p.keys() else ""
+        if p["file"]:
+            target = PRODUCTS_DIR / str(p["id"]) / p["file"]
+            dl_name = p["file"]
+        elif cid and (CLONED_DIR / cid).is_dir():
+            zfile = CLONED_DIR / f"{cid}.zip"
+            if not zfile.exists():
+                shutil.make_archive(str(CLONED_DIR / cid), "zip", str(CLONED_DIR / cid))
+            target = zfile
+            dl_name = f"{p['slug']}.zip"
+        else:
             abort(404)
         c.execute("UPDATE products SET free_downloads=free_downloads+1 WHERE id=?", (p["id"],))
-    return send_file(PRODUCTS_DIR / str(p["id"]) / p["file"], as_attachment=True, download_name=p["file"])
+    return send_file(target, as_attachment=True, download_name=dl_name)
 
 
 @shop.route("/cover/<int:pid>")
@@ -363,9 +480,9 @@ def download(token):
 def _product_dict(r, media=None):
     d = dict(r)
     d["price"] = "Gratuit" if r["price_cents"] == 0 else format_price(r["price_cents"])
-    d["has_file"] = bool(r["file"])
+    d["has_file"] = bool(r["file"]) or bool(d.get("clone_id") and (CLONED_DIR / d["clone_id"]).is_dir())
     d["category_label"] = CATEGORIES.get(r["category"], "Autres")
-    d["media"] = (media or {}).get(r["id"], [])
+    d["media"] = (media or {}).get(r["id"], []) or (_clone_media(d.get("clone_id")) if d.get("clone_id") else [])
     return d
 
 
@@ -443,6 +560,7 @@ def _add_media(c, pid, files):
 @shop_admin.route("/products")
 @login_required
 def list_products():
+    sync_cloned_sites()
     with db() as c:
         rows = c.execute("SELECT * FROM products ORDER BY featured DESC, created_at DESC").fetchall()
         media = _media_for(c, [r["id"] for r in rows])
@@ -595,6 +713,7 @@ def list_orders():
 
 def init_shop(app):
     init_db()
+    sync_cloned_sites()
     app.config.setdefault("MAX_CONTENT_LENGTH", 500 * 1024 * 1024)
     app.register_blueprint(shop)
     app.register_blueprint(shop_admin)

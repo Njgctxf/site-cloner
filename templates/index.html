@@ -17,9 +17,10 @@
     .hero .ui-lead { margin: 0 auto; }
     .hero-stats { display: flex; justify-content: center; gap: 28px; margin-top: 26px; flex-wrap: wrap; color: var(--muted); font-size: .88rem; }
     .hero-stats b { display: block; color: var(--text); font-size: 1.5rem; letter-spacing: -.03em; }
-    .clone-box { max-width: 820px; margin: 0 auto 1rem; padding: 8px 8px 8px 20px; display: flex; align-items: center; gap: 12px; border-radius: 20px; }
-    .clone-box .ico { font-size: 1.2rem; opacity: .8; }
-    .clone-input { background: transparent; border: 0; color: var(--text); font: 500 1.05rem var(--font); flex: 1; outline: none; min-width: 0; }
+    .clone-box { max-width: 820px; margin: 0 auto 1rem; padding: 7px 7px 7px 20px; display: flex; align-items: center; gap: 12px; border-radius: 999px; }
+    .clone-box .ico { display: inline-flex; color: var(--accent); opacity: .95; flex-shrink: 0; }
+    .clone-box .ico svg { width: 19px; height: 19px; }
+    .clone-input { background: transparent; border: 0; color: var(--text); font: 500 1rem var(--font); flex: 1; outline: none; min-width: 0; padding: 10px 4px; }
     .clone-input::placeholder { color: var(--dim); }
     .opts { max-width: 820px; margin: 0 auto 2.6rem; display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; padding: 0 8px; font-size: .88rem; color: var(--muted); }
     .opts select { width: auto; padding: 7px 10px; font-size: .85rem; }
@@ -63,30 +64,36 @@
 <body class="ui">
 
   <nav class="ui-nav">
-    <a class="ui-brand" href="/__sc/"><span class="ui-logo">⚡</span> SiteCloner <span class="ui-badge accent">Studio</span></a>
+    <a class="ui-brand" href="/__sc/home"><img class="rx-orb" src="/__sc/static/reflex/img/brand-orbit.svg" alt=""><span>SiteCloner</span> <span class="ui-badge accent">Studio</span></a>
     <div class="ui-links">
+      <a href="/__sc/home">Accueil</a>
       <a href="/__sc/" class="on">Cloneur</a>
       <a href="/shop/">Marketplace</a>
-      <a href="/__sc/security/">Sécurité</a>
+      <a href="/__sc/security/">Sécurité IA</a>
       <a href="/admin">Admin</a>
     </div>
   </nav>
 
   <div class="container">
     <div class="hero">
-      <span class="ui-eyebrow" data-reveal><span class="dot"></span> Serveur en ligne · 3D, vidéos, multi-pages</span>
+      <span class="ui-eyebrow" data-reveal><span class="dot"></span> Serveur en ligne &bull; 3D, vidéos, multi-pages</span>
       <h1 class="ui-title" data-reveal style="--d:.08s">Pars d'un site existant,<br><span class="ui-grad-text">crée le tien</span></h1>
       <p class="ui-lead" data-reveal style="--d:.16s">Colle une URL : on récupère les pages, les modèles 3D, les vidéos et le design system. Ensuite tu explores, modifies et exportes en code propre dans le Studio.</p>
     </div>
 
     <div class="clone-box ui-card ui-border-glow" data-reveal style="--d:.24s">
-      <span class="ico">🔗</span>
+      <span class="ico" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9.5"/><path d="M2.8 12h18.4M12 2.5c2.6 2.6 4 5.9 4 9.5s-1.4 6.9-4 9.5c-2.6-2.6-4-5.9-4-9.5s1.4-6.9 4-9.5z"/></svg>
+      </span>
       <input type="text" id="urlInput" class="clone-input" placeholder="https://exemple.com" onkeydown="if(event.key==='Enter')startClone()" />
-      <button class="ui-btn primary" id="cloneBtn" onclick="startClone()"><span>🚀 Cloner le site</span></button>
+      <button class="ui-btn primary" id="cloneBtn" onclick="startClone()">
+        <span>Cloner le site</span>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14m-6-6 6 6-6 6"/></svg>
+      </button>
     </div>
 
     <div class="opts" data-reveal style="--d:.3s">
-      <label class="ui-check"><input type="checkbox" id="crawlAllPages" checked><span style="color:var(--text)">📑 Cloner tout le site (multi-pages)</span></label>
+      <label class="ui-check"><input type="checkbox" id="crawlAllPages" checked><span style="color:var(--text)">Cloner tout le site (multi-pages)</span></label>
       <div style="display:flex;align-items:center;gap:8px">
         <span>Profondeur :</span>
         <select id="maxPages" class="ui-select">
@@ -112,8 +119,8 @@
 
     <!-- Cloned Sites Grid -->
     <div class="section-title">
-      <span>Mes Sites Clonés</span>
-      <span id="sitesCount" style="font-size: 0.85rem; color: var(--text-muted); font-weight: normal;">0 site(s)</span>
+      <span class="ui-h2" style="margin:0">Mes Sites Clonés</span>
+      <span id="sitesCount" style="font-size: 0.85rem; color: var(--muted); font-weight: 500; font-family: var(--mono);">0 site(s)</span>
     </div>
 
     <div class="sites-grid" id="sitesGrid">
@@ -121,7 +128,9 @@
     </div>
 
     <div class="empty-state" id="emptyState" style="display: none;">
-      <div class="empty-icon">🌐</div>
+      <div class="empty-icon" style="color:var(--accent);display:flex;justify-content:center;">
+        <svg width="46" height="46" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9.5"/><path d="M2.8 12h18.4M12 2.5c2.6 2.6 4 5.9 4 9.5s-1.4 6.9-4 9.5c-2.6-2.6-4-5.9-4-9.5s1.4-6.9 4-9.5z"/></svg>
+      </div>
       <h3>Aucun site cloné pour l'instant</h3>
       <p>Collez une URL ci-dessus pour générer votre premier miroir 3D interactif.</p>
     </div>
@@ -136,15 +145,7 @@
     let pollInterval = null;
 
     function showToast(message, type = 'success') {
-      const container = document.getElementById('toastContainer');
-      const toast = document.createElement('div');
-      toast.className = `toast toast-${type}`;
-      toast.innerHTML = `${type === 'success' ? '✅' : '❌'} <span>${message}</span>`;
-      container.appendChild(toast);
-      setTimeout(() => {
-        toast.style.opacity = '0';
-        setTimeout(() => toast.remove(), 300);
-      }, 3500);
+      UI.toast(message, type === 'error' ? 'err' : (type === 'info' ? '' : 'ok'));
     }
 
     function formatBytes(bytes) {
@@ -181,28 +182,28 @@
           card.style.setProperty('--d', `${Math.min(idx, 8) * 0.05}s`);
           const esc = UI.esc, sid = encodeURIComponent(site.id);
           const liveBadge = site.incomplete
-            ? `<div class="live-status" style="color:var(--warn);border-color:rgba(255,194,75,.45)" title="Le clonage a été interrompu : supprime-le et relance-le">⚠ Incomplet</div>`
+            ? `<div class="live-status" style="color:var(--warn);border-color:rgba(251,191,36,.45)" title="Le clonage a été interrompu : supprime-le et relance-le">Incomplet</div>`
             : site.active_port ? `<div class="live-status"><span class="live-dot"></span> Port ${site.active_port}</div>` : '';
           card.innerHTML = `
-            <div class="site-thumb">🌐<img src="/__sc/studio/${sid}/cover.jpg" alt="" loading="lazy" onerror="this.remove()">${liveBadge}</div>
+            <div class="site-thumb"><svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" style="color:var(--accent);opacity:.45"><circle cx="12" cy="12" r="9.5"/><path d="M2.8 12h18.4M12 2.5c2.6 2.6 4 5.9 4 9.5s-1.4 6.9-4 9.5c-2.6-2.6-4-5.9-4-9.5s1.4-6.9 4-9.5z"/></svg>${site.has_cover ? `<img src="/__sc/studio/${sid}/cover.jpg" alt="" loading="lazy" onerror="this.remove()">` : ''}${liveBadge}</div>
             <div class="site-body">
               <div class="site-title" title="${esc(site.title)}">${esc(site.title)}</div>
               <div class="site-url" title="${esc(site.url)}">${esc(site.url)}</div>
               <div class="site-stats">
-                <span>📄 ${site.total_pages || 1} page(s)</span>
-                <span>📁 ${site.total_files || 0} assets</span>
-                <span>💾 ${formatBytes(site.total_size)}</span>
-                <span>📅 ${esc(site.date || 'Récemment')}</span>
+                <span>${site.total_pages || 1} page(s)</span>
+                <span>${site.total_files || 0} assets</span>
+                <span>${formatBytes(site.total_size)}</span>
+                <span>${esc(site.date || 'Récemment')}</span>
               </div>
               <div class="site-actions">
-                <a href="/__sc/studio/${sid}" class="ui-btn primary wide" title="Toutes les pages, sections, design system, export">🧩 Ouvrir le Studio</a>
-                <button class="ui-btn" onclick="previewSite('${site.id}')">🌐 Aperçu</button>
-                <a href="/__sc/studio/${sid}/inspect" class="ui-btn" title="Modifier les textes, images, vidéos, 3D">✏️ Éditer</a>
-                <button class="ui-btn" onclick="publishSite('${site.id}')" title="Publier sur votre compte GitHub">🚀 GitHub</button>
-                <button class="ui-btn" style="grid-column: span 3" onclick="auditSite('${site.id}')" title="En-têtes HTTP, cookies, fichiers sensibles exposés (module Sécurité)">🛡 Audit de sécurité</button>
-                <div style="display:flex;gap:8px">
-                  <a href="/__sc/api/sites/${sid}/download" class="ui-btn" style="flex:1" title="Télécharger l'archive ZIP">📦</a>
-                  <button class="ui-btn danger" onclick="deleteSite('${site.id}')" title="Supprimer">🗑️</button>
+                <a href="/__sc/studio/${sid}" class="ui-btn primary wide" title="Toutes les pages, sections, design system, export">Ouvrir le Studio</a>
+                <button class="ui-btn" onclick="previewSite('${site.id}')">Aperçu</button>
+                <a href="/__sc/studio/${sid}/inspect" class="ui-btn" title="Modifier les textes, images, vidéos, 3D">Éditer</a>
+                <button class="ui-btn" onclick="publishSite('${site.id}')" title="Publier sur votre compte GitHub">GitHub</button>
+                <button class="ui-btn" style="grid-column: span 3" onclick="auditSite('${site.id}')" title="En-têtes HTTP, cookies, fichiers sensibles exposés (module Sécurité)">Audit de sécurité IA</button>
+                <div style="display:flex;gap:8px;grid-column:span 3">
+                  <a href="/__sc/api/sites/${sid}/download" class="ui-btn" style="flex:1" title="Télécharger l'archive ZIP"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M7 10l5 5 5-5"/><path d="M12 15V3"/></svg> Export ZIP</a>
+                  <button class="ui-btn danger" onclick="deleteSite('${site.id}')" title="Supprimer"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18m-2 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
                 </div>
               </div>
             </div>
