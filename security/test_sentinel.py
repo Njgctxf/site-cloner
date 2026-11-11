@@ -1640,6 +1640,38 @@ NullSessionShares: 1
                 es.os.environ.pop("NUCLEI_TEMPLATES_DIR", None)
                 self.assertEqual(es._count_nuclei_templates(), 1)
 
+        # 4. ZAP runs from its binary directory, Semgrep gets PYTHONUTF8=1, and crashes fail cleanly
+        with tempfile.TemporaryDirectory() as tmpdir:
+            fake_zap = os.path.join(tmpdir, "zap.bat")
+            with open(fake_zap, "w", encoding="utf-8") as f:
+                f.write("@echo off\n")
+            seen_calls = []
+
+            def fake_run(cmd, **kwargs):
+                seen_calls.append((cmd, kwargs))
+                return mock.MagicMock(returncode=1, stdout="", stderr="boom")
+
+            with mock.patch.dict(es.TOOL_REGISTRY["zap"], {"binary": fake_zap}), \
+                 mock.patch("security.sentinel.external_scanners.subprocess.run", side_effect=fake_run), \
+                 mock.patch("security.sentinel.external_scanners._log_execution"):
+                res = es.execute_tool("zap", "https://innotech-lab.local", triggered_by="unit_test")
+                self.assertFalse(res["success"])
+                self.assertEqual(res["status"], "error")
+                self.assertEqual(seen_calls[0][1]["cwd"], tmpdir)
+
+        seen_semgrep = []
+
+        def fake_semgrep_run(cmd, **kwargs):
+            seen_semgrep.append((cmd, kwargs))
+            return mock.MagicMock(returncode=0, stdout="", stderr="")
+
+        with mock.patch("security.sentinel.external_scanners._is_tool_installed", return_value=True), \
+             mock.patch("security.sentinel.external_scanners.subprocess.run", side_effect=fake_semgrep_run), \
+             mock.patch("security.sentinel.external_scanners._log_execution"):
+            res_sg = es.execute_tool("semgrep", "security/sentinel/client_snippets", triggered_by="unit_test")
+            self.assertTrue(res_sg["success"])
+            self.assertEqual(seen_semgrep[0][1]["env"].get("PYTHONUTF8"), "1")
+
 
 if __name__ == "__main__":
     unittest.main()

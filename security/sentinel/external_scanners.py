@@ -624,6 +624,13 @@ def execute_tool(tool_id: str, target: str, options: Optional[Dict[str, Any]] = 
         env["JAVA_HOME"] = java_home
         env["PATH"] = os.path.join(java_home, "bin") + os.pathsep + env.get("PATH", "")
 
+    if tool_id == "semgrep":
+        # Windows console defaults to cp1252 which can stall/fail Semgrep CLI; keep metrics allowed when config=auto.
+        env.setdefault("PYTHONUTF8", "1")
+
+    binary_path = meta["binary"]
+    run_cwd = os.path.dirname(binary_path) if (tool_id == "zap" and os.path.isfile(binary_path)) else _PROJECT_ROOT
+
     start_time = time.time()
     status = "completed"
     stdout_data, stderr_data, returncode = "", "", 0
@@ -631,11 +638,15 @@ def execute_tool(tool_id: str, target: str, options: Optional[Dict[str, Any]] = 
 
     try:
         proc = subprocess.run(
-            cmd, capture_output=True, text=True, timeout=meta.get("max_timeout", 120),
-            cwd=_PROJECT_ROOT, env=env
+            cmd, capture_output=True, text=True, encoding="utf-8", errors="replace",
+            timeout=meta.get("max_timeout", 120), cwd=run_cwd, env=env
         )
-        stdout_data, stderr_data, returncode = proc.stdout, proc.stderr, proc.returncode
-        status = "completed"
+        stdout_data, stderr_data, returncode = proc.stdout or "", proc.stderr or "", proc.returncode
+        if returncode != 0 and not (os.path.isfile(report_path) and os.path.getsize(report_path) > 0):
+            status = "error"
+            err_msg = (stderr_data or stdout_data or f"Code de sortie {returncode}").strip()[:500]
+        else:
+            status = "completed"
     except subprocess.TimeoutExpired:
         status = "timeout"
         err_msg = f"Délai dépassé ({meta.get('max_timeout', 120)}s)."
